@@ -1,0 +1,48 @@
+# ── Unity (generisano — Unity regeneriše pri otvaranju projekta) ──
+unity/SelfDrivingSim/[Ll]ibrary/
+unity/SelfDrivingSim/[Tt]emp/
+unity/SelfDrivingSim/[Oo]bj/
+unity/SelfDrivingSim/[Ll]ogs/
+unity/SelfDrivingSim/[Uu]ser[Ss]ettings/
+unity/SelfDrivingSim/[Bb]uild/
+unity/SelfDrivingSim/[Bb]uilds/
+unity/SelfDrivingSim/[Mm]emoryCaptures/
+unity/SelfDrivingSim/[Rr]ecordings/
+
+# Unity crash reports
+sysinfo.txt
+*.stackdump
+
+# ── IDE (Unity regeneriše solution/project fajlove) ──
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+.vs/
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ── Python ──
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# ── Dataset (prevelik za git; na Google Classroom ide zasebno) ──
+data/
+
+# ── Trening output (veliki fajlovi; grafovi i EXPERIMENTS.md se committaju) ──
+results/tensorboard/
+results/*/events.out.tfevents.*
+results/*/checkpoint*.pt
+
+# ── OS ──
+Thumbs.db
+Desktop.ini
+.DS_Store
