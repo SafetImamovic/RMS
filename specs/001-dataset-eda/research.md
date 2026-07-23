@@ -37,23 +37,33 @@ Prostim jezikom, jer se koriste dolje:
 
 ## R1 — Koju raspodjelu fitujemo na steering
 
-- **Prosto:** probamo par simetričnih raspodjela na steering, najbolja je skoro sigurno
-  Laplace; gomilu nula (79%) brojimo posebno.
-- **Odluka**: kandidati za steering = **normal, laplace, uniform** (sve simetrične, dozvoljavaju
-  negativne). Rangiramo po AIC, na pobjedniku radimo χ² + KS. Masu na nuli (~79%) izvještavamo
-  kao zasebnu vjerovatnoću (zero-inflation), ne guramo je u krivu.
-- **Zašto NE exponential/Erlang/gamma**: one postoje samo za pozitivne brojeve, a steering ima
-  negativne (volan lijevo). Bacamo ih odmah — nemaju smisla za simetričan signal.
-- **Zašto Laplace, ne normal**: steering je oštar na vrhu (gomila oko 0) sa težim repovima —
-  Laplace tako izgleda, normal je preširok na vrhu.
+- **Prosto:** steering nije jedna kriva nego **mješavina**: tri tačkasta špica (0, −1, +1) +
+  kontinualni dio između. Špiceve brojimo posebno, fitujemo samo kontinualni dio.
+- **Odluka**: kandidati = **normal, laplace, uniform** (simetrične, dozvoljavaju negativne).
+  Fitujemo **interior** (bez 0 i bez ±1), rangiramo po AIC, na pobjedniku radimo χ² + KS.
+- **Zašto mješavina (ključno):** steering ima diskretne špiceve — **0** (prava vožnja),
+  **−1** i **+1** (puni zaokret volana, zasićenje). Nijedna glatka kriva ne opisuje špic, pa
+  ih izvještavamo kao zasebne vjerovatnoće (tačkaste mase) i fitujemo ostatak.
+- **Zašto NE exponential/Erlang/gamma**: postoje samo za pozitivne brojeve, a steering ima
+  negativne (volan lijevo). Bacamo ih odmah.
+
+> **Stvarni nalaz (M1, combined dataset — ažurirano nakon implementacije):** mase su
+> 0=58.6%, −1=4.2%, +1=3.4%, interior=33.8%. Na interioru **uniform** ima najbolji AIC
+> (14079 < norm 14602 < laplace 16498), ali **χ² test odbacuje sve** (χ²≈2711 ≫ krit≈40,
+> KS D≈0.096, p≈0) na α=0.05. Prvobitna pretpostavka (Laplace pobjeđuje) je **demantovana
+> podacima**: interior je raširen preko opsega (track2 = razni uglovi krivina), nije
+> zvonolik. **Zaključak:** ljudski steering ne prati standardnu raspodjelu → koristimo
+> **empirijsku raspodjelu** kao referencu za poređenje agenata (M5). Odbacivanje je validan,
+> koristan nalaz — nije neuspjeh.
 
 ## R2 — Kako računamo χ² (binovi i dof)
 
 - **Prosto:** podijelimo steering u ~20-30 kanti, uporedimo koliko ih stvarno padne u svaku
   vs koliko bi teoretski trebalo, saberemo odstupanja.
-- **Odluka**: binovi tako da **svaka očekivana kanta ima ≥5 vrijednosti** (spoji rijetke repove).
-  dof = binovi − 1 − broj fitovanih parametara. Izvještavamo: χ² vrijednost, dof, kritičnu
-  vrijednost na α, i odluku prihvati/odbaci. Nulu tretiramo kao svoj bin.
+- **Odluka**: χ² se računa na **interioru** (špicevi 0 i ±1 su van fita — vidi R1). Binovi tako
+  da **svaka očekivana kanta ima ≥5 vrijednosti** (spoji rijetke repove). dof = binovi − 1 −
+  broj fitovanih parametara. Izvještavamo: χ² vrijednost, dof, kritičnu vrijednost na α, i
+  odluku prihvati/odbaci.
 - **Zašto ≥5 po binu**: to je pravilo koje čini χ² test ispravnim; sa premalim kantama test laže.
 
 ## R3 — Čemu KS test
