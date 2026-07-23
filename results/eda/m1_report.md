@@ -16,12 +16,12 @@
 - **speed**: n=32,443 mean=10.2114 disperzija=10.6855 std=3.2689 min=0.000 max=21.949 P95=15.275 P99=17.486
 - **|delta steering|**: n=32,441 mean=0.1112 disperzija=0.0385 std=0.1963 min=0.000 max=1.000 P95=0.550 P99=1.000
 
-## Fit steeringa (ne-nula tijelo)
-- zero_mass (prava vožnja): 58.6%
-- AIC: norm=24574, laplace=26944, uniform=18644
-- pobjednik: uniform, params=(-1.0, 2.0)
-- χ²=6717.6 dof=27 kritično=40.1 p=0 → ODBACI (α=0.05)
-- KS: D=0.1019 p=5.59e-122
+## Fit steeringa (kontinualni interior)
+- tačkaste mase: 0 (pravo)=58.6%, -1 (puni lijevo)=4.2%, +1 (puni desno)=3.4%, interior=33.8%
+- AIC (interior): norm=14602, laplace=16498, uniform=14079
+- pobjednik: uniform, params=(-0.95, 1.9)
+- χ²=2710.6 dof=27 kritično=40.1 p=0 → ODBACI (α=0.05)
+- KS: D=0.0961 p=1.46e-88
 
 ## Kalibracija za Unity (DESIGN §4.4/§4.5)
 - steering raspon (sirovi): (-1.0, 1.0)
