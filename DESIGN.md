@@ -143,8 +143,14 @@ RMS/
 | Trenutni steering | 1 | omogućava glatkoću |
 
 ### 4.4 Akcije (kontinualne, 2)
-- `steering` ∈ [-1, 1] → mapiran na ±25° (raspon potvrditi iz dataseta u M1)
-- `throttle` ∈ [-1, 1] → gas / kočnica
+- `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
+  **puni opseg** — čak i robustan raspon P1–P99 iznosi (−1, 1) (track2 ima mnogo punog
+  zaokreta), pa je mapiranje cijelog [-1,1] na ±25° opravdano podacima, ne saturacijom.
+- `throttle` ∈ [-1, 1] → gas / kočnica. Napomena (M1): kočnica se u datasetu koristi rijetko
+  (~95% nula), gas dominira — nije problem jer RL agent uči vlastiti throttle.
+
+> Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
+> `python -m python.eda.report`). Tipične brzine iz dataseta: 0–17.5 (P99), sredina ~10.2.
 
 ### 4.5 Reward funkcija
 | Događaj | Reward | Svrha |
@@ -154,7 +160,7 @@ RMS/
 | Sudar sa zidom | −5.0 + kraj epizode | sigurnost |
 | Svaki step | −0.001 | podstiče brzinu |
 | Brzina naprijed | +0.001 × v_norm | podstiče kretanje |
-| Nagli steering (|Δsteering| > prag) | −0.005 × |Δ| | glatkoća; prag iz dataseta (M1) |
+| Nagli steering (\|Δsteering\| > **0.55**) | −0.005 × \|Δ\| | glatkoća; prag = P95 od \|Δsteering\| iz dataseta (M1) |
 
 Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).

@@ -79,6 +79,11 @@ kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
 ## Upotreba
 
 ```powershell
+# M1 — analiza dataseta (EDA): statistika, χ² fit, kalibracija za Unity
+python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
+jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
+pytest python/tests -q               # testovi (loader, fingerprint, stats)
+
 # RL trening (pa pritisni Play u Unity Editoru kad trainer javi da sluša)
 mlagents-learn config/ppo_car.yaml --run-id=ppo_car_v01
 
