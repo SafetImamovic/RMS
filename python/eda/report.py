@@ -25,7 +25,7 @@ from scipy import stats as sp_stats
 from . import config
 from .fingerprint import column_fingerprints
 from .loader import check_integrity, load_track
-from .stats import abs_delta_steering, describe, fit_steering
+from .stats import abs_delta_steering, describe, fit_steering, steering_interior
 
 
 @dataclass
@@ -73,11 +73,10 @@ def _fig_distributions(steering, speed, abs_delta, p95, path):
 
 
 def _fig_fit(steering, res, path):
-    body = np.asarray(steering, dtype=float)
-    body = body[body != 0.0]
+    body = steering_interior(steering)  # continuous interior only (no 0, no +/-1 spikes)
     xg = np.linspace(-1, 1, 400)
     fig, ax = plt.subplots(figsize=(9, 4.5))
-    ax.hist(body, bins=60, density=True, alpha=0.5, color="#95a5a6", label="podaci (ne-nula)")
+    ax.hist(body, bins=60, density=True, alpha=0.5, color="#95a5a6", label="interior (bez 0, +-1)")
     colors = {"norm": "#2c7fb8", "laplace": "#c0392b", "uniform": "#27ae60"}
     for name in config.STEERING_FIT_CANDIDATES:
         dist = getattr(sp_stats, name)
@@ -162,9 +161,12 @@ def _render_report(integrity, fps, steering, speed, delta, fit, calib) -> str:
                      f"std={d.std:.4f} min={d.minimum:.3f} max={d.maximum:.3f} "
                      f"P95={d.percentiles[95]:.3f} P99={d.percentiles[99]:.3f}")
     lines.append("")
-    lines.append("## Fit steeringa (ne-nula tijelo)")
-    lines.append(f"- zero_mass (prava vožnja): {fit.zero_mass*100:.1f}%")
-    lines.append(f"- AIC: " + ", ".join(f"{k}={v:.0f}" for k, v in fit.aic_ranking.items()))
+    lines.append("## Fit steeringa (kontinualni interior)")
+    lines.append(f"- tačkaste mase: 0 (pravo)={fit.zero_mass*100:.1f}%, "
+                 f"-1 (puni lijevo)={fit.sat_neg_mass*100:.1f}%, "
+                 f"+1 (puni desno)={fit.sat_pos_mass*100:.1f}%, "
+                 f"interior={fit.interior_mass*100:.1f}%")
+    lines.append(f"- AIC (interior): " + ", ".join(f"{k}={v:.0f}" for k, v in fit.aic_ranking.items()))
     lines.append(f"- pobjednik: {fit.dist_name}, params={tuple(round(p,4) for p in fit.params)}")
     lines.append(f"- χ²={fit.chi2_stat:.1f} dof={fit.dof} kritično={fit.chi2_critical:.1f} "
                  f"p={fit.chi2_pvalue:.3g} → {'ODBACI' if fit.reject_null else 'PRIHVATI'} (α={fit.alpha})")

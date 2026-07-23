@@ -91,8 +91,22 @@ class FitResult:
     reject_null: bool           # True => the distribution does NOT fit (chi2 > critical)
     ks_stat: float
     ks_pvalue: float
-    zero_mass: float            # fraction of the ORIGINAL data that was exactly 0
+    zero_mass: float            # fraction of the ORIGINAL data that was exactly 0 (straight)
+    sat_neg_mass: float         # fraction exactly -1 (full left lock)
+    sat_pos_mass: float         # fraction exactly +1 (full right lock)
+    interior_mass: float        # fraction that is the genuine continuous body (the fitted part)
     aic_ranking: dict = field(default_factory=dict)  # dist_name -> AIC, for the notebook table
+
+
+def steering_interior(series) -> np.ndarray:
+    """The genuine continuous steering: drop the discrete spikes at 0 and +/-1.
+
+    Steering is really a mixture: point masses at 0 (straight), -1 and +1 (full lock), plus a
+    continuous body in between. Only the in-between part can be described by a smooth curve, so
+    that is what we fit. The spikes are reported as separate probabilities.
+    """
+    arr = np.asarray(series, dtype=float)
+    return arr[(arr != 0.0) & (arr != -1.0) & (arr != 1.0)]
 
 
 def _aic(log_likelihood: float, k_params: int) -> float:
@@ -156,8 +170,11 @@ def fit_steering(series, alpha: float = config.ALPHA) -> FitResult:
     4. Judge the best with a chi-square goodness-of-fit test (+ KS cross-check).
     """
     full = np.asarray(series, dtype=float)
+    n = full.size
     zero_mass = float(np.mean(full == 0.0))
-    body = full[full != 0.0]
+    sat_neg_mass = float(np.mean(full == -1.0))
+    sat_pos_mass = float(np.mean(full == 1.0))
+    body = steering_interior(full)  # drop 0 and +/-1 spikes; fit only the continuous interior
 
     ranking: dict[str, float] = {}
     fitted: dict[str, tuple] = {}
@@ -192,6 +209,9 @@ def fit_steering(series, alpha: float = config.ALPHA) -> FitResult:
         ks_stat=float(ks_stat),
         ks_pvalue=float(ks_p),
         zero_mass=zero_mass,
+        sat_neg_mass=sat_neg_mass,
+        sat_pos_mass=sat_pos_mass,
+        interior_mass=float(body.size / n),
         aic_ranking=ranking,
     )
 
