@@ -105,9 +105,9 @@ Python analysis package at `python/eda/`, notebook at `python/notebooks/`, tests
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Implement `run_m1(primary)` in `python/eda/report.py` — orchestrate load+resolve+integrity, fingerprints, describe+fit, save figures to `PLOTS_DIR`, write `results/eda/m1_report.md` + `results/eda/m1_stats.json` (`CalibrationOutput`), return it; writes only under `results/` (contracts, FR-011, FR-012, FR-014)
-- [ ] T021 [US3] Notebook section 4 (calibration & conclusions) — narrated: what numbers we hand to Unity and why (steering P1–P99 range, Δsteering P95 threshold, speed range), brake-dead note (FR-013); print `CalibrationOutput`
-- [ ] T022 [US3] Update `DESIGN.md` §4.4 (steering action range) and §4.5 (abrupt-Δsteering threshold) + typical speed range with the M1-derived values, each traceable to `m1_stats.json` (FR-014, Constitution V) — **owner reviews before commit**
+- [X] T020 [US3] Implement `run_m1(primary)` in `python/eda/report.py` — orchestrate load+resolve+integrity, fingerprints, describe+fit, save figures to `PLOTS_DIR`, write `results/eda/m1_report.md` + `results/eda/m1_stats.json` (`CalibrationOutput`), return it; writes only under `results/` (contracts, FR-011, FR-012, FR-014)
+- [X] T021 [US3] Notebook section 4 (calibration & conclusions) — narrated: what numbers we hand to Unity and why (steering P1–P99 range, Δsteering P95 threshold, speed range), brake-dead note (FR-013); print `CalibrationOutput`
+- [X] T022 [US3] Update `DESIGN.md` §4.4 (steering action range) and §4.5 (abrupt-Δsteering threshold) + typical speed range with the M1-derived values, each traceable to `m1_stats.json` (FR-014, Constitution V) — **owner reviews before commit**
 
 **Checkpoint**: All three stories done; M1 gate satisfiable.
 
@@ -115,11 +115,11 @@ Python analysis package at `python/eda/`, notebook at `python/notebooks/`, tests
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T023 [P] Run `pytest python/tests -q` — all green (Constitution VIII gate)
-- [ ] T024 [P] Reproducibility check — run `run_m1` twice, assert identical `m1_stats.json` under SEED=42 (SC-006)
-- [ ] T025 Notebook top-to-bottom pass — restart & run-all clean; verify every cell has its plain-language explanation and a plot where a plot helps (FR-016, FR-017); intro cell with the plain-language glossary
-- [ ] T026 [P] Update `README.md` "Upotreba" if M1 run commands changed; confirm `quickstart.md` steps work end-to-end
-- [ ] T027 Verify `git status` shows only expected files (no `dataset/`, `.venv/`); `results/plots/` figures + `results/eda/` reports present (Constitution VII/VIII merge checklist)
+- [X] T023 [P] Run `pytest python/tests -q` — all green (Constitution VIII gate)
+- [X] T024 [P] Reproducibility check — run `run_m1` twice, assert identical `m1_stats.json` under SEED=42 (SC-006)
+- [X] T025 Notebook top-to-bottom pass — restart & run-all clean; verify every cell has its plain-language explanation and a plot where a plot helps (FR-016, FR-017); intro cell with the plain-language glossary
+- [X] T026 [P] Update `README.md` "Upotreba" if M1 run commands changed; confirm `quickstart.md` steps work end-to-end
+- [X] T027 Verify `git status` shows only expected files (no `dataset/`, `.venv/`); `results/plots/` figures + `results/eda/` reports present (Constitution VII/VIII merge checklist)
 
 ---
 
