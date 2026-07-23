@@ -7,9 +7,11 @@ Simulacija autonomne vožnje u kojoj se porede dva pristupa učenju upravljanja 
 1. **Reinforcement Learning (PPO)** — agent u Unity simulaciji uči voziti kroz
    pokušaje i grešku, na osnovu raycast senzora i nagrada za napredak po stazi.
 2. **Behavioral Cloning (BC)** — konvolucijska mreža (PilotNet) trenirana
-   supervizirano na stvarnim podacima vožnje
-   ([Self-driving Car Dataset](https://www.kaggle.com/datasets/chethuhn/selfdriving-car):
-   slike kamere + steering uglovi).
+   supervizirano na podacima ljudske vožnje
+   ([Self-Driving Car Simulator](https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator):
+   slike kamere + steering uglovi, Udacity simulator format, dvije staze).
+   *Dataset iz originalne postavke zadatka je uklonjen sa Kagglea; profesor je odobrio
+   ovu zamjenu — detalji u [DESIGN.md](DESIGN.md).*
 
 Poenta poređenja: RL uči **zadatak** (proći stazu bez sudara), BC uči **stil**
 (imitira čovjeka). Evaluacija poredi distribucije steering odluka RL agenta, BC
@@ -37,7 +39,7 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ parametri okruženja i rewarda
 | `python/notebooks/` | Analiza dataseta (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch) |
 | `python/evaluation/` | Poređenje RL / BC / ljudski podaci |
-| `data/` | Kaggle dataset (nije u gitu — vidi Postavljanje) |
+| `dataset/` | Kaggle dataset (nije u gitu — vidi Postavljanje) |
 | `results/` | Trening logovi, grafovi, trenirani modeli |
 | `DESIGN.md` | Arhitektura i sve dizajn odluke |
 | `WORKFLOW.md` | Kako Unity radi + razvojni proces |
@@ -65,9 +67,9 @@ py -3.10 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r python/requirements.txt
 
-# 3. Dataset → data/
-kaggle datasets download -d chethuhn/selfdriving-car -p data --unzip
-#   (ili ručno sa Kaggle stranice, raspakovati u data/)
+# 3. Dataset → dataset/ (git-ignorisan; koristimo spojeni dataset/dataset/)
+kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
+#   (ili ručno sa Kaggle stranice, raspakovati u dataset/)
 
 # 4. Unity projekat
 #    Unity Hub → Add → odaberi unity/SelfDrivingSim → otvori

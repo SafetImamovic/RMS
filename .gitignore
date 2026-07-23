@@ -36,6 +36,7 @@ __pycache__/
 
 # ── Dataset (prevelik za git; na Google Classroom ide zasebno) ──
 data/
+dataset/
 
 # ── Trening output (veliki fajlovi; grafovi i EXPERIMENTS.md se committaju) ──
 results/tensorboard/
@@ -46,3 +47,5 @@ results/*/checkpoint*.pt
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+.notes

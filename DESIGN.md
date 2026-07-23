@@ -2,8 +2,27 @@
 
 **Predmet:** Računarsko modeliranje i simulacija (II ciklus)
 **Alat (fiksan):** Unity ML-Agents
-**Dataset:** Self-driving Car Dataset — https://www.kaggle.com/datasets/chethuhn/selfdriving-car
-(Udacity simulator format: slike kamere + steering uglovi)
+**Dataset:** Self-Driving Car Simulator (Udacity) —
+https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator
+(Udacity simulator format: slike kamere + `driving_log.csv` sa steering/throttle/brake/speed)
+
+> **Napomena o datasetu:** URL iz postavke zadatka
+> (`kaggle.com/datasets/chethuhn/selfdriving-car`) vraća 404 — dataset je uklonjen
+> sa Kagglea (provjereno 2026-07-12). **Profesor je odobrio zamjenu (2026-07-23):**
+> `zaynena/selfdriving-car-simulator` — etablirani dataset istog domena, u Udacity
+> simulator formatu. Ovaj dataset ima **dvije staze**:
+>
+> | Folder (raspakovano) | Redova u `driving_log.csv` | Sadržaj |
+> |----------------------|----------------------------|---------|
+> | `track1data/` | 10.615 | Staza 1 (ravna, lakša petlja) |
+> | `track2data/` | 21.828 | Staza 2 (planinska, oštre krivine) |
+> | `dataset/` | 32.443 | Obje spojene (= track1 + track2) |
+>
+> Za BC trening i kao ljudsku referencu koristimo **spojeni `dataset/`** (najviše
+> podataka, obje vrste vožnje). `driving_log.csv` je **bez headera**, 7 kolona:
+> `center, left, right, steering, throttle, brake, speed`. Putanje slika u CSV-u su
+> Windows-apsolutne (`Desktop\...\IMG\...`) → preprocessing ih svodi na basename i
+> re-rootuje na stvarni `IMG/` folder. Podaci su lokalno pod `dataset/` (git-ignorisan).
 
 ---
 
@@ -59,7 +78,7 @@ RMS/
 ├── WORKFLOW.md                    # kako Unity radi, razvojni proces, testiranje, asseti
 ├── CONTRIBUTING.md                # git konvencije (git flow, atomic commiti)
 ├── LICENSE                        # MIT
-├── .gitignore                     # Unity generisano, data/, .venv, trening output
+├── .gitignore                     # Unity generisano, dataset/, .venv, trening output
 ├── .gitattributes                 # LFS za binarne assete i modele; YAML kao tekst
 ├── unity/SelfDrivingSim/          # Unity projekat
 │   └── Assets/
@@ -85,7 +104,10 @@ RMS/
 │   │   └── evaluate.py            # MSE na test splitu, histogram predikcija
 │   └── evaluation/
 │       └── compare.py             # RL log vs BC predikcije vs ljudski podaci
-├── data/                          # Kaggle dataset (u .gitignore, na GC ide zasebno)
+├── dataset/                       # Kaggle dataset, nested (u .gitignore, na GC ide zasebno)
+│   ├── track1data/track1data/     #   staza 1: IMG/ + driving_log.csv
+│   ├── track2data/track2data/     #   staza 2: IMG/ + driving_log.csv
+│   └── dataset/dataset/           #   obje spojene (ovo koristimo za BC + referencu)
 └── results/
     ├── EXPERIMENTS.md             # log trening eksperimenata (run-id, izmjena, ishod)
     ├── tensorboard/               # RL trening krive (git-ignorisano; grafovi se izvoze u plots/)
@@ -185,6 +207,25 @@ Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 - BC model se ne vozi u Unityju (trenirao je na slikama drugog simulatora) — to se
   eksplicitno navodi kao ograničenje i razlog zašto je poređenje na nivou distribucija.
 
+### 7.1 Statistička obrada (naglasak predmeta)
+
+Predmet insistira na statističkim metodama — poređenje se izvodi statistički, ne "na oko":
+
+- **Deskriptivna statistika** za svaku distribuciju (steering, brzina, Δsteering): obim
+  uzorka, aritmetička sredina (matematičko očekivanje), disperzija (varijansa/std),
+  min/max, histogram relativnih učestalosti.
+- **Prilagođavanje raspodjele + test saglasnosti (M1):** na ljudski steering se prilagodi
+  kandidat-raspodjela (normalna / eksponencijalna / mješavina sa pikom oko nule) i
+  testira se **χ² testom saglasnosti** (uz Kolmogorov–Smirnov kao dopunu) — računa se
+  χ² statistika, kritična vrijednost χ²(n, α), i donosi odluka o prihvatanju/odbacivanju
+  hipoteze (postupak iz predavanja).
+- **Kvantifikovano poređenje RL vs BC vs čovjek:** KL divergencija + dvouzoračni
+  **KS test** (i/ili χ²) umjesto vizuelne procjene; izvještava se p-vrijednost.
+- **Taksonomija modela (za odbranu):** model je stohastički (nedeterministički zbog
+  randomizacije starta i stohastičke PPO politike), sa kontinualnim stanjima, diskretnim
+  vremenom (fiksni Unity timestep), agentski (agent-based), vremenski invarijantan,
+  neanticipatorski — terminologijom iz predavanja.
+
 ## 8. Verzije alata
 
 | Alat | Verzija |
@@ -203,7 +244,7 @@ neusklađenost Unity paketa i Python paketa.
 
 | M | Sadržaj | Izlaz |
 |---|---------|-------|
-| M1 | Kaggle dataset + EDA notebook | distribucije steering/brzina → konkretni parametri za 4.4 i 4.5 |
+| M1 | Kaggle dataset + EDA notebook (deskriptivna statistika, prilagođavanje raspodjele, χ² test saglasnosti) | distribucije steering/brzina → konkretni parametri za 4.4 i 4.5 + statistički izvještaj |
 | M2 | Unity projekat: scena, vozilo, CarAgent, checkpointi; heuristička vožnja (ručno upravljanje) radi | vozilo vozivo tastaturom, observacije provjerene |
 | M3 | PPO trening + tjuniranje rewarda | .onnx model, TensorBoard krive, agent završava krugove |
 | M4 | BC trening na datasetu | treniran CNN, validacijske metrike |
@@ -221,7 +262,27 @@ Redoslijed M3/M4 može biti paralelan (RL trening traje — u međuvremenu BC).
 | Dataset struktura drugačija od očekivane | M1 prvo verifikuje format (driving_log.csv kolone) prije svega ostalog |
 | Reward hacking (agent vrti u krug) | checkpoint sistem sa smjerom + kazna za pogrešan smjer |
 
-## 11. Predaja (Google Classroom)
+## 11. Srodni projekti (prior art)
+
+Ne izmišljamo toplu vodu — pristup je etabliran; ovi projekti služe kao referenca
+za dizajn i kao "related work" na odbrani. Kod se ne kopira (samostalna
+realizacija + individualna odbrana), preuzimaju se provjereni obrasci.
+
+| Projekat | Šta je | Šta preuzimamo |
+|----------|--------|----------------|
+| [Unity Karting Microgame + ML-Agents](https://learn.unity.com/project/karting-template) | Unityjev **službeni** template: kart uči voziti stazu raycast senzorima (KartAgent komponenta) | Validacija cijelog našeg pristupa (raycast + PPO + checkpointi); referentna struktura reward funkcije i agent skripte |
+| [udacity/self-driving-car-sim](https://github.com/udacity/self-driving-car-sim) | Open-source Unity simulator iz kojeg potiče format našeg dataseta (`driving_log.csv`) | Referenca za postavku kamere na vozilu i format logovanja (naš `DrivingLogger.cs` piše kompatibilne kolone); dokaz da je dataset "Unity-native" |
+| [OzAltagar7/Smarticar](https://github.com/OzAltagar7/Smarticar) | ML-Agents self-driving auto, 8 raycasta | Poređenje broja/rasporeda zraka |
+| [grantgasser/autonomous-vehicles-mlagents-unity](https://github.com/grantgasser/autonomous-vehicles-mlagents-unity) | Držanje trake u Unity okruženju (RL) | Ideje za reward shaping |
+| [mchrbn/unity-traffic-simulation](https://github.com/mchrbn/unity-traffic-simulation) | Waypoint traffic sistem (raskrsnice, semafori) | Kontekst za odbranu: proširenje ka multi-agent saobraćaju (potencijal za magistarski) |
+| [AWSIM (Autoware)](https://autowarefoundation.github.io/AWSIM-Labs/) | Industrijski AV simulator baziran na Unityju | Argument da je Unity legitiman alat za AV simulaciju, ne samo igre |
+
+Zaključak za dizajn: naša kombinacija (raycast observacije, PPO, checkpoint
+reward) odgovara Unityjevom službenom Karting ML-Agents obrascu — dodana
+vrijednost ovog projekta je integracija stvarnog dataseta (kalibracija + BC
+poređenje), što nijedan od navedenih projekata nema.
+
+## 12. Predaja (Google Classroom)
 
 - Unity projekat (bez Library/ foldera), Python kod, config, DESIGN.md, README.md
 - Dataset (zip ili link, kako profesor traži "dataset + izvorne datoteke")
