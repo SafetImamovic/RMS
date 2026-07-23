@@ -178,6 +178,74 @@ Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 
 ## 6. BC pipeline (PyTorch, CUDA)
 
+### 6.1 Format dataseta i referenciranje slika
+
+`driving_log.csv` je **bez header reda**, 7 kolona. **Jedan red = jedan vremenski
+trenutak = 3 slike** (tri kamere na vozilu) + 4 mjerena broja:
+
+| Kolona | Sadržaj | Primjer |
+|--------|---------|---------|
+| 1 | putanja **center** kamere | `Desktop\track1data\IMG\center_2019_04_02_19_25_33_671.jpg` |
+| 2 | putanja **left** kamere | `Desktop\track1data\IMG\left_2019_04_02_19_25_33_671.jpg` |
+| 3 | putanja **right** kamere | `Desktop\track1data\IMG\right_2019_04_02_19_25_33_671.jpg` |
+| 4 | `steering` | `0` |
+| 5 | `throttle` | `0` |
+| 6 | `brake` | `0` |
+| 7 | `speed` | `1.058134E-05` |
+
+Referenciranje:
+- Prve 3 kolone su **string putanje** do fajlova (ne sama slika). Sve tri dijele isti
+  timestamp u imenu (`..._2019_04_02_19_25_33_671`) — to je jedinstveni ID reda i veže
+  center/left/right snimke istog trenutka.
+- Putanje su **Windows-apsolutne sa mašine snimatelja** (`Desktop\...\IMG\...`), pa se
+  ne mogu koristiti direktno. Preprocessing uzima samo basename i re-rootuje na stvarni
+  `IMG/` folder:
+  ```python
+  filename = row[0].split("\\")[-1]        # "center_..._671.jpg"
+  path = IMG_DIR / filename                # stvarna lokalna putanja
+  ```
+- Provjera integriteta (M1 gate): `broj_redova × 3 == broj_fajlova u IMG/`
+  (npr. track1: 10.615 × 3 = 31.845 slika).
+
+#### Kako znamo značenje kolona (dataset je bez headera)
+
+Kaggle stranica ne opisuje kolone, pa se mapiranje ne pretpostavlja — **dokazuje se na
+tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
+
+1. **Kolone 1–3 dokazane imenima fajlova** — putanje sadrže `center_/left_/right_`, nema
+   sumnje šta je šta.
+2. **Kolone 4–7 = Udacity simulator standard** — dataset je output open-source Udacity
+   self-driving-car simulatora, koji uvijek piše redoslijed
+   `center, left, right, steering, throttle, brake, speed`. To je konvencija, ne dokaz
+   iz našeg fajla.
+3. **Kolone 4–7 potvrđene statistički** — deskriptivna statistika na track1 (10.615
+   redova) daje "otisak" koji jednoznačno veže broj za značenje:
+
+   | kolona | min | max | % negativnih | % nula | zaključak |
+   |--------|-----|-----|--------------|--------|-----------|
+   | kol 4 | −1.000 | 1.000 | 17.4 % | 79.3 % | jedina negativna, simetrična oko 0, većina 0 (prava vožnja) → **steering** |
+   | kol 5 | 0.000 | 1.000 | 0 % | 51.8 % | [0,1], nikad negativna → **throttle** (gas) |
+   | kol 6 | 0.000 | 0.000 | 0 % | 100 % | konstantno 0 (u ovom snimku nema kočenja) → **brake** |
+   | kol 7 | 0.000 | 21.949 | 0 % | 0 % | uvijek ≥0, velika magnituda (mean 13.15) → **speed** |
+
+   Logika: samo steering može biti negativan (volan lijevo) → kol 4. Speed je uvijek
+   pozitivan i velike magnitude → kol 7. Throttle je [0,1] gas → kol 5; brake je
+   preostala [0,1] kolona → kol 6.
+
+   Posljedica za analizu: `brake` je 100 % nula na track1 → skoro beskorisna kolona;
+   u M1 se provjerava i track2, pa ako je i tamo konstantna, izbacuje se iz obrade.
+
+> Ovaj postupak (identifikacija promjenljivih preko deskriptivne statistike) je i sam
+> dio statističkog naglaska predmeta — vidi §7.1 i M1.
+
+Upotreba kamera u BC-u:
+- **center** slika je primarni ulaz: `center → steering`.
+- **left/right** slike su augmentacija: koriste se sa korigovanim steeringom
+  (`+0.2` za left, `−0.2` za right) kao da je auto pomjeren u stranu — efektivno 3×
+  više podataka bez novog snimanja.
+
+### 6.2 Trening
+
 - Ulaz: `driving_log.csv` + slike centralne kamere (lijeva/desna kamera sa
   steering korekcijom ±0.2 kao augmentacija).
 - Preprocessing: crop neba/haube, resize 66×200, YUV (PilotNet standard),
