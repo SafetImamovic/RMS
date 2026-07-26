@@ -27,6 +27,7 @@ sysinfo.txt
 
 # ── Python ──
 .venv/
+.venv-*/
 venv/
 __pycache__/
 *.py[cod]
