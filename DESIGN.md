@@ -302,17 +302,24 @@ Predmet insistira na statističkim metodama — poređenje se izvodi statističk
 
 ## 8. Verzije alata
 
-| Alat | Verzija |
-|------|---------|
-| Unity Editor | 2022.3 LTS (ili Unity 6 LTS ako ML-Agents paket verifikovan) |
-| com.unity.ml-agents (Unity paket) | 3.0.x (Release 22) |
-| Python | 3.10.x |
-| mlagents (pip) | 1.1.0 |
-| PyTorch | 2.x + CUDA |
-| Ostalo | pandas, numpy, matplotlib, opencv-python, onnx |
+| Alat | Verzija | Status |
+|------|---------|--------|
+| Unity Editor | 6000.5.3f1 | verifikovano 2026-07-26 |
+| com.unity.ml-agents (Unity paket) | 4.0.3 | verifikovano (min. Unity 6000.0) |
+| com.unity.ai.inference | 2.6.1 | povlači se kao zavisnost ML-Agents paketa |
+| Python | 3.10.11 | verifikovano |
+| mlagents (pip) | 1.1.0 | verifikovano |
+| PyTorch | 2.6.0+cu124 | verifikovano, CUDA aktivna (RTX 3050 6GB) |
+| Communicator API | 1.5.0 | usklađen Unity paket ↔ Python paket |
+| Ostalo | pandas, numpy, matplotlib, opencv-python, onnx | |
 
 Verzije se zaključavaju u `requirements.txt` — ML-Agents je osjetljiv na
 neusklađenost Unity paketa i Python paketa.
+
+Kombinacija je provjerena end-to-end na 3DBall primjeru (`mlagents-learn` → Play →
+nagrada 100 → izvezen `.onnx`). Stvarno stanje mašine i zamke pri instalaciji su
+dokumentovani u [`ENVIRONMENT.md`](ENVIRONMENT.md) — taj fajl je izvor istine za
+instalirane verzije, ova tabela za namjeravane.
 
 ## 9. Plan rada (milestones)
 
