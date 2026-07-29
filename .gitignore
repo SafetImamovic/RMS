@@ -25,6 +25,9 @@ sysinfo.txt
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# ── Agent context (local only) ──
+CLAUDE.md
+
 # ── Python ──
 .venv/
 .venv-*/

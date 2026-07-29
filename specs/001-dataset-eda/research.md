@@ -56,6 +56,34 @@ Prostim jezikom, jer se koriste dolje:
 > **empirijsku raspodjelu** kao referencu za poređenje agenata (M5). Odbacivanje je validan,
 > koristan nalaz — nije neuspjeh.
 
+> **ISPRAVKA R1 (potiče iz feature-a 002 „Data Authenticity", 2026-07-29).**
+> Gornji zaključak **ostaje ispravan, ali je razlog bio pogrešan.**
+>
+> Steering **nije kontinualna varijabla**. Snima se na **rešetki sa korakom 0.05**, sa 41
+> mogućim nivoom od −1.00 do +1.00 (track1 koristi 40 — nivo +0.95 se nikad ne pojavi;
+> track2 koristi svih 41). Provjereno u `results/eda/authenticity_report.md`, §4.
+>
+> Zbog toga je fitovanje **glatke gustine** (norm/laplace/uniform) na „interior" bilo
+> **pogrešno specifikovano (misspecified)**: glatka kriva po svojoj prirodi ne može opisati
+> varijablu koja ima samo 41 dozvoljenu vrijednost. χ² ≈ 2711 nije otkriće o podacima —
+> to je posljedica modela. Test je vjerno prijavio da model ne odgovara, i bio je u pravu,
+> samo iz drugog razloga nego što je R1 mislio.
+>
+> Ispravan alat za rešetkastu varijablu je χ² nad **samim nivoima** — kategorije su
+> vrijednosti, pa nema binovanja ni proizvoljnog izbora. To rade testovi T1/T2/T3 u
+> feature-u 002.
+>
+> Praktična posljedica: **nikakva.** Zaključak „koristi empirijsku raspodjelu" je i dalje
+> tačan i sada ima tačan razlog. Kalibracija za Unity se **ne mijenja** — provjereno, ne
+> pretpostavljeno (feature 002, FR-018): P95 |Δsteering| = 0.5500001 i opseg P1–P99 =
+> (−1, 1) su **percentili**, dakle redoslijedne statistike, i ne zavise od toga da li
+> varijablu zovemo diskretnom ili kontinualnom. Uzgred, 0.55 je tačno 11 koraka rešetke.
+>
+> Napomena o KS (veže se na R3): KS pretpostavlja **kontinualnu** raspodjelu. Na
+> rešetkastim podacima ima mnogo vezanih vrijednosti (ties) i njegova p-vrijednost nije
+> tačna, pa KS provjera steeringa u M1 nije bila pouzdana — nezavisno od toga šta je
+> pokazala.
+
 ## R2 — Kako računamo χ² (binovi i dof)
 
 - **Prosto:** podijelimo steering u ~20-30 kanti, uporedimo koliko ih stvarno padne u svaku
@@ -65,6 +93,19 @@ Prostim jezikom, jer se koriste dolje:
   broj fitovanih parametara. Izvještavamo: χ² vrijednost, dof, kritičnu vrijednost na α, i
   odluku prihvati/odbaci.
 - **Zašto ≥5 po binu**: to je pravilo koje čini χ² test ispravnim; sa premalim kantama test laže.
+
+> **ISPRAVKA R2 (potiče iz feature-a 002, 2026-07-29).**
+> Cijela priča o binovanju je bila **nepotrebna**. Binovi postoje da bi se kontinualna
+> varijabla svela na kategorije — a steering je već kategorijalan: 41 nivo rešetke (vidi
+> ispravku R1). Za rešetkastu varijablu kategorije su **same vrijednosti**, pa nema izbora
+> broja kanti, nema izbora granica, i nema prostora da izbor kanti utiče na rezultat.
+>
+> Pravilo „≥5 očekivanih po kategoriji" **ostaje** i koristi se nepromijenjeno
+> (`CHI2_MIN_EXPECTED_PER_BIN = 5`), samo se sada primjenjuje na nivoe rešetke umjesto na
+> izmišljene kante. Dodatno: spajanje rijetkih nivoa ide **simetrično od repova ka centru**,
+> jer bi asimetrično spajanje samo po sebi uvelo asimetriju koju test simetrije (T2) onda
+> mjeri kao nalaz — test bi mjerio vlastitu pripremu podataka. dof se izvještava **nakon**
+> spajanja, zajedno sa brojem spojenih kategorija.
 
 ## R3 — Čemu KS test
 

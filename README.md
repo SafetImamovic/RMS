@@ -44,13 +44,16 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ parametri okruženja i rewarda
 | `DESIGN.md` | Arhitektura i sve dizajn odluke |
 | `WORKFLOW.md` | Kako Unity radi + razvojni proces |
 | `CONTRIBUTING.md` | Git konvencije (git flow, atomic commiti) |
+| `ENVIRONMENT.md` | Provjereno stanje mašine i zamke pri instalaciji |
 
 ## Preduslovi
 
+Tačne, provjerene verzije i zamke: `ENVIRONMENT.md`.
+
 | Alat | Verzija | Napomena |
 |------|---------|----------|
-| Unity Hub + Unity Editor | 2022.3 LTS | preko [Unity Hub](https://unity.com/download) |
-| Python | 3.10.x | novije verzije nekompatibilne sa `mlagents` |
+| Unity Hub + Unity Editor | 6000.5.3f1 | preko [Unity Hub](https://unity.com/download); `com.unity.ml-agents` 4.0.3 traži Unity 6000.0+ |
+| Python | 3.10.11 | novije verzije nekompatibilne sa `mlagents` |
 | Git + Git LFS | aktuelne | `git lfs install` jednom po mašini |
 | NVIDIA GPU + CUDA drajveri | — | opciono, ubrzava BC trening |
 | Kaggle nalog | — | za preuzimanje dataseta |
