@@ -174,8 +174,11 @@ the car points at the next marker, and that markers are only awarded in order an
 - **FR-002**: The vehicle's steering input MUST span the same range as the recorded human
   steering, including the saturated extremes, since the recorded driver reached full lock in both
   directions on both recordings.
-- **FR-003**: The vehicle's maximum speed MUST be derived from the recorded speed distribution
-  rather than chosen, and MUST be stated together with the percentile it was taken from.
+- **FR-003**: The vehicle's maximum speed MUST be exposed as a named constant with its reason
+  recorded, and MUST NOT be presented as a figure derived from the dataset. The recorded speed
+  column carries no documented unit, so a top speed claimed to be "derived" from it would smuggle
+  in a conversion nobody can check. Comparability is delivered by FR-004 instead, which is the
+  binding requirement here.
 - **FR-004**: All speed comparisons between the simulation and the dataset MUST be made on a
   normalised scale, because the recorded speed column carries no documented unit. No requirement,
   threshold or reported figure may depend on an assumed unit conversion.

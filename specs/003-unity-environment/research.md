@@ -67,8 +67,9 @@ Nijedan prag nije "odabran jer izgleda dobro".
 - **Nezavisno od L**: `s_max = atan(tan(25°)/1.3) / 25° = 0.789` - L se skrati. Margina je dakle
   **jedini** parametar koji određuje ovu granicu, što je čini poštenom ručkom za podešavanje.
 - **Cijena, i izvještava se otvoreno**: generisana staza nikad ne može tražiti steering iznad
-  0.789, dok ljudski podaci idu do 1.0. Pokrivamo ljudsku raspodjelu do otprilike 97. percentila
-  track1, dalje ne. Ovo se **navodi** u izvještaju, ne prešućuje.
+  0.789, dok ljudski podaci idu do 1.0. Izmjereno: 2.60 % uslovnih uzoraka track1 je iznad 0.789,
+  dakle granica sjedi na **97.40. percentilu** i dalje ne idemo (mjereno u C15, ne procijenjeno).
+  Ovo se **navodi** u izvještaju, ne prešućuje.
 
 ## C3 - Brzina: normalizacija umjesto pretvaranja jedinica
 
@@ -171,6 +172,13 @@ Nijedan prag nije "odabran jer izgleda dobro".
   slaganja** - to je tačno ona greška zbog koje je napisan feature 002. FR-019 to izričito
   zabranjuje. Ako neko ipak želi χ² brojku, smije stajati kao deskriptivna mjera, ali odluka o
   prihvatanju se **ne** donosi p-vrijednošću.
+- **Odnos prema Principu IX ustava**: Princip IX imenuje χ², KS i KL divergenciju kao mjere
+  poređenja. Te odredbe su vezane za dvije druge tačke: χ² i KS za **karakterizaciju ljudskog
+  dataseta u M1** (već urađeno, feature 002), a KL i KS za **poređenje RL vs BC vs čovjek u M5**.
+  Ovdje se ne karakteriše raspodjela niti se porede dva naučena modela, nego se donosi binarna
+  odluka prihvati/odbij o geometriji staze, a za to treba **rastojanje sa pragom**, ne test.
+  Princip IX ostaje na snazi za M1 i M5 nepromijenjen. Ova rečenica postoji da razlika bude
+  zapisana, a ne prećutna.
 - **Zašto se cilja track1 profil**: DESIGN 4.1 traži "dominantno blage krivine, par oštrijih".
   To je track1 (steering nenulti u 21 % kadrova, median 0.25, puni zaokret 0.7 %), a ne track2
   (nenulti 52 %, median 0.50, **puni zaokret 21.9 %**). Track2 profil ostaje kao moguća teža
@@ -253,6 +261,34 @@ Nijedan prag nije "odabran jer izgleda dobro".
   dvije različite frekvencije mjeri razliku u brzini uzorkovanja, ne u vožnji. Ista greška koju
   je feature 002 izbjegao tako što nikad nije računao preko granice sesije.
 
+## C15 - Prag prihvatanja za Wasserstein rastojanje
+
+- **Prosto:** koliko blizu ljudskoj raspodjeli staza mora biti da bi prošla, i odakle taj broj.
+- **Odluka**: `MATCH_DISTANCE_THRESHOLD = 0.05`.
+- **Zašto uopšte ova odluka postoji**: prva verzija je nosila 0.08 bez ijednog izvođenja, što je
+  direktna suprotnost rečenici na vrhu ovog dokumenta da nijedan prag nije odabran jer izgleda
+  dobro. Ispravljeno mjerenjem nad samim datasetom.
+- **Tri izmjerene skale**, sve na uslovnoj raspodjeli `|steering| > 0`, mjera W1:
+
+  | poređenje | W1 | šta predstavlja |
+  |---|---|---|
+  | track1 nasumične polovine (seed 0) | 0.0079 | čisti šum uzorkovanja |
+  | track1 prva polovina vs druga | 0.0231 | isti čovjek, ista staza, uz vremenski drift |
+  | track1 vs uniformna na [0, 0.789] | 0.1047 | raspodjela **bez ikakve strukture** |
+  | track1 vs track2 | 0.2635 | drugi čovjek, drugi profil vožnje |
+
+  (`n = 2193` nenultih na track1, `n = 11253` na track2.)
+- **Izvođenje**: prag mora biti **strogo ispod 0.1047**, inače bi i raspodjela bez strukture
+  prošla i test ne bi razlikovao ništa. Mora biti i **iznad 0.0231**, inače od generatora tražimo
+  da bude bliži track1 nego što je track1 sam sebi, što nijedan uzorak konačne veličine ne može
+  garantovati. Geometrijska sredina te dvije granice je `sqrt(0.0231 × 0.1047) = 0.0492`,
+  zaokruženo na **0.05**. To je 2.2 puta iznad poda i 2.1 puta ispod baseline-a bez strukture.
+- **Ako batch ne dostigne 0.05**: to je **nalaz o harmonijskom obliku generatora**, ne dugme za
+  podešavanje - isti tretman kao stopa prihvatanja u SC-011. Svako popuštanje praga mora ostati
+  strogo ispod 0.1047, jer iznad toga test prestaje da razlikuje staze od šuma.
+- **Uzgredna potvrda za C2**: odsijecanje na 0.789 samo po sebi košta `W1 = 0.0027`, dakle
+  zanemarivo u odnosu na prag. Truncation nije ono što će oboriti poređenje.
+
 ---
 
 ## Sažetak izvedenih konstanti
@@ -277,6 +313,7 @@ Nijedan prag nije "odabran jer izgleda dobro".
 | `N_CHECKPOINTS` | 24 | C12 |
 | `START_LATERAL_M`, `START_YAW_DEG` | 1.5, 10 | C12 |
 | `COMPARE_HZ` | 14.08 | C14, median frekvencija track1 |
+| `MATCH_DISTANCE_THRESHOLD` | 0.05 | C15, geometrijska sredina poda 0.0231 i baseline-a 0.1047 |
 | `TRAIN_SEEDS`, `EVAL_SEEDS` | 1..40, 1001..1010 | C13 |
 
 ## Šta ovaj feature svjesno NE rješava

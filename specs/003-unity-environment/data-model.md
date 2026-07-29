@@ -127,6 +127,7 @@ What a driver would have to do to follow this track.
 | `required_steer` | `ndarray` | `atan(wheelbase / radius) / steer_max` at each sample |
 | `max_required` | `float` | Peak demand |
 | `percentiles` | `dict[float, float]` | Distribution summary at the same percentiles M1 reports |
+| `descriptives` | `Descriptives` | n, mean, variance, std, min, max and the relative-frequency histogram |
 
 **Rules**
 
@@ -134,6 +135,30 @@ What a driver would have to do to follow this track.
   that point, and the human comparison in M1 was made on absolute steering.
 - `max_required` can never exceed the profile's `max_required_steer`. If it does, the radius check
   failed and the seed should already have been rejected.
+- `descriptives` is **required, not a convenience**. Constitution Principle IX names sample size,
+  mean, variance, min, max and a relative-frequency histogram for every distribution the project
+  touches, and required steering is a distribution this feature introduces. Percentiles alone were
+  the original shape of this type and did not satisfy the principle.
+
+---
+
+## `Descriptives`
+
+The Principle IX block, reused wherever this feature touches a distribution.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `n` | `int` | Sample size |
+| `mean` | `float` | Matematičko očekivanje |
+| `variance`, `std` | `float` | Disperzija |
+| `min`, `max` | `float` | |
+| `bin_edges`, `relative_frequency` | `ndarray` | The relative-frequency histogram, not counts |
+
+**Rules**
+
+- Relative frequency, not raw counts. The principle names relative frequency, and counts are not
+  comparable between a 2000-sample track and a 2193-sample reference.
+- Computing this type never writes to disk.
 
 ---
 
@@ -147,8 +172,10 @@ How close a track, or a batch of them, sits to the human data.
 | `distance` | `float` | Wasserstein-1 distance to the reference distribution |
 | `threshold` | `float` | The acceptance threshold, reported alongside |
 | `accepted` | `bool` | `distance <= threshold` |
+| `scales` | `dict[str, float]` | The three measured reference distances from research C15 |
 | `reference` | `str` | Which empirical distribution was used, and that it is the conditional one |
 | `n_track_samples`, `n_reference_samples` | `int` | |
+| `n_seeds_pooled` | `int` | 1 for a single seed, the accepted count for a batch |
 | `note` | `str` | Plain language, including the truncation and the missing-straights caveat |
 
 **Rules**
@@ -157,6 +184,15 @@ How close a track, or a batch of them, sits to the human data.
   a rejection of a null hypothesis. No p-value appears in this type. A large p-value is not
   evidence of agreement, and feature 002 exists because that error was made once already
   (FR-019, research C8).
+- `threshold` is 0.05, derived in research C15 from three measured scales rather than chosen. It
+  must stay strictly below the 0.1047 structureless baseline, or the decision stops discriminating.
+- `scales` is carried in the report because a bare distance is unreadable. 0.041 is a good match
+  next to a 0.0231 floor and a meaningless one next to a 0.1047 ceiling, and the reader should not
+  have to look the numbers up.
+- **SC-010 is judged on a batch-scope report, never on per-seed ones.** Twenty tracks that each
+  miss in a different direction pool to a good match; twenty that all miss the same way do not.
+  Only the pooled figure tells them apart. `n_seeds_pooled` below 20 may not be quoted against
+  SC-010.
 - `reference` records that the comparison is against the **conditional** distribution given
   non-zero steering, because a harmonic loop has no straight sections at all (research C9).
 - `note` must state the two known limitations: no track can demand more than the profile's

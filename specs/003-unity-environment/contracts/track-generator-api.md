@@ -38,9 +38,12 @@ RAY_COUNT: int = 13
 RAY_FOV_DEG: float = 180.0
 RAY_LENGTH_M: float = 20.0
 
-# Comparison (research C8, C14)
+# Comparison (research C8, C14, C15)
 COMPARE_HZ: float = 14.08
-MATCH_DISTANCE_THRESHOLD: float = 0.08   # Wasserstein-1 on normalised steering
+MATCH_DISTANCE_THRESHOLD: float = 0.05   # W1, derived in C15; must stay below 0.1047
+W1_SELF_CONSISTENCY: float = 0.0231      # track1 halves against each other, the floor
+W1_STRUCTURELESS: float = 0.1047         # track1 against uniform, the discrimination ceiling
+W1_HUMAN_TO_HUMAN: float = 0.2635        # track1 against track2, reported for scale
 
 # Seeds (research C13)
 TRAIN_SEEDS: range = range(1, 41)
@@ -117,6 +120,10 @@ def place_checkpoints(line: CentreLine, n: int) -> list[Checkpoint]:
 ```python
 def required_steering(line: CentreLine, profile: VehicleProfile) -> SteeringDemand: ...
 
+def describe(values: np.ndarray) -> Descriptives:
+    """n, mean, variance, std, min, max, and the histogram, for any distribution
+    this feature touches. Constitution Principle IX requires all of them."""
+
 def reference_distribution() -> np.ndarray:
     """The measured |steering| from M1, CONDITIONAL on being non-zero (research C9)."""
 
@@ -132,6 +139,13 @@ def match_distance(demand: SteeringDemand, reference: np.ndarray) -> MatchReport
 - `reference_distribution` reads the dataset through the existing M1 loader and never writes.
 - `MatchReport.note` states both known limitations: the truncation at `max_required_steer`, and
   the absence of straight sections.
+- `SteeringDemand` carries a full `Descriptives` block, not percentiles alone. Constitution
+  Principle IX requires sample size, mean, variance, min, max and a relative-frequency histogram
+  for **every** distribution the project touches, and the required-steering distribution is a new
+  one introduced by this feature. Percentiles alone would not satisfy it.
+- `MatchReport` reports the distance against all three measured scales from research C15, not
+  against the threshold alone. A distance of 0.06 means something different when the floor is
+  0.0231 and the structureless baseline is 0.1047, and a reader cannot judge it otherwise.
 
 ## export.py
 
@@ -140,7 +154,12 @@ def export_track(seed: int, out_dir: Path = TRACKS_DIR) -> Path:
     """Generate, validate, and write one track file. Raises if the seed is rejected."""
 
 def generate_batch(seeds: Iterable[int], out_dir: Path = TRACKS_DIR) -> BatchReport:
-    """Export every accepted seed; record every rejected one with its reason."""
+    """Export every accepted seed; record every rejected one with its reason.
+
+    Also pools the required steering across every accepted track and produces one
+    batch-scope MatchReport. That pooled report, not the per-seed ones, is what
+    SC-010 is judged on.
+    """
 ```
 
 **Contract guarantees**
@@ -150,6 +169,13 @@ def generate_batch(seeds: Iterable[int], out_dir: Path = TRACKS_DIR) -> BatchRep
 - `BatchReport` reports the acceptance rate. SC-011 requires at least 50 percent, and a lower rate
   is treated as a design finding about the radius floor conflicting with the statistical target,
   not as something to tune away.
+- `BatchReport` carries a **pooled** `MatchReport` with `scope` naming the batch, computed over the
+  required steering of every accepted track together. SC-010 asks whether a batch of at least 20
+  accepted seeds matches the human distribution, which no per-seed report answers. A batch of 20
+  tracks that each miss in a different direction can pool to a good match, and a batch that each
+  miss the same way cannot; only the pooled figure distinguishes them.
+- `BatchReport` names the pooled sample count, so a batch smaller than the 20 seeds SC-010 requires
+  cannot be quoted as if it satisfied it.
 - Two runs over the same seed list produce byte-identical files.
 - Nothing outside `out_dir` is written.
 
@@ -166,7 +192,9 @@ Each check needs both directions of evidence, the same rule as feature 002.
 | determinism | two different seeds giving the same geometry | the same seed giving different geometry on re-run |
 | steering inverse | a radius outside the achievable range | round-tripping every value in `[0, 1]` |
 | wheelbase independence | a `max_required_steer` that moves with wheelbase | it staying fixed across 1.5 m to 4.0 m |
-| match distance | a uniform demand distribution scoring far from the reference | the reference scoring zero against itself |
+| match distance | a uniform demand distribution scoring 0.1047, above the 0.05 threshold | the reference scoring zero against itself, and its two halves scoring 0.0231, below the threshold |
+| pooled batch | a batch of fewer than 20 accepted seeds quoted against SC-010 | a batch of 20 or more producing one `MatchReport` with batch scope |
+| descriptives | a `SteeringDemand` missing any of n, mean, variance, min, max | all six present for every distribution the feature touches |
 
 The right-hand column is not optional. A generator that rejects every seed passes every
 left-hand test and is useless.

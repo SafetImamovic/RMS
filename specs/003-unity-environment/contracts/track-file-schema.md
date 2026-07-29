@@ -64,13 +64,30 @@ half-understood file looks fine and is wrong.
   },
 
   "match_report": {
-    "distance": 0.061,
-    "threshold": 0.08,
+    "scope": "seed 7",
+    "distance": 0.041,
+    "threshold": 0.05,
     "accepted": true,
+    "scales": {
+      "self_consistency": 0.0231,
+      "structureless": 0.1047,
+      "human_to_human": 0.2635
+    },
     "reference": "M1 |steering|, conditional on non-zero",
     "n_track_samples": 2000,
     "n_reference_samples": 2193,
-    "note": "No generated track can demand steering above 0.789, so the human distribution is covered to roughly its 97th percentile and no further. A harmonic loop contains no straight sections, so this comparison is against the conditional distribution."
+    "note": "No generated track can demand steering above 0.789, so the human distribution is covered to its 97.40th percentile and no further. A harmonic loop contains no straight sections, so this comparison is against the conditional distribution."
+  },
+
+  // Constitution Principle IX: every distribution this project touches reports all of these.
+  "required_steer_descriptives": {
+    "n": 2000,
+    "mean": 0.312,
+    "variance": 0.0281,
+    "std": 0.1676,
+    "min": 0.041,
+    "max": 0.734,
+    "histogram": { "bin_edges": [0.0], "relative_frequency": [0.0] }
   }
 }
 ```
@@ -94,6 +111,13 @@ half-understood file looks fine and is wrong.
   verdict drifting apart. A file that claims `radius_ok: true` while containing a corner below the
   floor is a contradiction any test can catch.
 - **`match_report` contains no p-value.** By contract. See FR-019 and research C8.
+- **`match_report.scales` carries the three measured reference distances** from research C15, so a
+  reader can judge the distance without holding the derivation in their head. A distance of 0.041
+  is only meaningful next to the 0.0231 floor and the 0.1047 structureless baseline.
+- **`required_steer_descriptives` is mandatory, not optional.** Constitution Principle IX requires
+  sample size, mean, variance, min, max and a relative-frequency histogram for every distribution
+  the project touches. The values shown above are illustrative, like every other number in this
+  example. A file missing this block fails the loader.
 
 ## Failure modes the loader must handle
 
@@ -104,6 +128,7 @@ half-understood file looks fine and is wrong.
 | `geometry_report.radius_ok` is false | Refuse to build. Such a file should not exist; if one does, something wrote it that should not have |
 | `centre_line` shorter than two points | Refuse to build |
 | `checkpoints` not monotonic in `s` | Refuse to build. Progress ordering is meaningless otherwise |
+| `required_steer_descriptives` missing or incomplete | Refuse to load, name the missing field. Principle IX is not optional |
 | First and last centre-line points identical | Refuse to build, since closure must be implied and not duplicated |
 
 Every one of these is a refusal, not a warning. A track that builds despite failing a check is
