@@ -144,7 +144,7 @@ def run_m1(primary: str = "combined") -> CalibrationOutput:
 
 
 def _render_report(integrity, fps, steering, speed, delta, fit, calib) -> str:
-    lines = ["# M1 — Statistički izvještaj (auto-generisan)", ""]
+    lines = ["# M1 - Statistički izvještaj (auto-generisan)", ""]
     lines.append("## Integritet")
     for rep in integrity.values():
         lines.append(f"- {rep.summary()}")
@@ -153,7 +153,7 @@ def _render_report(integrity, fps, steering, speed, delta, fit, calib) -> str:
     for fp in fps:
         lines.append(f"- kol {fp.column_index}: {fp.inferred_identity} "
                      f"(min={fp.minimum:.3f}, max={fp.maximum:.3f}, "
-                     f"%neg={fp.pct_negative:.1f}, %nula={fp.pct_zero:.1f}) — {fp.evidence}")
+                     f"%neg={fp.pct_negative:.1f}, %nula={fp.pct_zero:.1f}) - {fp.evidence}")
     lines.append("")
     lines.append("## Deskriptivna statistika")
     for d in (steering, speed, delta):

@@ -1,9 +1,9 @@
 # RMS Constitution
 
-**Project:** Simulacija autonomnog vozila (Unity ML-Agents) — Tema 28
+**Project:** Simulacija autonomnog vozila (Unity ML-Agents) - Tema 28
 **Course:** Računarsko modeliranje i simulacija (II ciklus), II parcijalni ispit
 **Scope of authority:** This document governs *how* work is done on this repository by
-every contributor — human or AI agent. It supersedes habit, convenience, and any
+every contributor - human or AI agent. It supersedes habit, convenience, and any
 individual agent's default behavior. Where this constitution and a prompt conflict,
 this constitution wins; the contributor must stop and request an amendment instead
 of silently deviating.
@@ -37,12 +37,12 @@ thing that keeps them from implementing contradictory versions of the same featu
 Branch model is git-flow; commit granularity is atomic. Full detail lives in
 `CONTRIBUTING.md`; the binding rules are:
 
-- `main` — stable milestone states only. Never worked on directly. Receives merges
+- `main` - stable milestone states only. Never worked on directly. Receives merges
   from `develop` at milestone boundaries, and every such merge is tagged
   (`v0.1-m1`, `v0.2-m2`, … `v1.0` = submission).
-- `develop` — integration branch, must always be in a working state. Direct commits
+- `develop` - integration branch, must always be in a working state. Direct commits
   are allowed **only** for trivial doc/chore fixes.
-- `feature/<kebab-desc>` and `fix/<kebab-desc>` — all real work. Branched from
+- `feature/<kebab-desc>` and `fix/<kebab-desc>` - all real work. Branched from
   `develop`, merged back with `--no-ff`. Names are short, kebab-case, English
   (`feature/dataset-eda`, `feature/car-agent`, `fix/checkpoint-order`).
 - One commit = one logical change that leaves the project consistent. If the message
@@ -55,7 +55,7 @@ Branch model is git-flow; commit granularity is atomic. Full detail lives in
 
 ### III. Human-Only Commits & Reviewed Handoffs (NON-NEGOTIABLE)
 
-**No AI agent commits or pushes, ever — under any circumstance, on any branch,
+**No AI agent commits or pushes, ever - under any circumstance, on any branch,
 including when explicitly told to "just commit it".** An agent MUST NEVER run
 `git commit`, `git push`, `git merge`, `git rebase`, `git tag`, `git reset`, or any
 other history-mutating command. Read-only git (`status`, `log`, `diff`,
@@ -65,17 +65,17 @@ repository owner, by hand.
 **Every handoff requires an explain-and-review step.** After an agent creates or edits
 files, before the owner commits, the agent MUST:
 
-1. **Explain plainly** what it implemented / fixed / changed and *why* — file by file,
+1. **Explain plainly** what it implemented / fixed / changed and *why* - file by file,
    in terms the owner can verify against the design.
 2. **Explicitly ask the owner to review the code** and confirm before it is committed.
-3. **Propose** a Conventional-Commits message and (if relevant) a branch name — as a
+3. **Propose** a Conventional-Commits message and (if relevant) a branch name - as a
    suggestion the owner runs, never an action the agent takes.
 
 An agent that finishes work without explaining it and asking for review has not
 finished. Silence-then-done is a violation of this principle.
 
-**Rationale:** the owner keeps full control of history — atomic commits, deliberate
-branching, a clean record for the individual oral defense — and must understand every
+**Rationale:** the owner keeps full control of history - atomic commits, deliberate
+branching, a clean record for the individual oral defense - and must understand every
 line, because the defense is an individual interview where he answers for all of it.
 
 ### IV. Multi-Agent Coordination
@@ -99,21 +99,35 @@ Parallel agents must not corrupt each other's work:
 A decision that changes the design is written into `DESIGN.md` **before** it is
 implemented, in a `docs:` commit. The design document is the source of truth for
 architecture, observations/actions, the reward table, and milestones. Code that
-contradicts `DESIGN.md` is a bug in one of the two — reconcile, don't ignore.
+contradicts `DESIGN.md` is a bug in one of the two - reconcile, don't ignore.
 
 Doc ownership: `README.md` = what / how-to-run; `DESIGN.md` = architecture & decisions;
 `WORKFLOW.md` = how we work (rarely changes); `CONTRIBUTING.md` = git rules (rarely
 changes); `results/EXPERIMENTS.md` = one entry per training run.
+
+**Writing style (binding on every file in the repo):**
+
+- **No em dashes** (Unicode U+2014, the long one). Use a plain hyphen `-`, or restructure
+  the sentence. This holds everywhere: Markdown, Python docstrings and comments, generated
+  report text, notebook prose, commit messages. The en dash (U+2013) is a different
+  character and is still fine in numeric ranges such as `P1-P99`.
+  To check a file: `Select-String -Path <file> -Pattern ([char]0x2014)`.
+- **Bold carries weight, so spend it.** Emphasis on every other phrase is emphasis on
+  nothing. Bold a term when it is the point of the sentence, not to decorate it.
+
+**Rationale:** the owner reads and defends every line of this repository. A consistent,
+plain register makes the writing his, and keeps a document readable in a terminal, in a
+diff, and on a projector.
 
 ### VI. Reproducibility & Determinism
 
 Anyone (professor included) must be able to reproduce a result from the repo:
 
 - Tool versions are pinned (`requirements.txt`, `Packages/manifest.json`,
-  `config/*.yaml`). ML-Agents is version-sensitive — Python and Unity package versions
+  `config/*.yaml`). ML-Agents is version-sensitive - Python and Unity package versions
   must match the table in `DESIGN.md` §8. `DESIGN.md` §8 records what we *intend* to
   run; `ENVIRONMENT.md` records what is *verified installed*. When the two disagree,
-  neither is silently correct — reconcile them in a `docs:` commit.
+  neither is silently correct - reconcile them in a `docs:` commit.
 - **The M1 environment (`.venv`) and the training environment (`.venv-mlagents`) are
   separate on purpose.** `mlagents` hard-pins numpy 1.23.5, while M1's committed numbers
   were produced under numpy 1.26.4. Merging the two environments would silently
@@ -134,7 +148,7 @@ The dataset is `zaynena/selfdriving-car-simulator` (professor-confirmed, 2026-07
   (Unity would import ~200k images and generate a `.meta` for each).
 - **Format contract** (Udacity simulator, headerless CSV, 7 columns):
   `center_img, left_img, right_img, steering, throttle, brake, speed`. Image paths in
-  the CSV are Windows-absolute (`Desktop\...\IMG\...`) — preprocessing MUST reduce them
+  the CSV are Windows-absolute (`Desktop\...\IMG\...`) - preprocessing MUST reduce them
   to a basename and re-root to the actual `IMG/` folder. Any loader validates these
   columns before anything else (M1 gate).
 - **The image dataset does not feed the RL agent.** It is used for (a) environment
@@ -148,12 +162,12 @@ The dataset is `zaynena/selfdriving-car-simulator` (professor-confirmed, 2026-07
 
 A feature branch merges to `develop` only when its level of testing passes:
 
-- **Unity logic** — EditMode tests (`Assets/Tests/`) for checkpoint order, reward math.
-- **Unity driving** — the track must be drivable by hand in Heuristic mode before any
-  training is started ("no keyboard lap, no training" — `WORKFLOW.md` §5).
-- **Python/BC** — `pytest` (`python/tests/`): CSV parses, model accepts the right input
+- **Unity logic** - EditMode tests (`Assets/Tests/`) for checkpoint order, reward math.
+- **Unity driving** - the track must be drivable by hand in Heuristic mode before any
+  training is started ("no keyboard lap, no training" - `WORKFLOW.md` §5).
+- **Python/BC** - `pytest` (`python/tests/`): CSV parses, model accepts the right input
   shape, augmentation negates steering on horizontal flip.
-- **RL** — the TensorBoard cumulative-reward curve must trend upward; success criterion
+- **RL** - the TensorBoard cumulative-reward curve must trend upward; success criterion
   is in `DESIGN.md` §5.
 - Merge checklist (`CONTRIBUTING.md`): `git status` shows only expected files (no
   `Library/`, `dataset/`, `.venv/`), every new `Assets/` file has its `.meta`, binaries
@@ -171,7 +185,7 @@ instead of an eyeballed plot, it must be. Concretely:
 - **Distribution fitting + goodness-of-fit.** When we characterize the human dataset
   (M1), we fit a candidate theoretical distribution and test the fit with a **χ²
   goodness-of-fit test** (and/or Kolmogorov–Smirnov), reporting the statistic, the
-  critical value at α, and the accept/reject decision — the procedure taught in the
+  critical value at α, and the accept/reject decision - the procedure taught in the
   course notes (deck 2).
 - **Comparisons are quantified, not asserted.** RL vs BC vs human steering
   distributions are compared with a real metric (**KL divergence**, and a two-sample
@@ -199,10 +213,10 @@ Treat it as a first-class deliverable, not decoration on the ML work.
   training start, the versions are wrong and nothing else matters.
   Verified end to end on 2026-07-26 (3DBall trained to reward 100, `.onnx` exported).
 - **The ML-Agents examples repo is checked out at `release/4.0.3`, not `release_23`.**
-  Unity's own `Installation.md` in 4.0.3 says `release_23` — following it ships package
+  Unity's own `Installation.md` in 4.0.3 says `release_23` - following it ships package
   source 4.0.0, which does not compile on Unity 6000.5 (`GetInstanceID()` is
   error-level obsolete there). See `ENVIRONMENT.md`.
-- **Git LFS** for all binaries (images that must be versioned, `.onnx`, `.pt`) — routed
+- **Git LFS** for all binaries (images that must be versioned, `.onnx`, `.pt`) - routed
   by `.gitattributes`. `git lfs install` once per machine.
 - **No Asset Store content.** The track is built from Unity primitives (Cube/Plane) to
   keep the project small and reproducible.
@@ -230,11 +244,11 @@ A gate is not "reached" until its exit criterion is demonstrable from a clean cl
   an amendment rather than deviating quietly.
 - **Amendments** are made by editing this file in a `docs(spec):` commit whose body
   states what changed and why. Version bumps follow semver:
-  - **MAJOR** — a principle is removed or redefined in a backward-incompatible way.
-  - **MINOR** — a new principle or section is added, or guidance is materially expanded.
-  - **PATCH** — wording, typo, or non-semantic clarification.
+  - **MAJOR** - a principle is removed or redefined in a backward-incompatible way.
+  - **MINOR** - a new principle or section is added, or guidance is materially expanded.
+  - **PATCH** - wording, typo, or non-semantic clarification.
 - Every spec, plan, and review checks compliance with these principles. Added complexity
-  must be justified against Principle I (spec) and VI (reproducibility) — if it isn't in
+  must be justified against Principle I (spec) and VI (reproducibility) - if it isn't in
   the spec and can't be reproduced, it doesn't ship.
 - Runtime / day-to-day guidance for agents lives in `WORKFLOW.md` and `CONTRIBUTING.md`;
   this constitution states the non-negotiable principles those documents operationalize.
@@ -243,8 +257,9 @@ A gate is not "reached" until its exit criterion is demonstrable from a clean cl
 
 | Version | Date | Change |
 |---|---|---|
-| 1.0.0 | 2026-07-23 | Ratified — 8 principles, milestone gate table |
+| 1.0.0 | 2026-07-23 | Ratified - 8 principles, milestone gate table |
 | 1.1.0 | 2026-07-23 | Added Principle IX (Statistical Rigor) |
 | 1.2.0 | 2026-07-29 | Technology Constraints corrected to the verified toolchain (Unity 6000.5.3f1, ml-agents 4.0.3, Communicator API 1.5.0, `release/4.0.3` checkout); `ENVIRONMENT.md` added as a companion document; Principle VI gained the intended-vs-verified rule and the two-environment rule |
+| 1.3.0 | 2026-07-29 | Principle V gained a binding writing-style rule: no em dashes, sparing bold. Applied across the repository in the same commit |
 
-**Version:** 1.2.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-07-29
+**Version:** 1.3.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-07-29

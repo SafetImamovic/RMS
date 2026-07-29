@@ -1,7 +1,7 @@
 # Phase 1 Data Model: Data Authenticity & Integrity Checks
 
 Entities are frozen dataclasses (same convention as M1's `TrackDataset`, `IntegrityReport`,
-`ColumnFingerprint`). All are pure values — computing one never writes to disk.
+`ColumnFingerprint`). All are pure values - computing one never writes to disk.
 
 ---
 
@@ -23,7 +23,7 @@ One contiguous run of driving-log records. The unit over which time is meaningfu
 - Sessions are derived, never assumed. A source with one session (track1, track2) yields one;
   the combined source yields two.
 - Sessions are contiguous and non-overlapping in row index, but **may overlap or invert in
-  time** — track2 was recorded earlier in the day than track1, so `start_time` is not ordered
+  time** - track2 was recorded earlier in the day than track1, so `start_time` is not ordered
   by `start_index` in the combined source. Nothing may assume otherwise.
 
 ---
@@ -43,7 +43,7 @@ Per-session verdict on recording continuity (FR-001..FR-003).
 | `implied_fps` | `float` | `1 / median_interval_s` |
 | `gap_threshold_s` | `float` | The threshold actually used, `GAP_FACTOR × median` |
 | `n_gaps` | `int` | Steps exceeding `gap_threshold_s` |
-| `gap_tiers` | `dict[str, int]` | Counts at `>2x`, `>5x`, `>1s` — shows the whole tail |
+| `gap_tiers` | `dict[str, int]` | Counts at `>2x`, `>5x`, `>1s` - shows the whole tail |
 | `largest_gap_s` | `float` | |
 | `start_time`, `end_time` | `datetime` | |
 
@@ -51,7 +51,7 @@ Per-session verdict on recording continuity (FR-001..FR-003).
 
 - Computed **per session only**. Never across a session boundary (research A1).
 - `n_unparseable > 0` is surfaced, never silently dropped (FR-001).
-- A clean result is still a result — reported explicitly, not omitted (spec edge case).
+- A clean result is still a result - reported explicitly, not omitted (spec edge case).
 
 ---
 
@@ -63,8 +63,8 @@ Three duplicate classes counted separately, because each implies a different man
 | Field | Type | Meaning |
 |---|---|---|
 | `source` | `str` | Track name |
-| `n_exact_duplicate_rows` | `int` | Whole row repeated — row-copying |
-| `n_duplicate_image_refs` | `int` | Same center-image path appearing twice — frame reuse |
+| `n_exact_duplicate_rows` | `int` | Whole row repeated - row-copying |
+| `n_duplicate_image_refs` | `int` | Same center-image path appearing twice - frame reuse |
 | `n_duplicate_measurement_tuples` | `int` | Same (steering, throttle, brake, speed), different image |
 | `duplicate_row_examples` | `list[int]` | Row indices, capped, for inspection |
 
@@ -88,7 +88,7 @@ Per numeric column: how finely the value was actually recorded (FR-006..FR-008).
 | `spacing` | `float \| None` | Lattice step, when `is_lattice` |
 | `support` | `list[float] \| None` | Full lattice support from min to max |
 | `unobserved_support` | `list[float]` | Support points never observed on this track |
-| `off_lattice_values` | `list[float]` | Values not on the lattice — the strongest tampering signal |
+| `off_lattice_values` | `list[float]` | Values not on the lattice - the strongest tampering signal |
 | `tolerance` | `float` | The tolerance used, reported (FR-008) |
 | `max_residual` | `float` | Largest observed distance to the nearest lattice point (research A3.1) |
 | `evidence` | `str` | One-line plain-language justification |
@@ -96,7 +96,7 @@ Per numeric column: how finely the value was actually recorded (FR-006..FR-008).
 **Rules**
 
 - `classification == "constant"` when `n_distinct == 1`. Statistics requiring variation must
-  not be computed on it — reported as a finding instead (FR-013).
+  not be computed on it - reported as a finding instead (FR-013).
 - `support` spans observed min..max on the lattice, so a never-observed interior point appears
   in `unobserved_support` rather than silently shrinking the support.
 - `off_lattice_values` non-empty is a finding in its own right, regardless of any test.
@@ -129,7 +129,7 @@ FR-014).
 - `dof` reports the value actually used after pooling, never the naive `k − 1`.
 - Pooling is symmetric from the tails inward, so it cannot itself induce asymmetry in T2
   (research A5).
-- `interpretation` must state the tampering-relevant meaning — for T1, that failing to reject
+- `interpretation` must state the tampering-relevant meaning - for T1, that failing to reject
   would suggest a uniform random generator produced the column.
 
 ---

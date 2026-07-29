@@ -1,23 +1,23 @@
 # Simulacija autonomnog vozila (Unity ML-Agents)
 
-**Tema 28 — II parcijalni ispit** · Računarsko modeliranje i simulacija (II ciklus)
+**Tema 28 - II parcijalni ispit** · Računarsko modeliranje i simulacija (II ciklus)
 
 Simulacija autonomne vožnje u kojoj se porede dva pristupa učenju upravljanja vozilom:
 
-1. **Reinforcement Learning (PPO)** — agent u Unity simulaciji uči voziti kroz
+1. **Reinforcement Learning (PPO)** - agent u Unity simulaciji uči voziti kroz
    pokušaje i grešku, na osnovu raycast senzora i nagrada za napredak po stazi.
-2. **Behavioral Cloning (BC)** — konvolucijska mreža (PilotNet) trenirana
+2. **Behavioral Cloning (BC)** - konvolucijska mreža (PilotNet) trenirana
    supervizirano na podacima ljudske vožnje
    ([Self-Driving Car Simulator](https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator):
    slike kamere + steering uglovi, Udacity simulator format, dvije staze).
    *Dataset iz originalne postavke zadatka je uklonjen sa Kagglea; profesor je odobrio
-   ovu zamjenu — detalji u [DESIGN.md](DESIGN.md).*
+   ovu zamjenu - detalji u [DESIGN.md](DESIGN.md).*
 
 Poenta poređenja: RL uči **zadatak** (proći stazu bez sudara), BC uči **stil**
 (imitira čovjeka). Evaluacija poredi distribucije steering odluka RL agenta, BC
-modela i ljudske vožnje iz dataseta — koliko se naučena politika približi
+modela i ljudske vožnje iz dataseta - koliko se naučena politika približi
 prirodnoj vožnji. Dataset dodatno služi za kalibraciju simulacije (rasponi
-akcija, reward za glatkoću) — detalji u [DESIGN.md](DESIGN.md).
+akcija, reward za glatkoću) - detalji u [DESIGN.md](DESIGN.md).
 
 ## Kako radi
 
@@ -39,7 +39,7 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ parametri okruženja i rewarda
 | `python/notebooks/` | Analiza dataseta (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch) |
 | `python/evaluation/` | Poređenje RL / BC / ljudski podaci |
-| `dataset/` | Kaggle dataset (nije u gitu — vidi Postavljanje) |
+| `dataset/` | Kaggle dataset (nije u gitu - vidi Postavljanje) |
 | `results/` | Trening logovi, grafovi, trenirani modeli |
 | `DESIGN.md` | Arhitektura i sve dizajn odluke |
 | `WORKFLOW.md` | Kako Unity radi + razvojni proces |
@@ -55,8 +55,8 @@ Tačne, provjerene verzije i zamke: `ENVIRONMENT.md`.
 | Unity Hub + Unity Editor | 6000.5.3f1 | preko [Unity Hub](https://unity.com/download); `com.unity.ml-agents` 4.0.3 traži Unity 6000.0+ |
 | Python | 3.10.11 | novije verzije nekompatibilne sa `mlagents` |
 | Git + Git LFS | aktuelne | `git lfs install` jednom po mašini |
-| NVIDIA GPU + CUDA drajveri | — | opciono, ubrzava BC trening |
-| Kaggle nalog | — | za preuzimanje dataseta |
+| NVIDIA GPU + CUDA drajveri | - | opciono, ubrzava BC trening |
+| Kaggle nalog | - | za preuzimanje dataseta |
 
 ## Postavljanje
 
@@ -76,13 +76,13 @@ kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
 
 # 4. Unity projekat
 #    Unity Hub → Add → odaberi unity/SelfDrivingSim → otvori
-#    (prvi import traje nekoliko minuta — Unity gradi Library/ keš)
+#    (prvi import traje nekoliko minuta - Unity gradi Library/ keš)
 ```
 
 ## Upotreba
 
 ```powershell
-# M1 — analiza dataseta (EDA): statistika, χ² fit, kalibracija za Unity
+# M1 - analiza dataseta (EDA): statistika, χ² fit, kalibracija za Unity
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
 pytest python/tests -q               # testovi (loader, fingerprint, stats)
@@ -104,13 +104,13 @@ Detaljan razvojni proces (Play mode, heuristička vožnja, testiranje): [WORKFLO
 
 ## Status
 
-Projekat u izradi — plan po fazama (M1–M5) u [DESIGN.md](DESIGN.md) §9.
+Projekat u izradi - plan po fazama (M1–M5) u [DESIGN.md](DESIGN.md) §9.
 
-- [ ] M1 — analiza dataseta, kalibracija parametara
-- [ ] M2 — Unity okruženje (staza, vozilo, agent, heuristička vožnja)
-- [ ] M3 — PPO trening
-- [ ] M4 — BC trening
-- [ ] M5 — evaluacija i poređenje
+- [ ] M1 - analiza dataseta, kalibracija parametara
+- [ ] M2 - Unity okruženje (staza, vozilo, agent, heuristička vožnja)
+- [ ] M3 - PPO trening
+- [ ] M4 - BC trening
+- [ ] M5 - evaluacija i poređenje
 
 ## Licenca
 

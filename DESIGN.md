@@ -1,15 +1,15 @@
-# Dizajn projekta — Tema 28: Simulacija autonomnog vozila (Unity ML-Agents)
+# Dizajn projekta - Tema 28: Simulacija autonomnog vozila (Unity ML-Agents)
 
 **Predmet:** Računarsko modeliranje i simulacija (II ciklus)
 **Alat (fiksan):** Unity ML-Agents
-**Dataset:** Self-Driving Car Simulator (Udacity) —
+**Dataset:** Self-Driving Car Simulator (Udacity) -
 https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator
 (Udacity simulator format: slike kamere + `driving_log.csv` sa steering/throttle/brake/speed)
 
 > **Napomena o datasetu:** URL iz postavke zadatka
-> (`kaggle.com/datasets/chethuhn/selfdriving-car`) vraća 404 — dataset je uklonjen
+> (`kaggle.com/datasets/chethuhn/selfdriving-car`) vraća 404 - dataset je uklonjen
 > sa Kagglea (provjereno 2026-07-12). **Profesor je odobrio zamjenu (2026-07-23):**
-> `zaynena/selfdriving-car-simulator` — etablirani dataset istog domena, u Udacity
+> `zaynena/selfdriving-car-simulator` - etablirani dataset istog domena, u Udacity
 > simulator formatu. Ovaj dataset ima **dvije staze**:
 >
 > | Folder (raspakovano) | Redova u `driving_log.csv` | Sadržaj |
@@ -30,9 +30,9 @@ https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator
 
 Dva komplementarna pristupa autonomnoj vožnji, pa njihovo poređenje:
 
-1. **RL agent (Unity ML-Agents, PPO)** — uči vožnju iz interakcije sa simulacijom,
+1. **RL agent (Unity ML-Agents, PPO)** - uči vožnju iz interakcije sa simulacijom,
    observacije su raycast senzori + brzina.
-2. **Behavioral Cloning (BC) model (PyTorch)** — CNN treniran supervizirano na Kaggle
+2. **Behavioral Cloning (BC) model (PyTorch)** - CNN treniran supervizirano na Kaggle
    datasetu (slika → steering ugao), predstavlja "učenje od čovjeka".
 
 Dataset ulazi u projekat na tri mjesta (sistemski pristup):
@@ -73,7 +73,7 @@ Dataset ulazi u projekat na tri mjesta (sistemski pristup):
 
 ```
 RMS/
-├── DESIGN.md                      # ovaj dokument — arhitektura i dizajn odluke
+├── DESIGN.md                      # ovaj dokument - arhitektura i dizajn odluke
 ├── README.md                      # šta je projekat + postavljanje i upotreba
 ├── WORKFLOW.md                    # kako Unity radi, razvojni proces, testiranje, asseti
 ├── CONTRIBUTING.md                # git konvencije (git flow, atomic commiti)
@@ -121,17 +121,17 @@ RMS/
 
 ### 4.1 Scena
 - Zatvorena kružna staza sa lijevim i desnim krivinama različitih radijusa
-  (radijusi kalibrisani prema distribuciji steering uglova iz dataseta — dominantno
+  (radijusi kalibrisani prema distribuciji steering uglova iz dataseta - dominantno
   blage krivine, par oštrijih).
 - Zidovi/ivice staze sa colliderima i tagom `Wall`.
 - 20–30 checkpointa ravnomjerno po stazi (mjerenje napretka + detekcija pogrešnog smjera).
-- Start pozicija sa malom randomizacijom (pozicija/rotacija) — sprječava overfitting na stazu.
+- Start pozicija sa malom randomizacijom (pozicija/rotacija) - sprječava overfitting na stazu.
 
 ### 4.2 Vozilo
 - Rigidbody + 4× WheelCollider (realistična fizika: skretanje prednjim točkovima,
   pogon, kočenje).
 - Alternativa ako fizika pravi probleme: pojednostavljen kinematski model
-  (transform-based) — odluka u M2, fizika je primarna.
+  (transform-based) - odluka u M2, fizika je primarna.
 
 ### 4.3 Observacije (ukupno ~19 vrijednosti + raycast)
 | Observacija | Dim | Napomena |
@@ -144,17 +144,17 @@ RMS/
 
 ### 4.4 Akcije (kontinualne, 2)
 - `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
-  **puni opseg** — čak i robustan raspon P1–P99 iznosi (−1, 1) (track2 ima mnogo punog
+  **puni opseg** - čak i robustan raspon P1–P99 iznosi (−1, 1) (track2 ima mnogo punog
   zaokreta), pa je mapiranje cijelog [-1,1] na ±25° opravdano podacima, ne saturacijom.
 - `throttle` ∈ [-1, 1] → gas / kočnica. Napomena (M1): kočnica se u datasetu koristi rijetko
-  (~95% nula), gas dominira — nije problem jer RL agent uči vlastiti throttle.
+  (~95% nula), gas dominira - nije problem jer RL agent uči vlastiti throttle.
 
 > **Ispravka „~95 % nula" (potiče iz feature-a 002, 2026-07-29).** Ta brojka (tačno 94,6 %)
 > je izračunata nad **spojenim** datasetom i zato je zavaravajuća. Po stazi:
 >
 > | staza | različitih vrijednosti `brake` | stvarno stanje |
 > |---|---|---|
-> | track1 | **1** (samo 0.0, u svih 10.615 redova) | kolona je **konstantna** — mrtva |
+> | track1 | **1** (samo 0.0, u svih 10.615 redova) | kolona je **konstantna** - mrtva |
 > | track2 | 1.708 | kolona se stvarno koristi |
 >
 > M1 je nad spojenim podacima prijavio `brake_is_dead: false`; to je **artefakt spajanja**,
@@ -164,7 +164,7 @@ RMS/
 > `results/eda/authenticity_report.md`, §4 i §7.
 >
 > Usput, ovo je i lijep primjer za odbranu: obrisana kolona i nikad korištena kolona
-> izgledaju **identično** u brojkama. Razlikuje ih dokaz da pisač kolone radi — a to imamo,
+> izgledaju **identično** u brojkama. Razlikuje ih dokaz da pisač kolone radi - a to imamo,
 > jer ista kolona na drugoj stazi ima 1.708 različitih vrijednosti.
 
 > Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
@@ -180,7 +180,7 @@ RMS/
 | Brzina naprijed | +0.001 × v_norm | podstiče kretanje |
 | Nagli steering (\|Δsteering\| > **0.55**) | −0.005 × \|Δ\| | glatkoća; prag = P95 od \|Δsteering\| iz dataseta (M1) |
 
-Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
+Težine su početne - tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).
 
 ### 4.6 Kraj epizode
@@ -195,7 +195,7 @@ Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 - `mlagents-learn config/ppo_car.yaml --run-id=ppo_car_vXX`
 - Početni hiperparametri: batch 2048, buffer 20480, lr 3e-4 (linear decay),
   hidden 256×2, gamma 0.99, max_steps 2–5M.
-- 8–16 paralelnih kopija staze u sceni (Training Area pattern) — brži trening.
+- 8–16 paralelnih kopija staze u sceni (Training Area pattern) - brži trening.
 - Praćenje: TensorBoard (cumulative reward, episode length, policy loss).
 - Kriterij uspjeha: agent stabilno završava 3 kruga bez sudara u 95%+ epizoda.
 - Izlaz: `.onnx` model → nazad u Unity za inference demo.
@@ -219,7 +219,7 @@ trenutak = 3 slike** (tri kamere na vozilu) + 4 mjerena broja:
 
 Referenciranje:
 - Prve 3 kolone su **string putanje** do fajlova (ne sama slika). Sve tri dijele isti
-  timestamp u imenu (`..._2019_04_02_19_25_33_671`) — to je jedinstveni ID reda i veže
+  timestamp u imenu (`..._2019_04_02_19_25_33_671`) - to je jedinstveni ID reda i veže
   center/left/right snimke istog trenutka.
 - Putanje su **Windows-apsolutne sa mašine snimatelja** (`Desktop\...\IMG\...`), pa se
   ne mogu koristiti direktno. Preprocessing uzima samo basename i re-rootuje na stvarni
@@ -233,16 +233,16 @@ Referenciranje:
 
 #### Kako znamo značenje kolona (dataset je bez headera)
 
-Kaggle stranica ne opisuje kolone, pa se mapiranje ne pretpostavlja — **dokazuje se na
+Kaggle stranica ne opisuje kolone, pa se mapiranje ne pretpostavlja - **dokazuje se na
 tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
 
-1. **Kolone 1–3 dokazane imenima fajlova** — putanje sadrže `center_/left_/right_`, nema
+1. **Kolone 1–3 dokazane imenima fajlova** - putanje sadrže `center_/left_/right_`, nema
    sumnje šta je šta.
-2. **Kolone 4–7 = Udacity simulator standard** — dataset je output open-source Udacity
+2. **Kolone 4–7 = Udacity simulator standard** - dataset je output open-source Udacity
    self-driving-car simulatora, koji uvijek piše redoslijed
    `center, left, right, steering, throttle, brake, speed`. To je konvencija, ne dokaz
    iz našeg fajla.
-3. **Kolone 4–7 potvrđene statistički** — deskriptivna statistika na track1 (10.615
+3. **Kolone 4–7 potvrđene statistički** - deskriptivna statistika na track1 (10.615
    redova) daje "otisak" koji jednoznačno veže broj za značenje:
 
    | kolona | min | max | % negativnih | % nula | zaključak |
@@ -259,15 +259,15 @@ tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
    Posljedica za analizu: `brake` je 100 % nula na track1 → skoro beskorisna kolona;
    u M1 se provjerava i track2, pa ako je i tamo konstantna, izbacuje se iz obrade.
    **Provjereno (feature 002):** na track2 kolona ima 1.708 različitih vrijednosti, dakle
-   nije konstantna i ostaje u obradi — ali se izvještava **po stazi** (vidi §4.4).
+   nije konstantna i ostaje u obradi - ali se izvještava **po stazi** (vidi §4.4).
 
 > Ovaj postupak (identifikacija promjenljivih preko deskriptivne statistike) je i sam
-> dio statističkog naglaska predmeta — vidi §7.1 i M1.
+> dio statističkog naglaska predmeta - vidi §7.1 i M1.
 
 Upotreba kamera u BC-u:
 - **center** slika je primarni ulaz: `center → steering`.
 - **left/right** slike su augmentacija: koriste se sa korigovanim steeringom
-  (`+0.2` za left, `−0.2` za right) kao da je auto pomjeren u stranu — efektivno 3×
+  (`+0.2` za left, `−0.2` za right) kao da je auto pomjeren u stranu - efektivno 3×
   više podataka bez novog snimanja.
 
 ### 6.2 Trening
@@ -289,19 +289,19 @@ Upotreba kamera u BC-u:
 
 | Metrika | RL agent | BC model | Ljudski podaci (dataset) |
 |---------|----------|----------|--------------------------|
-| Kompletiranje kruga (%) | ✓ | — (nema simulator ulaz) | — |
+| Kompletiranje kruga (%) | ✓ | - (nema simulator ulaz) | - |
 | Prosjek \|steering\| | ✓ | ✓ (predikcije) | ✓ |
 | Glatkoća: prosjek \|Δsteering\| | ✓ | ✓ | ✓ |
 | Histogram steering distribucije | ✓ | ✓ | ✓ |
-| Vrijeme kruga | ✓ | — | — |
+| Vrijeme kruga | ✓ | - | - |
 
 - Poređenje distribucija: histogrami preklopljeni + KL divergencija prema ljudskoj referenci.
 - Zaključak koji se brani: RL uči *zadatak* (proći stazu), BC uči *stil* (imitira čovjeka);
   poređenje pokazuje koliko se RL politika prirodno približi ljudskom stilu.
-- BC model se ne vozi u Unityju (trenirao je na slikama drugog simulatora) — to se
+- BC model se ne vozi u Unityju (trenirao je na slikama drugog simulatora) - to se
   eksplicitno navodi kao ograničenje i razlog zašto je poređenje na nivou distribucija.
 
-> **Napomena za M5 — rezolucija zapisa nije isto što i stil vožnje**
+> **Napomena za M5 - rezolucija zapisa nije isto što i stil vožnje**
 > *(potiče iz feature-a 002, 2026-07-29)*
 >
 > RL agent emituje **kontinualan** steering (PPO politika daje realan broj), a ljudska
@@ -309,13 +309,13 @@ Upotreba kamera u BC-u:
 > `results/eda/authenticity_report.md`, §4).
 >
 > Ako se te dvije raspodjele porede direktno, svaka metrika razlike (KL divergencija, KS,
-> χ²) će prijaviti veliku razliku — ali će mjeriti **razliku u rezoluciji zapisa**, a ne
+> χ²) će prijaviti veliku razliku - ali će mjeriti **razliku u rezoluciji zapisa**, a ne
 > razliku u vožnji. Ljudski histogram ima 41 tanku iglu; agentov je gladak. To bi izgledalo
 > kao dramatičan nalaz, a bio bi artefakt.
 >
 > **Mjera prije poređenja:** kvantizovati izlaz agenta na **istu rešetku**
 > (`round(steering / 0.05) * 0.05`, ograničeno na [−1, 1]) i tek onda porediti. Kvantizacija
-> se primjenjuje na agenta, ne na čovjeka — čovjekov zapis je referenca i ne dira se.
+> se primjenjuje na agenta, ne na čovjeka - čovjekov zapis je referenca i ne dira se.
 >
 > Isto vrijedi i za KL divergenciju iz tabele gore: KL između diskretne i kontinualne
 > raspodjele nije definisan bez zajedničke podrške, pa je zajednička rešetka preduslov, a
@@ -323,14 +323,14 @@ Upotreba kamera u BC-u:
 
 ### 7.1 Statistička obrada (naglasak predmeta)
 
-Predmet insistira na statističkim metodama — poređenje se izvodi statistički, ne "na oko":
+Predmet insistira na statističkim metodama - poređenje se izvodi statistički, ne "na oko":
 
 - **Deskriptivna statistika** za svaku distribuciju (steering, brzina, Δsteering): obim
   uzorka, aritmetička sredina (matematičko očekivanje), disperzija (varijansa/std),
   min/max, histogram relativnih učestalosti.
 - **Prilagođavanje raspodjele + test saglasnosti (M1):** na ljudski steering se prilagodi
   kandidat-raspodjela (normalna / eksponencijalna / mješavina sa pikom oko nule) i
-  testira se **χ² testom saglasnosti** (uz Kolmogorov–Smirnov kao dopunu) — računa se
+  testira se **χ² testom saglasnosti** (uz Kolmogorov–Smirnov kao dopunu) - računa se
   χ² statistika, kritična vrijednost χ²(n, α), i donosi odluka o prihvatanju/odbacivanju
   hipoteze (postupak iz predavanja).
 - **Kvantifikovano poređenje RL vs BC vs čovjek:** KL divergencija + dvouzoračni
@@ -338,7 +338,7 @@ Predmet insistira na statističkim metodama — poređenje se izvodi statističk
 - **Taksonomija modela (za odbranu):** model je stohastički (nedeterministički zbog
   randomizacije starta i stohastičke PPO politike), sa kontinualnim stanjima, diskretnim
   vremenom (fiksni Unity timestep), agentski (agent-based), vremenski invarijantan,
-  neanticipatorski — terminologijom iz predavanja.
+  neanticipatorski - terminologijom iz predavanja.
 
 ## 8. Verzije alata
 
@@ -353,12 +353,12 @@ Predmet insistira na statističkim metodama — poređenje se izvodi statističk
 | Communicator API | 1.5.0 | usklađen Unity paket ↔ Python paket |
 | Ostalo | pandas, numpy, matplotlib, opencv-python, onnx | |
 
-Verzije se zaključavaju u `requirements.txt` — ML-Agents je osjetljiv na
+Verzije se zaključavaju u `requirements.txt` - ML-Agents je osjetljiv na
 neusklađenost Unity paketa i Python paketa.
 
 Kombinacija je provjerena end-to-end na 3DBall primjeru (`mlagents-learn` → Play →
 nagrada 100 → izvezen `.onnx`). Stvarno stanje mašine i zamke pri instalaciji su
-dokumentovani u [`ENVIRONMENT.md`](ENVIRONMENT.md) — taj fajl je izvor istine za
+dokumentovani u [`ENVIRONMENT.md`](ENVIRONMENT.md) - taj fajl je izvor istine za
 instalirane verzije, ova tabela za namjeravane.
 
 ## 9. Plan rada (milestones)
@@ -371,7 +371,7 @@ instalirane verzije, ova tabela za namjeravane.
 | M4 | BC trening na datasetu | treniran CNN, validacijske metrike |
 | M5 | Evaluacija, poređenje, grafovi, README | results/plots, finalna priča za odbranu |
 
-Redoslijed M3/M4 može biti paralelan (RL trening traje — u međuvremenu BC).
+Redoslijed M3/M4 može biti paralelan (RL trening traje - u međuvremenu BC).
 
 ## 10. Rizici
 
@@ -385,7 +385,7 @@ Redoslijed M3/M4 može biti paralelan (RL trening traje — u međuvremenu BC).
 
 ## 11. Srodni projekti (prior art)
 
-Ne izmišljamo toplu vodu — pristup je etabliran; ovi projekti služe kao referenca
+Ne izmišljamo toplu vodu - pristup je etabliran; ovi projekti služe kao referenca
 za dizajn i kao "related work" na odbrani. Kod se ne kopira (samostalna
 realizacija + individualna odbrana), preuzimaju se provjereni obrasci.
 
@@ -399,7 +399,7 @@ realizacija + individualna odbrana), preuzimaju se provjereni obrasci.
 | [AWSIM (Autoware)](https://autowarefoundation.github.io/AWSIM-Labs/) | Industrijski AV simulator baziran na Unityju | Argument da je Unity legitiman alat za AV simulaciju, ne samo igre |
 
 Zaključak za dizajn: naša kombinacija (raycast observacije, PPO, checkpoint
-reward) odgovara Unityjevom službenom Karting ML-Agents obrascu — dodana
+reward) odgovara Unityjevom službenom Karting ML-Agents obrascu - dodana
 vrijednost ovog projekta je integracija stvarnog dataseta (kalibracija + BC
 poređenje), što nijedan od navedenih projekata nema.
 

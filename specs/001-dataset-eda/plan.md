@@ -20,9 +20,9 @@ driven by a notebook; every reported number is produced by committed code under 
 `chi2`, `kstest`), matplotlib (histograms/figures), jupyter (notebook). opencv-python only
 if pixel-level image checks are needed; path existence uses `pathlib` (no image decode
 required for M1).
-**Storage**: Read-only local filesystem — dataset under git-ignored `dataset/`; outputs to
+**Storage**: Read-only local filesystem - dataset under git-ignored `dataset/`; outputs to
 `results/plots/` (figures) and `results/eda/` (text/JSON report).
-**Testing**: pytest (`python/tests/`) — loader parsing, path resolution, integrity check,
+**Testing**: pytest (`python/tests/`) - loader parsing, path resolution, integrity check,
 stats correctness on tiny fixtures.
 **Target Platform**: Local dev (Windows, author's NVIDIA machine); analysis is CPU-only.
 **Project Type**: Single Python analysis package + notebook (no Unity, no web, no service).
@@ -49,7 +49,7 @@ committed (Constitution VII); statistics are the primary deliverable (Constituti
 | VIII. Test Gates | ✅ | pytest for loader + stats; integrity check is an explicit gate |
 | IX. Statistical Rigor | ✅ | Descriptive stats + χ² + KS + histogram-vs-theoretical are the core output |
 
-**Result: PASS — no violations, Complexity Tracking not required.**
+**Result: PASS - no violations, Complexity Tracking not required.**
 
 ## Project Structure
 
@@ -58,12 +58,12 @@ committed (Constitution VII); statistics are the primary deliverable (Constituti
 ```text
 specs/001-dataset-eda/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output — resolved decisions
-├── data-model.md        # Phase 1 output — entities
-├── quickstart.md        # Phase 1 output — how to run M1
+├── research.md          # Phase 0 output - resolved decisions
+├── data-model.md        # Phase 1 output - entities
+├── quickstart.md        # Phase 1 output - how to run M1
 ├── contracts/
-│   └── eda-api.md       # Phase 1 output — public functions of the eda package
-└── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)
+│   └── eda-api.md       # Phase 1 output - public functions of the eda package
+└── tasks.md             # Phase 2 output (/speckit-tasks - NOT created here)
 ```
 
 ### Source Code (repository root)
@@ -98,4 +98,4 @@ tested, reusable logic so the notebook stays thin and every number is reproducib
 
 ## Complexity Tracking
 
-> No Constitution violations — section intentionally empty.
+> No Constitution violations - section intentionally empty.

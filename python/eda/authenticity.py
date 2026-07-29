@@ -7,12 +7,12 @@ would look like if the manipulation had happened (the expected signature). Only 
 rejecting or failing to reject mean anything.
 
 Three tests run on the steering column, because steering is the one variable that is
-recorded on a lattice and therefore the one where a chi-square test is exactly right —
+recorded on a lattice and therefore the one where a chi-square test is exactly right -
 the categories are the values themselves, so there is no binning choice to argue about.
 
-  T1  uniform goodness-of-fit  — is the column just noise from a random generator?
-  T2  symmetry                 — does the driver steer left and right equally?
-  T3  homogeneity              — are the two tracks really two different recordings?
+  T1  uniform goodness-of-fit  - is the column just noise from a random generator?
+  T2  symmetry                 - does the driver steer left and right equally?
+  T3  homogeneity              - are the two tracks really two different recordings?
 
 For T1 and T3 the interesting direction is FAILING to reject. That is the direction that
 would say "this looks generated" or "this looks like one recording copied twice".
@@ -58,7 +58,7 @@ class HypothesisTestResult:
     """One named test. The shape every statistical claim in this feature must take.
 
     `dof` is the value AFTER pooling, never the naive k-1, and `interpretation` states what
-    the outcome means *for the question of tampering* — not merely whether p < alpha.
+    the outcome means *for the question of tampering* - not merely whether p < alpha.
     """
 
     test_id: str
@@ -83,7 +83,7 @@ class Verdict:
 
       * `explainable` without a named mechanism is an assertion, not an explanation.
       * a downstream consequence without a mitigation leaves the reader worse off than
-        silence — they now know something is wrong and not what to do about it.
+        silence - they now know something is wrong and not what to do about it.
 
     Explainable and harmful are independent. The track 1 left bias is fully explained by the
     track being a one-way loop, and still poisons a behavioural-cloning model.
@@ -134,7 +134,7 @@ class AuthenticityOutput:
 
 
 # =======================================================================================
-# T016 — low-expectation pooling
+# T016 - low-expectation pooling
 # =======================================================================================
 def pool_symmetric(
     observed: np.ndarray,
@@ -150,7 +150,7 @@ def pool_symmetric(
     What matters here is the *direction* of merging. Levels are merged in mirrored pairs,
     outermost first, so the same depth is removed from each tail. Merging one tail deeper
     than the other would introduce an asymmetry that the symmetry test would then dutifully
-    detect — the test would be measuring its own preprocessing (research A5).
+    detect - the test would be measuring its own preprocessing (research A5).
 
     Returns `(observed, expected, n_categories_pooled)` where the last value is how many
     categories disappeared, so the caller can report the dof it actually used.
@@ -171,7 +171,7 @@ def pool_symmetric(
         depth += 1
 
     if 2 * depth >= k:
-        # Everything is sparse: collapse to two bins. Degenerate, but honest — and the
+        # Everything is sparse: collapse to two bins. Degenerate, but honest - and the
         # resulting dof of 1 tells the reader exactly how little the test can see.
         pooled_obs = np.array([observed[: k // 2].sum(), observed[k // 2 :].sum()])
         pooled_exp = np.array([expected[: k // 2].sum(), expected[k // 2 :].sum()])
@@ -198,7 +198,7 @@ def _chi2(observed: np.ndarray, expected: np.ndarray, dof: int, alpha: float):
 
 
 # =======================================================================================
-# T017-T019 — the three tests
+# T017-T019 - the three tests
 # =======================================================================================
 def chi2_uniform_gof(
     counts,
@@ -208,7 +208,7 @@ def chi2_uniform_gof(
 ) -> HypothesisTestResult:
     """T1. H0: steering is uniformly distributed over the lattice support.
 
-    We expect this to be rejected, decisively — and that is the point. This is the test
+    We expect this to be rejected, decisively - and that is the point. This is the test
     against *invented* data. The commonest way to manufacture a dataset is to draw numbers
     from a random generator, and a uniform generator produces exactly the distribution H0
     describes. Failing to reject would therefore be the alarm: it would say the column has
@@ -225,7 +225,7 @@ def chi2_uniform_gof(
     if reject:
         meaning = (
             "ODBAČENO, kako smo i očekivali. Steering ima strukturu kakvu uniformni "
-            "generator slučajnih brojeva ne proizvodi — to je dokaz PROTIV toga da je "
+            "generator slučajnih brojeva ne proizvodi - to je dokaz PROTIV toga da je "
             "kolona izmišljena."
         )
     else:
@@ -238,7 +238,7 @@ def chi2_uniform_gof(
     return HypothesisTestResult(
         test_id="T1_uniform_gof",
         null_hypothesis=(
-            f"steering je uniformno raspoređen po {len(support)} nivoa rešetke — svaka "
+            f"steering je uniformno raspoređen po {len(support)} nivoa rešetke - svaka "
             "vrijednost jednako vjerovatna, kako bi ih dao uniformni generator"
         ),
         scope=scope,
@@ -271,7 +271,7 @@ def chi2_symmetry(
     pairs are merged from the largest |steering| inward.
 
     Rejection is not automatically suspicious. A closed loop driven in one direction is
-    asymmetric by construction — see the verdict layer (research A6).
+    asymmetric by construction - see the verdict layer (research A6).
     """
     observed = np.asarray(counts, dtype=float)
     levels = np.asarray(support, dtype=float)
@@ -317,7 +317,7 @@ def chi2_symmetry(
     if reject:
         meaning = (
             f"ODBAČENO: lijevo/desno = {left_total:,.0f} / {right_total:,.0f} "
-            f"(odnos {ratio:.3f}) — razlika je prevelika da bi bila slučajna. Odbacivanje "
+            f"(odnos {ratio:.3f}) - razlika je prevelika da bi bila slučajna. Odbacivanje "
             "samo po sebi NIJE sumnjivo: ono govori da asimetrija postoji, ne odakle "
             "dolazi. Uz to, pri ovolikom uzorku χ² vidi i sasvim malu neravnotežu, pa "
             "odnos treba čitati zajedno sa p-vrijednošću. Mehanizam i veličinu efekta "
@@ -358,11 +358,11 @@ def chi2_homogeneity(
     """T3. H0: both tracks share one steering distribution over the shared support.
 
     A 2 x k contingency table. A support point observed on only one track is RETAINED with
-    an observed count of zero — dropping it would quietly shrink the comparison to whatever
+    an observed count of zero - dropping it would quietly shrink the comparison to whatever
     the two tracks happen to have in common.
 
     We expect rejection: the tracks genuinely differ (a flat loop vs a mountain road).
-    Failing to reject is the alarm — it is what you would see if the two "tracks" were one
+    Failing to reject is the alarm - it is what you would see if the two "tracks" were one
     recording copied and renamed to double the dataset size (research A4 T3).
     """
     a = np.asarray(counts_a, dtype=float)
@@ -407,7 +407,7 @@ def chi2_homogeneity(
     else:
         meaning = (
             "NIJE odbačeno: staze su statistički nerazlučive. Na podacima označenim kao "
-            "dvije različite staze ovo je uzbuna — tako izgleda jedan snimak iskopiran i "
+            "dvije različite staze ovo je uzbuna - tako izgleda jedan snimak iskopiran i "
             "preimenovan."
         )
 
@@ -430,10 +430,10 @@ def chi2_homogeneity(
 
 
 # =======================================================================================
-# T023 — verdicts
+# T023 - verdicts
 # =======================================================================================
 # Above this ratio a left/right imbalance is a shape of the track, not a rounding artefact.
-# Below it, a rejection on a large sample is statistically real but practically nothing —
+# Below it, a rejection on a large sample is statistically real but practically nothing -
 # and saying so is the whole point of separating significance from size.
 _MATERIAL_LR_RATIO = 1.5
 
@@ -451,7 +451,7 @@ def classify_findings(
     """Turn measurements into findings that mean something (FR-015, FR-016, research A6).
 
     A finding is evidence of tampering only if we have NO mechanism that explains it. This
-    is the step that stops the report from being a list of frightening numbers — and it is
+    is the step that stops the report from being a list of frightening numbers - and it is
     also what stops the project from accusing a sound dataset of being faked.
 
     Conditions are read off the actual reports, so a verdict cannot survive the data
@@ -487,14 +487,14 @@ def classify_findings(
                     ),
                     classification="explainable",
                     mechanism=(
-                        "staza 1 je ravna zatvorena petlja — vozač nijednom nije zakočio. "
+                        "staza 1 je ravna zatvorena petlja - vozač nijednom nije zakočio. "
                         "Obrisana kolona i nikad korištena kolona izgledaju isto u brojkama; "
                         f"razlikuje ih to što ista kolona drugdje varira ({varies_elsewhere}), "
                         "dakle format je ispravan i pisač kolone radi"
                     ),
                     downstream_consequence=(
                         "M1 je nad spojenim podacima prijavio brake_is_dead: false (94,6 % "
-                        "nula). To je artefakt spajanja — po stazi je kolona mrtva"
+                        "nula). To je artefakt spajanja - po stazi je kolona mrtva"
                     ),
                     mitigation=(
                         "kočnicu izvještavati po stazi, nikad spojeno; ne koristiti je kao "
@@ -531,7 +531,7 @@ def classify_findings(
                         mechanism=(
                             "nivo koji vozač jednostavno nije upotrijebio. Da je neko "
                             "brisao redove, nestajali bi cijeli opsezi vrijednosti i "
-                            "vidjeli bismo rupu i u vremenu — ovdje je nestao jedan "
+                            "vidjeli bismo rupu i u vremenu - ovdje je nestao jedan "
                             "izolovan nivo dok mu susjedi i ogledalni parnjak postoje"
                         ),
                     )
@@ -561,7 +561,7 @@ def classify_findings(
                     ),
                     classification="explainable" if at_end else "unexplained",
                     mechanism=(
-                        "rupa pada na POSLJEDNJI kadar snimka — to je gašenje snimača, ne "
+                        "rupa pada na POSLJEDNJI kadar snimka - to je gašenje snimača, ne "
                         "izrezan komad. Izrezan blok bi ostavio rupu u SREDINI i skok u "
                         "sadržaju na spoju; ovdje su brzina i steering neprekidni preko nje"
                     )
@@ -595,7 +595,7 @@ def classify_findings(
                     mechanism=(
                         "steering ima samo 41 mogući nivo, pa je prostor vrijednosti mali i "
                         "sudari se dešavaju sami od sebe. Da je riječ o kopiranju redova, "
-                        "ponovile bi se i putanje slika — a njih ima 0"
+                        "ponovile bi se i putanje slika - a njih ima 0"
                     ),
                 )
             )
@@ -619,7 +619,7 @@ def classify_findings(
                     f"(MAD = {report.mad_accel:.2f}, ali maksimum = {report.max_abs_accel:.1f}): "
                     "gas i kočnica se pri 14 kadrova/s koriste u naletima, pa pojas od "
                     "5×MAD oko uskog centra pada oko 97. percentila. Visok procenat je "
-                    "oblik raspodjele, a ne trag friziranja — potpis spajanja bio bi "
+                    "oblik raspodjele, a ne trag friziranja - potpis spajanja bio bi "
                     "ekstrem koji se POKLAPA sa rupom u vremenu, a takvog poklapanja nema"
                 ),
                 downstream_consequence=(
@@ -627,7 +627,7 @@ def classify_findings(
                     "podataka"
                 ),
                 mitigation=(
-                    "koristiti ga isključivo relativno — porediti ekstreme sa rupama u "
+                    "koristiti ga isključivo relativno - porediti ekstreme sa rupama u "
                     "vremenu, a ne sa fiksnim pragom"
                 ),
             )
@@ -645,7 +645,7 @@ def classify_findings(
                     ),
                     classification="explainable" if result.reject_null else "unexplained",
                     mechanism=(
-                        "stvarna vožnja je dominantno pravo — "
+                        "stvarna vožnja je dominantno pravo - "
                         f"{zero_pct.get(result.scope, float('nan')):.1f} % kadrova ima "
                         "steering tačno 0. Nijedan uniformni generator to ne proizvodi"
                     )
@@ -664,7 +664,7 @@ def classify_findings(
                         finding_id=f"{result.scope}:T2:material",
                         summary=(
                             f"{result.scope}: simetrija odbačena, odnos lijevo/desno = "
-                            f"{ratio:.3f} — velika, stvarna asimetrija"
+                            f"{ratio:.3f} - velika, stvarna asimetrija"
                         ),
                         classification="explainable",
                         mechanism=(
@@ -673,7 +673,7 @@ def classify_findings(
                             "gotovo nema"
                         ),
                         downstream_consequence=(
-                            "ozbiljan rizik za M4 — BC model naučen na ovim podacima vuče "
+                            "ozbiljan rizik za M4 - BC model naučen na ovim podacima vuče "
                             "lijevo i na pravcu"
                         ),
                         mitigation=(
@@ -688,13 +688,13 @@ def classify_findings(
                         finding_id=f"{result.scope}:T2:negligible",
                         summary=(
                             f"{result.scope}: simetrija odbačena, ali odnos lijevo/desno = "
-                            f"{ratio:.3f} — praktično zanemarivo"
+                            f"{ratio:.3f} - praktično zanemarivo"
                         ),
                         classification="explainable",
                         mechanism=(
                             "veličina uzorka, ne veličina efekta. Pri desetinama hiljada "
                             "kadrova χ² vidi i neravnotežu od nekoliko procenata. "
-                            "Statistička značajnost nije isto što i praktična — zato uz "
+                            "Statistička značajnost nije isto što i praktična - zato uz "
                             "svaki test izvještavamo i odnos, a ne samo p-vrijednost"
                         ),
                     )
@@ -721,13 +721,13 @@ def classify_findings(
 
 
 # =======================================================================================
-# T024 — does any of this change M1's calibration?
+# T024 - does any of this change M1's calibration?
 # =======================================================================================
 def recheck_calibration(track_datasets) -> tuple[bool, str]:
     """Recompute the two numbers M1 handed to Unity, and compare (FR-018).
 
     The expectation is that nothing moves, and there is a reason: both figures are
-    PERCENTILES. A percentile is an order statistic — it is read off the sorted values, so
+    PERCENTILES. A percentile is an order statistic - it is read off the sorted values, so
     it does not care whether we call the variable discrete or continuous. But FR-018 asks us
     to check rather than assume, so we check. M1's own files are read, never rewritten
     (research A9).
@@ -736,7 +736,7 @@ def recheck_calibration(track_datasets) -> tuple[bool, str]:
 
     m1_path = config.EDA_OUT_DIR / "m1_stats.json"
     if not m1_path.exists():
-        return False, f"M1 kalibracija nije pronađena na {m1_path} — poređenje nije moguće."
+        return False, f"M1 kalibracija nije pronađena na {m1_path} - poređenje nije moguće."
 
     m1 = json.loads(m1_path.read_text(encoding="utf-8"))
 
@@ -762,8 +762,8 @@ def recheck_calibration(track_datasets) -> tuple[bool, str]:
         f"Robustan opseg steeringa (P{lo_pct:g}–P{hi_pct:g}): "
         f"({robust_range[0]:.3f}, {robust_range[1]:.3f}) naspram M1 "
         f"({m1['steering_range_robust'][0]:.3f}, {m1['steering_range_robust'][1]:.3f}). "
-        f"{'NEPROMIJENJENO' if unchanged else 'PROMIJENJENO — istražiti prije M2'}. "
-        "Razlog: oba broja su percentili, dakle redoslijedne statistike — čitaju se iz "
+        f"{'NEPROMIJENJENO' if unchanged else 'PROMIJENJENO - istražiti prije M2'}. "
+        "Razlog: oba broja su percentili, dakle redoslijedne statistike - čitaju se iz "
         "sortiranih vrijednosti i potpuno su nezavisne od toga da li varijablu zovemo "
         f"diskretnom ili kontinualnom. Uzgred, prag je {spacing_steps:.0f} koraka rešetke, "
         "što potvrđuje da pada tačno na dozvoljenu vrijednost."
@@ -772,14 +772,14 @@ def recheck_calibration(track_datasets) -> tuple[bool, str]:
 
 
 # =======================================================================================
-# T025 — orchestration, figures, report
+# T025 - orchestration, figures, report
 # =======================================================================================
 def counts_on_support(values, support, atol: float = config.LATTICE_ATOL) -> np.ndarray:
     """Count how many observations land on each lattice level.
 
     Values are matched to their NEAREST support point rather than compared for equality,
     because the recorder writes levels above 0.45 with a systematic offset of up to 2e-7
-    (research A3.1). A value further than `atol` from every support point is not counted —
+    (research A3.1). A value further than `atol` from every support point is not counted -
     that would be an off-lattice value, and `profile_granularity` reports those separately.
     """
     v = np.asarray(values, dtype=float)
@@ -795,7 +795,7 @@ def _steering_support(profiles: dict[str, list[GranularityProfile]]) -> list[flo
 
     A level seen on only one track stays in, with a count of zero on the other. Intersecting
     instead would quietly shrink the comparison to whatever the tracks happen to have in
-    common — and a missing level is exactly the kind of thing we are looking for.
+    common - and a missing level is exactly the kind of thing we are looking for.
     """
     points: set[float] = set()
     for column_profiles in profiles.values():
@@ -843,7 +843,7 @@ def _fig_lattice(profiles: dict[str, list[GranularityProfile]], path) -> None:
         ax.set_yticks([])
         ax.set_xlim(-1.08, 1.08)
         ax.set_title(
-            f"{source}: rešetka steeringa — korak {profile.spacing}, "
+            f"{source}: rešetka steeringa - korak {profile.spacing}, "
             f"{len(support)} nivoa, {profile.n_distinct} opaženih "
             f"(crveno = nikad opaženo; najveći ostatak {profile.max_residual:.1e})"
         )
@@ -862,7 +862,7 @@ def _fig_symmetry(counts: dict[str, np.ndarray], support, tests, path) -> None:
         c = counts[source]
         levels = support[support > 0]
         right = c[support > 0]
-        # Mirror the negative side onto the same axis so the two are directly comparable —
+        # Mirror the negative side onto the same axis so the two are directly comparable -
         # that is exactly the comparison the symmetry test makes.
         left = np.array([c[np.isclose(support, -x)].sum() for x in levels])
         width = 0.02
@@ -901,7 +901,7 @@ def _fig_homogeneity(counts: dict[str, np.ndarray], support, result, path) -> No
     ax.set_yscale("log")
     decision = "ODBACI" if result.reject_null else "ZADRŽI"
     ax.set_title(
-        f"Poređenje staza po nivoima rešetke — χ²={result.statistic:,.0f} "
+        f"Poređenje staza po nivoima rešetke - χ²={result.statistic:,.0f} "
         f"dof={result.dof} → H₀ {decision}"
     )
     ax.set_xlabel("ugao volana")
@@ -1041,7 +1041,7 @@ def _render_report(output: AuthenticityOutput) -> str:
         "## 1. Snimci (sesije)",
         "",
         "Vrijeme ima smisla samo unutar jednog snimanja. Spojeni fajl spaja dva snimka, a",
-        "staza 2 je snimljena **ranije istog dana** od staze 1 — pa vrijeme na spoju ide",
+        "staza 2 je snimljena **ranije istog dana** od staze 1 - pa vrijeme na spoju ide",
         "unazad. To nije greška u podacima nego posljedica spajanja, i zato se sve vremenske",
         "provjere rade **po sesiji**.",
         "",
@@ -1101,9 +1101,9 @@ def _render_report(output: AuthenticityOutput) -> str:
         for p in profiles:
             lines.append(
                 f"| {source} | {p.column} | {p.n_distinct:,} | **{p.classification}** | "
-                f"{p.spacing if p.spacing else '—'} | "
-                f"{len(p.support) if p.support else '—'} | "
-                f"{p.unobserved_support or '—'} | {p.off_lattice_values or 'nema'} | "
+                f"{p.spacing if p.spacing else '-'} | "
+                f"{len(p.support) if p.support else '-'} | "
+                f"{p.unobserved_support or '-'} | {p.off_lattice_values or 'nema'} | "
                 f"{p.max_residual:.2e} |"
             )
     lines.append("")
@@ -1136,12 +1136,12 @@ def _render_report(output: AuthenticityOutput) -> str:
         "",
         "χ², a ne KS: KS pretpostavlja kontinualnu raspodjelu, a na rešetkastim podacima ima",
         "vezane vrijednosti i p-vrijednost mu nije tačna. Za diskretnu varijablu kategorije su",
-        "same vrijednosti — nema binovanja, dakle nema ni proizvoljnog izbora.",
+        "same vrijednosti - nema binovanja, dakle nema ni proizvoljnog izbora.",
         "",
     ]
     for t in output.tests:
         lines += [
-            f"### {t.test_id} — {t.scope}",
+            f"### {t.test_id} - {t.scope}",
             "",
             f"- **H₀**: {t.null_hypothesis}",
             f"- χ² = {t.statistic:,.2f} · dof = {t.dof} (nakon spajanja; spojenih kategorija: "
@@ -1154,10 +1154,10 @@ def _render_report(output: AuthenticityOutput) -> str:
 
     unexplained = [v for v in output.verdicts if v.classification == "unexplained"]
     lines += [
-        "## 7. Verdikti — objašnjivo naspram sumnjivog",
+        "## 7. Verdikti - objašnjivo naspram sumnjivog",
         "",
         "Nalaz je dokaz friziranja **samo ako nemamo mehanizam koji ga objašnjava**. Nalaz",
-        "može biti objašnjiv **i** i dalje štetan za kasniji milestone — tada nosi i posljedicu",
+        "može biti objašnjiv **i** i dalje štetan za kasniji milestone - tada nosi i posljedicu",
         "i mjeru ublažavanja.",
         "",
         f"**Sažetak: {len(output.verdicts)} nalaza, od toga {len(unexplained)} bez "
@@ -1166,7 +1166,7 @@ def _render_report(output: AuthenticityOutput) -> str:
     ]
     for v in output.verdicts:
         tag = "objašnjivo" if v.classification == "explainable" else "**NEOBJAŠNJENO**"
-        lines += [f"### {v.finding_id} — {tag}", "", f"- **Nalaz**: {v.summary}"]
+        lines += [f"### {v.finding_id} - {tag}", "", f"- **Nalaz**: {v.summary}"]
         if v.mechanism:
             lines.append(f"- **Mehanizam**: {v.mechanism}")
         if v.downstream_consequence:
@@ -1178,7 +1178,7 @@ def _render_report(output: AuthenticityOutput) -> str:
     lines += [
         "## 8. Da li se M1 kalibracija mijenja?",
         "",
-        f"**{'NE' if output.calibration_unchanged else 'DA'}** — {output.calibration_note}",
+        f"**{'NE' if output.calibration_unchanged else 'DA'}** - {output.calibration_note}",
         "",
     ]
     return "\n".join(lines) + "\n"

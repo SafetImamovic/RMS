@@ -1,4 +1,4 @@
-# WORKFLOW — kako Unity radi i kako radimo na ovom projektu
+# WORKFLOW - kako Unity radi i kako radimo na ovom projektu
 
 Ovaj dokument je vodič za rad na projektu za nekoga ko dolazi iz Roblox Studija.
 Pravila za git (grane, commiti) su u [CONTRIBUTING.md](CONTRIBUTING.md); dizajn
@@ -15,18 +15,18 @@ Najbrži način da shvatiš Unity: mapiraj pojmove koje već znaš.
 | Place / Experience | **Scene** (`.unity` fajl) | Projekat može imati više scena; mi imamo jednu (`Track.unity`) |
 | Explorer | **Hierarchy** panel | Stablo objekata u sceni |
 | Properties | **Inspector** panel | Podešavanje selektovanog objekta |
-| Part / Model | **GameObject** | Ključna razlika: GameObject je *prazan kontejner* — sve sposobnosti dobija dodavanjem **komponenti** (Transform, Rigidbody, Collider, skripte...) |
-| Luau `Script` | **C# skripta** (MonoBehaviour) | Skripta se *ne izvršava sama* — mora biti dodana na GameObject kao komponenta |
+| Part / Model | **GameObject** | Ključna razlika: GameObject je *prazan kontejner* - sve sposobnosti dobija dodavanjem **komponenti** (Transform, Rigidbody, Collider, skripte...) |
+| Luau `Script` | **C# skripta** (MonoBehaviour) | Skripta se *ne izvršava sama* - mora biti dodana na GameObject kao komponenta |
 | Model koji kopiraš | **Prefab** | Sačuvan GameObject sa svom djecom i komponentama; izmjena prefaba mijenja sve instance |
 | Toolbox | **Package Manager** + Asset Store | Mi koristimo samo Package Manager (ML-Agents paket) |
 | Studio "Play" | **Play mode** (▶ dugme) | ⚠️ NAJVEĆA ZAMKA: izmjene napravljene tokom Play mode se **gube** kad izađeš iz njega. U Robloxu izmjene u Play testu se isto gube, ali Unity te ništa ne upozorava |
 | Team Create | git (nema live kolaboracije) | |
 | Output prozor | **Console** panel | `Debug.Log()` umjesto `print()` |
-| Workspace, ReplicatedStorage... | Nema toga | Nema client/server podjele — ovo je offline simulacija, sve je "lokalno" |
+| Workspace, ReplicatedStorage... | Nema toga | Nema client/server podjele - ovo je offline simulacija, sve je "lokalno" |
 
 Ostale bitne razlike:
 
-- **Kod se piše van Unityja.** Unity Editor nije editor koda — dupli klik na skriptu
+- **Kod se piše van Unityja.** Unity Editor nije editor koda - dupli klik na skriptu
   otvara vanjski IDE (VS Code / Visual Studio / Rider). Unity automatski rekompajlira
   kad se vratiš u Editor prozor.
 - **C# umjesto Luau**: statički tipovi, klase, `void Update()` umjesto
@@ -50,19 +50,19 @@ unity/SelfDrivingSim/
 ```
 
 Kad neko klonira repo bez `Library/`, Unity ga sam regeneriše pri prvom otvaranju
-(traje par minuta) — zato je bezbjedno (i obavezno) ignorisati ga.
+(traje par minuta) - zato je bezbjedno (i obavezno) ignorisati ga.
 
-### .meta fajlovi — OBAVEZNO ih committati
+### .meta fajlovi - OBAVEZNO ih committati
 
 Uz svaki fajl/folder u `Assets/` Unity kreira `IstoIme.meta` fajl koji sadrži
-**GUID** — trajni identitet asseta. Sve reference u Unityju (npr. "ova skripta je
+**GUID** - trajni identitet asseta. Sve reference u Unityju (npr. "ova skripta je
 na ovom objektu", "ovaj prefab koristi ovaj materijal") idu preko GUID-a, ne preko
 putanje.
 
 Pravila:
 1. `.meta` fajlovi idu u git, uvijek.
 2. Fajl u `Assets/` se preimenuje/premješta **kroz Unity Editor** (ili zajedno sa
-   svojim `.meta` fajlom), nikad samo fajl — inače Unity generiše novi GUID i sve
+   svojim `.meta` fajlom), nikad samo fajl - inače Unity generiše novi GUID i sve
    reference pucaju ("Missing Script" greške).
 
 ## 3. Verzionisanje Unity projekta (git)
@@ -73,21 +73,21 @@ Pravila:
 |-------|---------------------|
 | `Assets/` + svi `.meta` | `Library/`, `Temp/`, `Logs/`, `obj/`, `UserSettings/` |
 | `Packages/manifest.json` | `Build/` |
-| `ProjectSettings/` | IDE fajlovi (`.vs/`, `*.csproj`, `*.sln` — Unity ih regeneriše) |
-| `config/`, `python/`, dokumentacija | `data/` (dataset — prevelik; ide na GC zasebno) |
+| `ProjectSettings/` | IDE fajlovi (`.vs/`, `*.csproj`, `*.sln` - Unity ih regeneriše) |
+| `config/`, `python/`, dokumentacija | `data/` (dataset - prevelik; ide na GC zasebno) |
 | `results/plots/`, mali CSV logovi | `results/tensorboard/` (veliki event fajlovi), `.venv/` |
 
 ### Jednokratno podešavanje (uradi jednom, kad instaliraš Unity)
 
 U Unity Editoru: **Edit → Project Settings → Editor**:
 - *Version Control*: **Visible Meta Files** (default u novim verzijama)
-- *Asset Serialization*: **Force Text** (default) — scene i prefabi se snimaju kao
+- *Asset Serialization*: **Force Text** (default) - scene i prefabi se snimaju kao
   čitljiv YAML pa git diff ima smisla
 
 ### Git LFS (Large File Storage)
 
 Binarni asseti (slike, 3D modeli, trenirani `.onnx`/`.pt` modeli) ne valjaju u
-običnom gitu — svaka verzija ostaje u historiji zauvijek. `.gitattributes` u
+običnom gitu - svaka verzija ostaje u historiji zauvijek. `.gitattributes` u
 korijenu već usmjerava te tipove na LFS. Prije prvog commita takvih fajlova:
 
 ```powershell
@@ -139,22 +139,22 @@ Trening ne ide kroz Play dugme nego kroz Python:
    (Behavior Parameters → Model) → Play = agent vozi sam bez Pythona
 ```
 
-Svaki run dobija novi `--run-id` (v01, v02...) — run-id + izmjena parametara se
+Svaki run dobija novi `--run-id` (v01, v02...) - run-id + izmjena parametara se
 bilježi u `results/EXPERIMENTS.md` da se zna šta je probano.
 
 ## 5. Testiranje
 
 Tri nivoa, od jeftinijeg ka skupljem:
 
-1. **Heuristic mode (ručna vožnja)** — `CarAgent` ima `Heuristic()` metodu koja
+1. **Heuristic mode (ručna vožnja)** - `CarAgent` ima `Heuristic()` metodu koja
    mapira tastaturu (WASD) na akcije. Behavior Parameters → Behavior Type →
    *Heuristic Only* → Play → voziš auto sam. Ovim se provjerava: fizika vozila,
    checkpointi, rewardi (gledaš ih u Console). **Pravilo projekta: dok stazu ne
    možeš sam odvesti tastaturom, nema smisla puštati trening.**
-2. **Unity Test Framework** (Window → General → Test Runner) — EditMode testovi
+2. **Unity Test Framework** (Window → General → Test Runner) - EditMode testovi
    za čistu logiku (npr. redoslijed checkpointa, računanje rewarda). Testovi žive
    u `Assets/Tests/`. Pišemo ih za logiku koja ne zavisi od fizike.
-3. **Python testovi** — `pytest` za BC pipeline (loader parsira CSV, model prima
+3. **Python testovi** - `pytest` za BC pipeline (loader parsira CSV, model prima
    ispravan shape, augmentacija negira steering pri flipu). Žive u `python/tests/`.
 
 Za RL sam trening je "test": TensorBoard kriva reward-a mora rasti; kriterij
@@ -163,25 +163,25 @@ uspjeha je u DESIGN.md §5.
 ## 6. Asset management
 
 - **Folderi u `Assets/`**: `Scenes/`, `Scripts/`, `Prefabs/`, `Models/` (ONNX),
-  `Materials/`, `Tests/`. Sve novo ide u svoj folder — Unity ne nameće red, mi ga
+  `Materials/`, `Tests/`. Sve novo ide u svoj folder - Unity ne nameće red, mi ga
   namećemo.
 - **Prefab za sve što se ponavlja**: checkpoint, segment staze, training area
   (kopija staze za paralelni trening). Izmjena prefaba = izmjena svih kopija.
 - **Paketi samo kroz Package Manager** (Window → Package Manager → Add by name →
   `com.unity.ml-agents`). To upisuje verziju u `Packages/manifest.json` koji je u
   gitu → svako ko klonira dobije iste pakete. Nikakvo ručno kopiranje DLL-ova.
-- **Bez Asset Store nabacivanja**: staza se pravi od Unity primitiva (Cube/Plane)
-  — projekat ostaje malen i reproducibilan.
-- **Dataset nije asset**: živi u `data/` (git-ignorisan), nikad u `Assets/` —
+- **Bez Asset Store nabacivanja**: staza se pravi od Unity primitiva (Cube/Plane), pa
+  projekat ostaje malen i reproducibilan.
+- **Dataset nije asset**: živi u `data/` (git-ignorisan), nikad u `Assets/` -
   Unity bi pokušao importovati svih ~10k slika i napraviti `.meta` za svaku.
 
-## 7. Dokumentacija — ko šta pokriva
+## 7. Dokumentacija - ko šta pokriva
 
 | Fajl | Sadržaj | Kad se mijenja |
 |------|---------|----------------|
 | `README.md` | Šta je projekat, kako ga pokrenuti | Kad se promijeni setup/komande |
 | `DESIGN.md` | Arhitektura, odluke, reward funkcija, milestones | Kad se promijeni dizajn (uz `docs:` commit) |
-| `WORKFLOW.md` | Ovaj fajl — kako se radi | Rijetko |
+| `WORKFLOW.md` | Ovaj fajl - kako se radi | Rijetko |
 | `CONTRIBUTING.md` | Git pravila | Rijetko |
 | `results/EXPERIMENTS.md` | Log trening eksperimenata (run-id, izmjena, ishod) | Svaki trening run |
 | Kod | XML doc komentari (`///`) samo na public API skripti | Uz kod |

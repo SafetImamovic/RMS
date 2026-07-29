@@ -1,6 +1,6 @@
 # Phase 1 Data Model: Dataset EDA (M1)
 
-Conceptual entities for the M1 analysis. This is a read-only analysis feature — there is no
+Conceptual entities for the M1 analysis. This is a read-only analysis feature - there is no
 persisted schema beyond the input CSV and the output report; these entities describe the
 in-memory and on-disk shapes the code works with.
 
@@ -18,8 +18,8 @@ One timestamped sample from a track recording.
 | `brake` | float | [0, 1]; constant 0 on track1 (dead column candidate) |
 | `speed` | float | ≥ 0; up to ~22 on track1 |
 
-- **Derived**: `resolved_center/left/right` — local `Path` after basename + re-root.
-- **Derived**: `image_id` — shared filename timestamp tying the three cameras together.
+- **Derived**: `resolved_center/left/right` - local `Path` after basename + re-root.
+- **Derived**: `image_id` - shared filename timestamp tying the three cameras together.
 - **Validation**: exactly 7 columns per row; numeric columns parse as float (incl. scientific
   notation like `1.058134E-05`); resolved paths point at existing files (sampled).
 

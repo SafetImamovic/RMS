@@ -1,6 +1,6 @@
 """Tests for the hypothesis tests and verdicts (feature 002, US2 + US3).
 
-These run on samples crafted so the answer is known by construction — if a test cannot get
+These run on samples crafted so the answer is known by construction - if a test cannot get
 the right answer on data we built ourselves, its verdict on the real dataset is worthless.
 
 Both directions again: each test must reject when the null is false, and must NOT reject
@@ -26,7 +26,7 @@ SUPPORT = np.round(np.arange(-1.0, 1.0 + 1e-9, 0.05), 10)
 
 
 def _triangular(peak: float = 400.0, floor: float = 20.0) -> np.ndarray:
-    """A symmetric, centre-heavy count vector — the shape real steering roughly has."""
+    """A symmetric, centre-heavy count vector - the shape real steering roughly has."""
     k = len(SUPPORT)
     centre = (k - 1) / 2
     weights = 1.0 - np.abs(np.arange(k) - centre) / centre
@@ -34,7 +34,7 @@ def _triangular(peak: float = 400.0, floor: float = 20.0) -> np.ndarray:
 
 
 # =======================================================================================
-# T014 — pooling
+# T014 - pooling
 # =======================================================================================
 def test_pooling_leaves_a_healthy_table_alone():
     observed = np.full(len(SUPPORT), 100.0)
@@ -83,13 +83,13 @@ def test_pooling_cannot_induce_asymmetry_in_a_symmetric_input():
 
 
 # =======================================================================================
-# T013 — the three chi-square tests, on data whose answer we know
+# T013 - the three chi-square tests, on data whose answer we know
 # =======================================================================================
 def test_uniform_sample_does_not_reject_uniformity():
     """T1's null is TRUE here, so it must survive.
 
     This is the direction that matters for tampering: if someone had generated the steering
-    column with a random number generator, this is what it would look like — and the test
+    column with a random number generator, this is what it would look like - and the test
     would fail to reject, which is the alarm.
     """
     counts = np.full(len(SUPPORT), 200.0)
@@ -115,7 +115,7 @@ def test_reported_dof_is_the_post_pooling_value():
 
     Homogeneity is the test that shows this: its expected counts follow the column totals,
     so starving the tails really does drop them below the validity threshold. (Under a
-    uniform null every expected count is n/k, so a large sample never pools at all — which
+    uniform null every expected count is n/k, so a large sample never pools at all - which
     is itself worth knowing.)
     """
     counts_a = _triangular()
@@ -191,7 +191,7 @@ def test_support_point_seen_on_only_one_track_is_retained():
 
 
 def test_every_result_states_its_null_and_its_meaning():
-    """A bare statistic is a contract violation — no finding may be a naked number."""
+    """A bare statistic is a contract violation - no finding may be a naked number."""
     counts = _triangular()
     for res in (
         chi2_uniform_gof(counts, SUPPORT),
@@ -206,7 +206,7 @@ def test_every_result_states_its_null_and_its_meaning():
 
 
 # =======================================================================================
-# T022 — verdicts
+# T022 - verdicts
 # =======================================================================================
 def test_explainable_verdict_without_a_mechanism_is_impossible():
     """An 'explainable' verdict with no named cause is just an assertion (FR-015)."""

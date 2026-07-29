@@ -49,7 +49,7 @@ def describe(series, variable: str) -> DistributionSummary:
         variable=variable,
         n=int(arr.size),
         mean=float(arr.mean()),
-        std=float(arr.std(ddof=1)),          # sample std (ddof=1) — unbiased
+        std=float(arr.std(ddof=1)),          # sample std (ddof=1) - unbiased
         variance=float(arr.var(ddof=1)),     # sample variance = disperzija
         minimum=float(arr.min()),
         maximum=float(arr.max()),
@@ -217,7 +217,7 @@ def fit_steering(series, alpha: float = config.ALPHA) -> FitResult:
 
 
 def relative_frequency_histogram(series, bins: int = 40) -> tuple[np.ndarray, np.ndarray]:
-    """Relative-frequency histogram (counts sum to 1) — counts, edges."""
+    """Relative-frequency histogram (counts sum to 1) - counts, edges."""
     arr = np.asarray(series, dtype=float)
     counts, edges = np.histogram(arr, bins=bins, density=False)
     rel = counts / counts.sum()

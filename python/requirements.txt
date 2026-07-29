@@ -1,6 +1,6 @@
 # RMS Python dependencies (M1 dataset EDA).
 # Versions kept compatible with Python 3.10 and with the later mlagents 1.1.0 milestone
-# (numpy pinned < 2.0 because ML-Agents / older PyTorch require it — keeps one env for the
+# (numpy pinned < 2.0 because ML-Agents / older PyTorch require it - keeps one env for the
 # whole project instead of a split M1-vs-training environment).
 
 numpy>=1.23,<2.0

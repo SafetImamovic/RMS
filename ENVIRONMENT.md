@@ -16,7 +16,7 @@ Last verified: **2026-07-26** (Windows 11 Pro 10.0.26200)
 | Disk (C:) | 476 G total, 388 G used, **89 G free** (82%) |
 
 6 GB VRAM is sufficient for the M4 PilotNet BC training (small CNN, 66×200 input).
-M3 PPO uses vector/raycast observations only and is CPU-bound — GPU is not the bottleneck there.
+M3 PPO uses vector/raycast observations only and is CPU-bound - GPU is not the bottleneck there.
 
 ## Toolchain
 
@@ -32,7 +32,7 @@ M3 PPO uses vector/raycast observations only and is CPU-bound — GPU is not the
 
 ## Unity project
 
-`unity/SelfDrivingSim/` — 3D Built-In Render Pipeline.
+`unity/SelfDrivingSim/` - 3D Built-In Render Pipeline.
 
 | Package | Version |
 |---------|---------|
@@ -46,14 +46,14 @@ Sources: `Library/PackageCache/com.unity.ml-agents@*/package.json`, `CHANGELOG.m
 `Documentation~/Installation.md`, `Documentation~/Examples-setup.md`.
 
 - **Minimum Unity is `6000.0`** (raised in 4.0.0). Our 6000.5.3f1 qualifies.
-- **Paired Python package is still `mlagents==1.1.0`** — `Installation.md` line 75 states this
+- **Paired Python package is still `mlagents==1.1.0`** - `Installation.md` line 75 states this
   explicitly for this package version. The corresponding repo branch is `release_23`.
 - **The package ships no `Samples~` folder.** CHANGELOG 4.0.0: *"Removed broken sample from the
   package (#6230)."* 3DBall and all other example environments are **only** in the GitHub repo.
   `Examples-setup.md` is explicit: *"If you only install the package from the Package Manager,
   you won't be able to access the example environments."*
 - The extensions package `com.unity.ml-agents.extensions` was **merged into the main package**
-  in 4.0.0 — do not add it separately.
+  in 4.0.0 - do not add it separately.
 - Tests moved to a companion package `com.unity.ml-agents.tests` in 4.0.2.
 - 4.0.1 set the repo-source Torch constraint to 2.8; the PyPI `mlagents==1.1.0` wheel has a
   looser `torch>=2.1.1` and will resolve much higher. See the venv note below.
@@ -62,7 +62,7 @@ Sources: `Library/PackageCache/com.unity.ml-agents@*/package.json`, `CHANGELOG.m
 
 Two separate venvs, deliberately.
 
-### `.venv` — M1 EDA (frozen)
+### `.venv` - M1 EDA (frozen)
 
 | Package | Version |
 |---------|---------|
@@ -71,15 +71,15 @@ Two separate venvs, deliberately.
 | scipy | 1.13.1 |
 
 All M1 numbers in `results/eda/m1_stats.json` and `m1_report.md` were produced under these
-versions. **Do not install `mlagents` into this venv** — it hard-pins `numpy==1.23.5`, and a
+versions. **Do not install `mlagents` into this venv** - it hard-pins `numpy==1.23.5`, and a
 numpy downgrade risks shifting the reported percentiles and fit statistics, which would break
 Constitution VI (reproducibility under SEED=42).
 
-### `.venv-mlagents` — M2–M5 training
+### `.venv-mlagents` - M2–M5 training
 
 Created separately so the M1 environment stays reproducible.
 
-Install order matters — **CUDA torch first**, because `mlagents` otherwise resolves the
+Install order matters - **CUDA torch first**, because `mlagents` otherwise resolves the
 CPU-only wheel from PyPI:
 
 ```
@@ -108,7 +108,7 @@ git clone --branch release_23 https://github.com/Unity-Technologies/ml-agents.gi
 Then Unity Hub → **Add** → **Add project from disk** → select the clone's `Project` folder.
 Examples live at `Assets/ML-Agents/Examples`.
 
-Clone this **outside** `RMS/` — it is a reference/verification artifact, not project source,
+Clone this **outside** `RMS/` - it is a reference/verification artifact, not project source,
 and must not end up nested in our repo. Cloned to `C:\Users\User\Development\ml-agents\`.
 
 ### Gotcha: release_23 does not compile on Unity 6000.5 out of the box
@@ -121,15 +121,15 @@ com.unity.ml-agents\Runtime\Integrations\Match3\Match3ActuatorComponent.cs(61,45
 'Object.GetInstanceID()' is obsolete: 'GetInstanceID is deprecated. Use GetEntityId instead.'
 ```
 
-Cause: the clone's `Project/Packages/manifest.json` references `file:../../com.unity.ml-agents`
-— the **local source in the clone, which is version 4.0.0**, not the 4.0.3 in our project. Unity
+Cause: the clone's `Project/Packages/manifest.json` references `file:../../com.unity.ml-agents`,
+the **local source in the clone, which is version 4.0.0**, not the 4.0.3 in our project. Unity
 6000.5 promoted `GetInstanceID()` to an error-level obsolete, and 4.0.0 predates the fix.
 `CS0619` comes from `[Obsolete(..., error: true)]` and therefore **cannot** be silenced with
-`#pragma warning disable` — the call site has to change.
+`#pragma warning disable` - the call site has to change.
 
 Patching that line is **not** sufficient. Rewriting it as
-`(int)gameObject.GetEntityId()` merely surfaces the next error — the implicit
-`EntityId -> int` conversion operator is *itself* obsolete-as-error — and behind that sit two
+`(int)gameObject.GetEntityId()` merely surfaces the next error - the implicit
+`EntityId -> int` conversion operator is *itself* obsolete-as-error - and behind that sit two
 further errors from Unity 6000.5's new serialization analyzers:
 
 ```
@@ -151,7 +151,7 @@ git -C C:\Users\User\Development\ml-agents checkout release/4.0.3
 ```
 
 All three errors disappear and the project compiles clean on 6000.5.3f1. The cause was purely
-the version gap — 4.0.3 guards the deprecated API by Unity version, e.g.
+the version gap - 4.0.3 guards the deprecated API by Unity version, e.g.
 `Match3ActuatorComponent.CreateNewSeed()`:
 
 ```csharp
@@ -171,7 +171,7 @@ Unity 6000.0 LTS.
 > that branch ships package source **4.0.0**. The docs are inconsistent with the package they
 > ship in. Always match the clone branch to the package version in use.
 
-## Training venv — verified install
+## Training venv - verified install
 
 `.venv-mlagents` as actually resolved:
 
@@ -192,7 +192,7 @@ Examples live in the clone, at `Project/Assets/ML-Agents/Examples/`; training co
 `Assets/ML-Agents/Examples/3DBall/Scenes/3DBall.unity` and press Play. The pretrained `.onnx`
 is already assigned in Behavior Parameters.
 
-**Training** (Python bridge check) — Python first, then Play:
+**Training** (Python bridge check) - Python first, then Play:
 
 ```
 C:\Users\User\Development\RMS\.venv-mlagents\Scripts\activate
@@ -200,14 +200,14 @@ cd C:\Users\User\Development\ml-agents
 mlagents-learn config/ppo/3DBall.yaml --run-id=hello3dball
 ```
 
-Wait for `Listening on port 5004`, then press Play in the Editor. `Ctrl+C` **once** to stop —
+Wait for `Listening on port 5004`, then press Play in the Editor. `Ctrl+C` **once** to stop -
 that exports the `.onnx`; a second `Ctrl+C` skips the export. Curves via
 `tensorboard --logdir results`.
 
 `mlagents-learn` writes `results/` relative to the current directory. For M3, run it from the
 `RMS` root so output lands in our own `results/`.
 
-## End-to-end verification (2026-07-26) — PASSED
+## End-to-end verification (2026-07-26) - PASSED
 
 3DBall trained from scratch through the full Python↔Unity bridge:
 
@@ -218,17 +218,17 @@ ml-agents: 1.1.0, ml-agents-envs: 1.1.0, Communicator API: 1.5.0, PyTorch: 2.6.0
 [INFO] Exported results\hello3dball\3DBall\3DBall-432498.onnx
 ```
 
-- **Communicator API 1.5.0 matches on both sides** — this is the real compatibility proof; the
+- **Communicator API 1.5.0 matches on both sides** - this is the real compatibility proof; the
   Unity package and the pip package negotiate this and refuse to connect on a mismatch.
 - Reward reached the 100 ceiling at ~132k steps (~3.6 min); `.onnx` export on `Ctrl+C` works.
 - `torch.cuda.is_available()` → `True`, `NVIDIA GeForce RTX 3050 6GB Laptop GPU`.
 
 **Throughput baseline: 432,000 steps in 614 s ≈ 700 steps/s** with 12 parallel agents on a
 trivial environment. Our car environment (WheelCollider physics + raycast sensors) will be
-substantially slower per step — use this only as an upper bound when sizing `max_steps` in
+substantially slower per step - use this only as an upper bound when sizing `max_steps` in
 `config/ppo_car.yaml` for M3.
 
 ## Outstanding
 
-- `com.unity.ml-agents` 4.0.3 needs to be (re-)added to `unity/SelfDrivingSim` — it is currently
+- `com.unity.ml-agents` 4.0.3 needs to be (re-)added to `unity/SelfDrivingSim` - it is currently
   absent from that project's `Packages/manifest.json`.
