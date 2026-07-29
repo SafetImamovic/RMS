@@ -133,6 +133,52 @@ RMS/
 - Alternativa ako fizika pravi probleme: pojednostavljen kinematski model
   (transform-based) - odluka u M2, fizika je primarna.
 
+**Profil vozila (fiksirano u M2, feature 003).** Jedno mjesto drži svako ograničenje auta.
+Izvor svake vrijednosti je mjerenje iz M1 ili navedena geometrijska pretpostavka; nijedna
+nije odabrana jer izgleda dobro. Izvedene veličine se **računaju**, nikad ne čuvaju pored
+osnovnih, pa profil ne može doći u stanje da mu poluprečnik ne odgovara međuosovinskom
+rastojanju.
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `wheelbase_m` | 2.5 m | jedina slobodno izabrana dimenzija; svi poluprečnici skaliraju linearno s njom |
+| `steer_max_deg` | 25° | DESIGN 4.4, potvrđeno M1 analizom punog opsega |
+| `radius_margin` | 1.3 | **jednako rezervi volana**, vidi ispod |
+| `r_min_m` | **5.361 m** | izvedeno, `L / tan(25°)`, bicikl model pri maloj brzini |
+| `r_floor_m` | **6.970 m** | izvedeno, `r_min × 1.3`. Najoštrija krivina koju staza smije imati |
+| `max_required_steer` | **0.789** | izvedeno; najviše volana koje staza ikad traži |
+| `steering_reserve` | **21.1 %** | `1 - max_required_steer` |
+| `v_max_ms` | 10 m/s | **izbor za igrivost, nije tvrdnja o datasetu** |
+
+**Zašto je margina 1.3 važnija nego što izgleda.** Ona nije proizvoljan faktor sigurnosti
+nego direktno određuje koliko volana agentu ostaje u najoštrijoj krivini. Pri margini 1.0
+najoštrija krivina traži **puni** zaokret i agent nema ničim da koriguje kad ga izbaci ka
+vanjskoj ivici; to nije staza nego zamka. Pri 1.3 krivina traži 0.789 i 21.1 % ostaje
+slobodno. Veličina `max_required_steer` je **nezavisna od međuosovinskog rastojanja** (L se
+skrati), pa je margina jedini parametar koji je pomjera, što je čini poštenom ručkom za
+podešavanje.
+
+**Cijena, i navodi se otvoreno.** Nijedna generisana staza ne može tražiti steering iznad
+0.789, dok ljudski podaci idu do 1.0. Izmjereno: 2.60 % nenultih uzoraka track1 je iznad te
+granice, dakle pokrivamo ljudsku raspodjelu do 97.40. percentila i dalje ne.
+
+**Brzina se ne pretvara, nego normalizuje.** Kolona `speed` u datasetu nema dokumentovanu
+jedinicu (nalaz feature-a 002). Zato `v_max_ms` **nikad ne ulazi u poređenje**: obje strane
+se dijele svojim vlastitim P99 i porede se bezdimenzionalno. Tvrdnja tipa "top speed je
+17.49 m/s" tražila bi pretpostavku koju niko ne može provjeriti, a lažna preciznost bi se
+provukla kroz svaki prag u M3 i M5.
+
+**Brzina okretanja volana** (`steer_rate_norm_per_s`) i **ubrzanje/kočenje** se fiksiraju
+mjerenjem stvarne vožnje tastaturom (M2 zadaci T023 i T024), jer su to jedine vrijednosti
+koje se ne mogu odlučiti unaprijed. Snimljeni skokovi volana punog opsega u jednom kadru su
+dokaz o **ulaznom uređaju** (tastatura ili miš), ne specifikacija vozila; auto koji ih
+reprodukuje bio bi neupravljiv.
+
+> Izvor: `specs/003-unity-environment/research.md` C1 do C4 i C15. Vrijednosti žive u
+> `python/track/config.py`, izvoze se u `unity/.../Assets/Tracks/vehicle_profile.json`, a
+> C# kopija se poredi s njim u `VehicleProfileMirrorTests`. Razilaženje pada kao test, ne
+> kao tiho pogrešna geometrija.
+
 ### 4.3 Observacije (ukupno ~19 vrijednosti + raycast)
 | Observacija | Dim | Napomena |
 |-------------|-----|----------|
@@ -169,6 +215,23 @@ RMS/
 
 > Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
 > `python -m python.eda.report`). Tipične brzine iz dataseta: 0–17.5 (P99), sredina ~10.2.
+
+**Geometrijska posljedica mapiranja ±25° (fiksirano u M2).** Iz `steering ∈ [-1, 1] → ±25°`
+i međuosovinskog rastojanja 2.5 m slijedi cijela tabela poluprečnika. Ovo je veza između
+akcije agenta i oblika staze, pa stoji ovdje a ne samo u research dokumentu:
+
+| \|steering\| | odakle dolazi | δ | poluprečnik |
+|---|---|---|---|
+| 0.25 | track1 median nenultih | 6.25° | 22.83 m |
+| 0.40 | track1 P75 | 10.00° | 14.18 m |
+| 0.50 | track2 median | 12.50° | 11.28 m |
+| 0.65 | track1 P95 | 16.25° | 8.58 m |
+| **0.79** | **granica koju staza smije tražiti** | 19.73° | **6.97 m** |
+| 0.90 | track1 P99 | 22.50° | 6.04 m |
+| 1.00 | puni zaokret | 25.00° | 5.36 m |
+
+Tabela se provjerava red po red u `python/tests/test_vehicle.py` i u
+`VehicleProfileMirrorTests`, pa ne može tiho odlutati od koda.
 
 ### 4.5 Reward funkcija
 | Događaj | Reward | Svrha |
