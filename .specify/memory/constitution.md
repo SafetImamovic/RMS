@@ -11,7 +11,7 @@ of silently deviating.
 Companion documents (this constitution references, does not replace them):
 `DESIGN.md` (architecture & design decisions), `CONTRIBUTING.md` (git conventions in
 detail), `WORKFLOW.md` (Unity workflow for a Roblox background), `results/EXPERIMENTS.md`
-(training-run log).
+(training-run log), `ENVIRONMENT.md` (verified machine state and install gotchas).
 
 ---
 
@@ -111,7 +111,13 @@ Anyone (professor included) must be able to reproduce a result from the repo:
 
 - Tool versions are pinned (`requirements.txt`, `Packages/manifest.json`,
   `config/*.yaml`). ML-Agents is version-sensitive — Python and Unity package versions
-  must match the table in `DESIGN.md` §8.
+  must match the table in `DESIGN.md` §8. `DESIGN.md` §8 records what we *intend* to
+  run; `ENVIRONMENT.md` records what is *verified installed*. When the two disagree,
+  neither is silently correct — reconcile them in a `docs:` commit.
+- **The M1 environment (`.venv`) and the training environment (`.venv-mlagents`) are
+  separate on purpose.** `mlagents` hard-pins numpy 1.23.5, while M1's committed numbers
+  were produced under numpy 1.26.4. Merging the two environments would silently
+  invalidate M1's reproducibility claim.
 - Every RL training run gets a unique `--run-id` (`ppo_car_v01`, `v02`, …). The run-id,
   the parameter/reward change, and the outcome are logged in `results/EXPERIMENTS.md`
   **in the same session as the run**. An unlogged run did not happen.
@@ -185,8 +191,17 @@ Treat it as a first-class deliverable, not decoration on the ML work.
 ## Technology Constraints
 
 - **Fixed tool:** Unity ML-Agents. No tool or topic substitution (assignment-locked).
-- **Versions** (locked, see `DESIGN.md` §8): Unity 2022.3 LTS · `com.unity.ml-agents`
-  3.0.x · Python 3.10.x · `mlagents` 1.1.0 · PyTorch 2.x + CUDA.
+- **Versions** (locked; intended pins in `DESIGN.md` §8, verified installed state in
+  `ENVIRONMENT.md`): Unity **6000.5.3f1** · `com.unity.ml-agents` **4.0.3** ·
+  `com.unity.ai.inference` 2.6.1 (pulled as a dependency) · Python 3.10.11 ·
+  `mlagents` 1.1.0 · PyTorch 2.6.0+cu124. **Communicator API 1.5.0** is the contract
+  between the Unity package and the Python package; if that number does not match at
+  training start, the versions are wrong and nothing else matters.
+  Verified end to end on 2026-07-26 (3DBall trained to reward 100, `.onnx` exported).
+- **The ML-Agents examples repo is checked out at `release/4.0.3`, not `release_23`.**
+  Unity's own `Installation.md` in 4.0.3 says `release_23` — following it ships package
+  source 4.0.0, which does not compile on Unity 6000.5 (`GetInstanceID()` is
+  error-level obsolete there). See `ENVIRONMENT.md`.
 - **Git LFS** for all binaries (images that must be versioned, `.onnx`, `.pt`) — routed
   by `.gitattributes`. `git lfs install` once per machine.
 - **No Asset Store content.** The track is built from Unity primitives (Cube/Plane) to
@@ -224,4 +239,12 @@ A gate is not "reached" until its exit criterion is demonstrable from a clean cl
 - Runtime / day-to-day guidance for agents lives in `WORKFLOW.md` and `CONTRIBUTING.md`;
   this constitution states the non-negotiable principles those documents operationalize.
 
-**Version:** 1.1.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-07-23
+### Amendment log
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0.0 | 2026-07-23 | Ratified — 8 principles, milestone gate table |
+| 1.1.0 | 2026-07-23 | Added Principle IX (Statistical Rigor) |
+| 1.2.0 | 2026-07-29 | Technology Constraints corrected to the verified toolchain (Unity 6000.5.3f1, ml-agents 4.0.3, Communicator API 1.5.0, `release/4.0.3` checkout); `ENVIRONMENT.md` added as a companion document; Principle VI gained the intended-vs-verified rule and the two-environment rule |
+
+**Version:** 1.2.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-07-29

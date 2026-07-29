@@ -84,6 +84,10 @@ Explicitly **not** touched: `python/eda/loader.py`, `fingerprint.py`, `stats.py`
 
 ### Constitution issue found (out of scope for this feature, needs an amendment)
 
+> **RESOLVED 2026-07-29** — amended in constitution **v1.2.0**. `README.md` §Preduslovi was
+> stale in the same way and was corrected alongside it. The paragraph below is kept as the
+> record of why the amendment happened.
+
 The constitution's **Technology Constraints** section still reads *"Unity 2022.3 LTS ·
 `com.unity.ml-agents` 3.0.x"*. That is now factually wrong: the verified, working combination
 is Unity 6000.5.3f1 with `com.unity.ml-agents` 4.0.3 and pip `mlagents` 1.1.0 (Communicator API
