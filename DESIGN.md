@@ -149,6 +149,24 @@ RMS/
 - `throttle` ∈ [-1, 1] → gas / kočnica. Napomena (M1): kočnica se u datasetu koristi rijetko
   (~95% nula), gas dominira — nije problem jer RL agent uči vlastiti throttle.
 
+> **Ispravka „~95 % nula" (potiče iz feature-a 002, 2026-07-29).** Ta brojka (tačno 94,6 %)
+> je izračunata nad **spojenim** datasetom i zato je zavaravajuća. Po stazi:
+>
+> | staza | različitih vrijednosti `brake` | stvarno stanje |
+> |---|---|---|
+> | track1 | **1** (samo 0.0, u svih 10.615 redova) | kolona je **konstantna** — mrtva |
+> | track2 | 1.708 | kolona se stvarno koristi |
+>
+> M1 je nad spojenim podacima prijavio `brake_is_dead: false`; to je **artefakt spajanja**,
+> jer track2 „oživi" kolonu koja na track1 uopšte ne postoji kao signal. Pravilo koje iz
+> ovoga slijedi: **kočnicu izvještavati po stazi, nikad spojeno**, i ne koristiti je kao
+> ulaz za model treniran samo na stazi 1. Detalji i verdikt:
+> `results/eda/authenticity_report.md`, §4 i §7.
+>
+> Usput, ovo je i lijep primjer za odbranu: obrisana kolona i nikad korištena kolona
+> izgledaju **identično** u brojkama. Razlikuje ih dokaz da pisač kolone radi — a to imamo,
+> jer ista kolona na drugoj stazi ima 1.708 različitih vrijednosti.
+
 > Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
 > `python -m python.eda.report`). Tipične brzine iz dataseta: 0–17.5 (P99), sredina ~10.2.
 
@@ -240,6 +258,8 @@ tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
 
    Posljedica za analizu: `brake` je 100 % nula na track1 → skoro beskorisna kolona;
    u M1 se provjerava i track2, pa ako je i tamo konstantna, izbacuje se iz obrade.
+   **Provjereno (feature 002):** na track2 kolona ima 1.708 različitih vrijednosti, dakle
+   nije konstantna i ostaje u obradi — ali se izvještava **po stazi** (vidi §4.4).
 
 > Ovaj postupak (identifikacija promjenljivih preko deskriptivne statistike) je i sam
 > dio statističkog naglaska predmeta — vidi §7.1 i M1.
@@ -280,6 +300,26 @@ Upotreba kamera u BC-u:
   poređenje pokazuje koliko se RL politika prirodno približi ljudskom stilu.
 - BC model se ne vozi u Unityju (trenirao je na slikama drugog simulatora) — to se
   eksplicitno navodi kao ograničenje i razlog zašto je poređenje na nivou distribucija.
+
+> **Napomena za M5 — rezolucija zapisa nije isto što i stil vožnje**
+> *(potiče iz feature-a 002, 2026-07-29)*
+>
+> RL agent emituje **kontinualan** steering (PPO politika daje realan broj), a ljudska
+> referenca je **rešetkasta**: 41 dozvoljena vrijednost, korak 0.05 (vidi
+> `results/eda/authenticity_report.md`, §4).
+>
+> Ako se te dvije raspodjele porede direktno, svaka metrika razlike (KL divergencija, KS,
+> χ²) će prijaviti veliku razliku — ali će mjeriti **razliku u rezoluciji zapisa**, a ne
+> razliku u vožnji. Ljudski histogram ima 41 tanku iglu; agentov je gladak. To bi izgledalo
+> kao dramatičan nalaz, a bio bi artefakt.
+>
+> **Mjera prije poređenja:** kvantizovati izlaz agenta na **istu rešetku**
+> (`round(steering / 0.05) * 0.05`, ograničeno na [−1, 1]) i tek onda porediti. Kvantizacija
+> se primjenjuje na agenta, ne na čovjeka — čovjekov zapis je referenca i ne dira se.
+>
+> Isto vrijedi i za KL divergenciju iz tabele gore: KL između diskretne i kontinualne
+> raspodjele nije definisan bez zajedničke podrške, pa je zajednička rešetka preduslov, a
+> ne kozmetika.
 
 ### 7.1 Statistička obrada (naglasak predmeta)
 
