@@ -34,7 +34,7 @@ class TrackDataset:
 
 @dataclass
 class IntegrityReport:
-    """Result of check_integrity() — plain data, no side effects."""
+    """Result of check_integrity() - plain data, no side effects."""
 
     name: str
     row_count: int
@@ -115,7 +115,7 @@ def check_integrity(ds: TrackDataset) -> IntegrityReport:
     """Verify rows x 3 == image files, and count rows with missing images. No writes.
 
     Uses one directory listing (a set of file names) and set-membership tests, so it is
-    fast even for ~194k images — no per-file stat() call.
+    fast even for ~194k images - no per-file stat() call.
     """
     if not ds.resolved:
         _ = resolve_image_paths(ds)
@@ -123,7 +123,7 @@ def check_integrity(ds: TrackDataset) -> IntegrityReport:
     row_count = len(ds.df)
 
     # One listing of the IMG/ folder; membership tests against this set are O(1).
-    # Count only .jpg files — OS junk like Thumbs.db must not inflate the image count.
+    # Count only .jpg files - OS junk like Thumbs.db must not inflate the image count.
     existing: set[str] = (
         {f for f in os.listdir(ds.img_dir) if f.lower().endswith(".jpg")}
         if ds.img_dir.exists()

@@ -3,7 +3,7 @@
 **Feature Branch**: `002-data-authenticity`
 **Created**: 2026-07-26
 **Status**: Draft
-**Input**: User description: "Provjera vjerodostojnosti podataka (friziranje podataka) — proširiti M1 EDA statistički rigoroznom baterijom provjera koje testiraju da li je dataset friziran, slučajno oštećen, ili strukturno drugačiji nego što je M1 pretpostavio. Svaka provjera mora imati eksplicitnu nultu hipotezu i dokumentovan očekivani potpis, da se 'sumnjivo' razlikuje od 'objašnjivo procesom koji je podatke stvorio'."
+**Input**: User description: "Provjera vjerodostojnosti podataka (friziranje podataka) - proširiti M1 EDA statistički rigoroznom baterijom provjera koje testiraju da li je dataset friziran, slučajno oštećen, ili strukturno drugačiji nego što je M1 pretpostavio. Svaka provjera mora imati eksplicitnu nultu hipotezu i dokumentovan očekivani potpis, da se 'sumnjivo' razlikuje od 'objašnjivo procesom koji je podatke stvorio'."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -18,7 +18,7 @@ explicit and reproducible, rather than producing a list of scary-looking numbers
 
 ### User Story 1 - Provenance and integrity audit (Priority: P1) 🎯 MVP
 
-The author needs to establish that each recording is a single, continuous, complete session —
+The author needs to establish that each recording is a single, continuous, complete session -
 not a stitched-together, reordered, trimmed, or padded artifact. This is the check that most
 directly answers "was this dataset tampered with?".
 
@@ -42,7 +42,7 @@ unaltered" statement with numbers behind it.
    whether timestamps are strictly increasing and the count of any violations.
 3. **Given** the frame intervals, **When** they are summarized, **Then** the audit reports the
    median interval, the implied capture rate, and the count of gaps exceeding a stated
-   threshold — with the threshold justified, not arbitrary.
+   threshold - with the threshold justified, not arbitrary.
 4. **Given** the driving log, **When** duplicates are examined, **Then** the audit reports
    exact duplicate rows, duplicate image references, and repeated measurement tuples
    separately, since each implies a different kind of manipulation.
@@ -67,7 +67,7 @@ rejection was close to guaranteed regardless of which density was chosen.
 **Why this priority**: It corrects a stated conclusion in a completed milestone, and it turns
 the project's central statistical tool (χ²) from an awkward fit into the textbook-correct
 choice. A discrete variable with a known, finite set of outcomes is exactly the situation χ²
-goodness-of-fit was designed for — with no binning decisions to defend.
+goodness-of-fit was designed for - with no binning decisions to defend.
 
 **Independent Test**: Run the granularity analysis on each track; confirm it reports, per
 numeric column, the number of distinct observed values and whether those values lie on a
@@ -100,7 +100,7 @@ degrees of freedom, critical value at α, and decision.
 
 The author needs each flagged finding to carry its own interpretation, so that findings which
 look alarming but are fully explained by the recording process are not presented as evidence of
-tampering — and, conversely, so that genuinely unexplained findings are not buried.
+tampering - and, conversely, so that genuinely unexplained findings are not buried.
 
 Two findings in this dataset are the worked examples: one track's braking control is never used
 at all, and the same track's turns are overwhelmingly in one direction. Both look like signs of
@@ -112,8 +112,8 @@ argument, and it is the part a grader can probe hardest. It depends on Stories 1
 produced findings to classify, so it is P2.
 
 **Independent Test**: Review the produced report; confirm every flagged finding carries a
-stated null hypothesis, the observed result, a verdict, and — where the verdict is
-"explainable" — the mechanism that explains it. Confirm that findings which are explainable but
+stated null hypothesis, the observed result, a verdict, and - where the verdict is
+"explainable" - the mechanism that explains it. Confirm that findings which are explainable but
 still consequential for later milestones are marked as such.
 
 **Acceptance Scenarios**:
@@ -140,7 +140,7 @@ still consequential for later milestones are marked as such.
   concatenation of the two tracks, and the second track was recorded *earlier in the same day*
   than the first. A naive timeline check over the combined source would report a large negative
   jump. Timeline continuity MUST be evaluated per contiguous recording, never across a
-  junction — the same constraint M1 applied to Δsteering.
+  junction - the same constraint M1 applied to Δsteering.
 - **Floating-point lattice detection**: a spacing such as 0.05 is not exactly representable in
   binary. Lattice detection MUST tolerate representation error rather than requiring exact
   equality, and the tolerance MUST be stated.
@@ -216,15 +216,15 @@ still consequential for later milestones are marked as such.
   and that comparing their distributions requires accounting for this.
 - **FR-022**: All reported results MUST be reproducible: re-running with the fixed project seed
   produces identical reported numbers.
-- **FR-023**: The notebook section MUST follow the established pedagogical style — a
+- **FR-023**: The notebook section MUST follow the established pedagogical style - a
   plain-language explanation before every step, every non-obvious constant or method justified
   in one sentence, and no unexplained arbitrary picks. Narration in the same language as the
   existing notebook sections.
-- **FR-024**: The notebook section MUST be visual — every numeric finding accompanied by a plot
+- **FR-024**: The notebook section MUST be visual - every numeric finding accompanied by a plot
   wherever a plot communicates it better than a number, with titled and labelled figures
   readable on their own and reusable in defence slides.
 - **FR-025**: Both new analysis modules MUST have automated test coverage, including tests on
-  crafted inputs where the correct answer is known by construction — specifically, inputs that
+  crafted inputs where the correct answer is known by construction - specifically, inputs that
   are deliberately tampered with, to prove the checks actually detect manipulation.
 - **FR-026**: The dataset MUST NOT be committed; the analysis reads it from the existing
   ignored location.
@@ -234,15 +234,15 @@ still consequential for later milestones are marked as such.
 - **Recording session**: a contiguous run of driving log records from a single track, with a
   start time, an end time, and an expected frame cadence. The unit over which timeline
   continuity is meaningful.
-- **Integrity finding**: the result of one structural check — what was checked, what was
+- **Integrity finding**: the result of one structural check - what was checked, what was
   observed, whether it is anomalous, and how confident that judgement is.
 - **Measurement granularity profile**: for one numeric column, its distinct-value count, its
   discrete-or-continuous classification, and, when discrete, its lattice spacing, full support,
   and unobserved support points.
 - **Hypothesis test result**: a named null hypothesis, the test statistic, degrees of freedom,
   critical value at α, p-value, decision, and plain-language interpretation.
-- **Verdict**: the classification attached to a finding — explainable (with named mechanism) or
-  unexplained — plus any downstream consequence and mitigation.
+- **Verdict**: the classification attached to a finding - explainable (with named mechanism) or
+  unexplained - plus any downstream consequence and mitigation.
 
 ## Success Criteria *(mandatory)*
 
@@ -263,7 +263,7 @@ still consequential for later milestones are marked as such.
 - **SC-007**: A χ² homogeneity result between the two tracks and a per-track symmetry result are
   both reported with stated null hypotheses.
 - **SC-008**: Every reported finding carries a null hypothesis, a decision, an interpretation,
-  and an explainable-or-unexplained verdict — no finding is reported as a bare number.
+  and an explainable-or-unexplained verdict - no finding is reported as a bare number.
 - **SC-009**: At least one finding is correctly classified as explainable with its mechanism
   named, and at least one explainable finding records a downstream consequence and mitigation.
 - **SC-010**: The automated tests include at least one deliberately tampered input per check

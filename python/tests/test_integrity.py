@@ -6,7 +6,7 @@ Every check family is tested in BOTH directions:
   * it must stay silent on a clean one.
 
 The second half is not optional. A check that flags a sound dataset as tampered is as
-serious a defect as one that misses tampering — and given the combined file splices two
+serious a defect as one that misses tampering - and given the combined file splices two
 recordings whose clocks run backwards at the junction, it is the failure this feature is
 most exposed to (research A1, A10).
 """
@@ -36,7 +36,7 @@ from conftest import (  # pytest puts the test directory on sys.path
 
 
 # =======================================================================================
-# T005 — timeline continuity
+# T005 - timeline continuity
 # =======================================================================================
 def test_clean_session_reports_no_violations_and_no_gaps(clean_session):
     """A clean result is still a result: reported explicitly, never omitted."""
@@ -68,7 +68,7 @@ def test_excised_block_shows_up_as_a_gap(excised_session):
     """Signature of 'I cut out the ugly part': one large hole, order still intact."""
     rep = check_timeline(excised_session)[0]
 
-    # Cutting a block does not disturb the order of what remains — only the gap check
+    # Cutting a block does not disturb the order of what remains - only the gap check
     # can see this, which is why monotonicity alone is not enough.
     assert rep.is_monotonic is True
     assert rep.n_gaps >= 1
@@ -86,7 +86,7 @@ def test_junction_of_two_sessions_raises_no_alarm(two_session_junction):
     """
     sessions = split_sessions(two_session_junction)
     assert [s.session_id for s in sessions] == ["track1data", "track2data"]
-    # Row order and time order disagree — nothing may assume otherwise.
+    # Row order and time order disagree - nothing may assume otherwise.
     assert sessions[0].start_index < sessions[1].start_index
     assert sessions[0].start_time > sessions[1].start_time
 
@@ -99,7 +99,7 @@ def test_junction_of_two_sessions_raises_no_alarm(two_session_junction):
 
 
 # =======================================================================================
-# T006 — duplication
+# T006 - duplication
 # =======================================================================================
 def test_copied_block_reports_duplicate_rows_and_images(copied_block_session):
     """Signature of inflating the row count: identical rows AND reused frames."""
@@ -113,7 +113,7 @@ def test_copied_block_reports_duplicate_rows_and_images(copied_block_session):
 def test_repeated_measurement_tuples_do_not_inflate_the_other_counts(
     repeated_tuples_session,
 ):
-    """Expected and benign — and it must not be mistaken for row copying.
+    """Expected and benign - and it must not be mistaken for row copying.
 
     With 41 steering levels the value space is small, so identical measurement tuples on
     genuinely different frames are normal. Summing the three counts into one 'duplicates'
@@ -135,7 +135,7 @@ def test_clean_session_has_no_duplicates_of_any_class(clean_session):
 
 
 # =======================================================================================
-# T007 — physical plausibility
+# T007 - physical plausibility
 # =======================================================================================
 def test_injected_speed_jump_is_flagged(speed_jump_session):
     rep = check_plausibility(speed_jump_session)[0]
@@ -184,7 +184,7 @@ def test_plausibility_never_crosses_a_session_boundary(two_session_junction):
 
 
 # =======================================================================================
-# T012 — measurement granularity
+# T012 - measurement granularity
 # =======================================================================================
 def _profile(ds, column: str):
     return next(p for p in profile_granularity(ds) if p.column == column)
@@ -214,8 +214,8 @@ def test_continuous_columns_are_not_forced_onto_a_lattice(clean_session):
 def test_off_lattice_value_is_reported(off_lattice_session):
     """The strongest single piece of evidence these checks can produce.
 
-    A value off an otherwise perfect lattice means someone computed a new number —
-    smoothing, interpolation, augmentation — and wrote it back.
+    A value off an otherwise perfect lattice means someone computed a new number -
+    smoothing, interpolation, augmentation - and wrote it back.
     """
     prof = _profile(off_lattice_session, "steering")
     tampered = float(off_lattice_session.df.loc[OFF_LATTICE_ROW, "steering"])
@@ -235,7 +235,7 @@ def test_float_representation_error_is_not_reported_as_off_lattice(float_error_s
 
 
 def test_single_valued_column_is_classified_constant(constant_column_session):
-    """brake never leaves 0.0 — reported as a finding, not fed to statistics (FR-013)."""
+    """brake never leaves 0.0 - reported as a finding, not fed to statistics (FR-013)."""
     prof = _profile(constant_column_session, "brake")
 
     assert prof.classification == "constant"

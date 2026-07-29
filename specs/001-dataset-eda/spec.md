@@ -3,7 +3,7 @@
 **Feature Branch**: `001-dataset-eda`
 **Created**: 2026-07-23
 **Status**: Draft
-**Input**: User description: "M1 dataset EDA — analiza Kaggle Udacity self-driving-car simulator dataseta; verifikovati format, potvrditi kolone iz uzorka, izračunati distribucije, prilagoditi raspodjelu + χ² test, izvesti parametre za Unity (§4.4/§4.5). Fokus = Python analiza; Unity se ne dira."
+**Input**: User description: "M1 dataset EDA - analiza Kaggle Udacity self-driving-car simulator dataseta; verifikovati format, potvrditi kolone iz uzorka, izračunati distribucije, prilagoditi raspodjelu + χ² test, izvesti parametre za Unity (§4.4/§4.5). Fokus = Python analiza; Unity se ne dira."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -12,7 +12,7 @@ rest of the project, and the professor grading the statistical rigor at the defe
 
 ### User Story 1 - Verified dataset format and column identity (Priority: P1)
 
-The author needs to prove — not assume — what the headerless `driving_log.csv` contains,
+The author needs to prove - not assume - what the headerless `driving_log.csv` contains,
 so every later stage (BC training, calibration, evaluation) builds on a confirmed
 foundation. Given the professor's statistics focus, column identity must be established
 from the data's own statistical fingerprint, backed by the Udacity-standard convention
@@ -20,7 +20,7 @@ and the image filenames.
 
 **Why this priority**: Everything downstream depends on the columns meaning what we think
 they mean. A wrong mapping silently corrupts BC labels and all calibration values. This is
-the M1 gate — nothing else in M1 is trustworthy until this passes.
+the M1 gate - nothing else in M1 is trustworthy until this passes.
 
 **Independent Test**: Run the analysis on the combined dataset; confirm it reports the
 7-column mapping (center, left, right, steering, throttle, brake, speed), the integrity
@@ -143,14 +143,14 @@ traceable to the M1 report.
   §4.4/§4.5 (and a typical speed range), traceable to the M1 report.
 - **FR-015**: The dataset MUST NOT be committed to git; the analysis reads it from the
   git-ignored `dataset/` location.
-- **FR-016**: The EDA notebook MUST be pedagogical and beginner-readable — a step-by-step
+- **FR-016**: The EDA notebook MUST be pedagogical and beginner-readable - a step-by-step
   narrative where **every step has a plain-language markdown explanation** before the code,
   and every non-obvious choice (why this distribution, why P95, why α=0.05, why ≥5 per bin)
   is justified inline in one sentence. **No unexplained "arbitrary picks"**: any constant or
   method that could look arbitrary must state why it was chosen, or expose it as a labeled,
   explained parameter. A reader new to statistics must be able to follow the notebook top to
   bottom and understand *what* each cell does and *why*.
-- **FR-017**: The EDA notebook MUST be **highly visual** — every numeric finding is
+- **FR-017**: The EDA notebook MUST be **highly visual** - every numeric finding is
   accompanied by a plot wherever a plot communicates it better than a number (histograms,
   fitted-curve overlays, per-track comparisons, the |Δsteering| threshold line, box/violin
   for spread, a bar of column-fingerprint evidence). Figures are clearly titled and labeled
@@ -165,7 +165,7 @@ traceable to the M1 report.
   track1 (easy, ~10,615 rows), track2 (hard/mountain, ~21,828 rows), combined (~32,443 rows).
 - **Distribution summary**: for a given variable, its descriptive statistics + histogram +
   (for steering) fitted theoretical distribution + goodness-of-fit result.
-- **Calibration output**: the concrete values M1 hands to the Unity milestone — steering
+- **Calibration output**: the concrete values M1 hands to the Unity milestone - steering
   range, abrupt-Δsteering threshold, typical speed range.
 
 ## Success Criteria *(mandatory)*

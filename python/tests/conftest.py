@@ -6,7 +6,7 @@ us exercise the loader/fingerprint code without the real ~200k-image dataset.
 
 The second half of this file builds the **deliberately tampered inputs** for feature 002
 (research A10). Each one is small, synthetic, and constructed so the correct answer is known
-in advance — a detector that has only ever seen clean data has not been demonstrated to work.
+in advance - a detector that has only ever seen clean data has not been demonstrated to work.
 Two of them exist for the opposite reason: to prove a check stays *silent* where nothing is
 wrong (the two-session junction, and repeated measurement tuples with distinct images).
 """
@@ -75,7 +75,7 @@ def synthetic_track(tmp_path, monkeypatch):
 
 
 # =======================================================================================
-# Feature 002 — authenticity fixtures (research A10)
+# Feature 002 - authenticity fixtures (research A10)
 # =======================================================================================
 #
 # These never touch the filesystem. Every integrity/authenticity function is pure and works
@@ -146,7 +146,7 @@ def build_session_frame(
 
 
 def as_dataset(df: pd.DataFrame, name: str = "fixture") -> TrackDataset:
-    """Wrap a frame as a TrackDataset. Paths are placeholders — nothing reads them."""
+    """Wrap a frame as a TrackDataset. Paths are placeholders - nothing reads them."""
     return TrackDataset(
         name=name,
         csv_path=Path("<in-memory fixture>"),
@@ -177,7 +177,7 @@ EXCISED_START, EXCISED_COUNT = 100, 50
 
 @pytest.fixture
 def excised_session() -> TrackDataset:
-    """50 consecutive frames cut out — the signature of 'I removed the ugly part'.
+    """50 consecutive frames cut out - the signature of 'I removed the ugly part'.
 
     The remaining rows are still in order, so monotonicity survives; only the gap check
     can see this.
@@ -193,7 +193,7 @@ COPIED_START, COPIED_COUNT = 20, 30
 
 @pytest.fixture
 def copied_block_session() -> TrackDataset:
-    """A block of rows copied and appended — the signature of inflating dataset size.
+    """A block of rows copied and appended - the signature of inflating dataset size.
 
     Produces BOTH exact duplicate rows and duplicate image references, because the copied
     rows carry their original filenames.
@@ -227,7 +227,7 @@ OFF_LATTICE_ROW, OFF_LATTICE_NUDGE = 77, 0.023
 def off_lattice_session() -> TrackDataset:
     """One steering value nudged off the 0.05 lattice.
 
-    Signature of someone recomputing values — smoothing, interpolation, augmentation — and
+    Signature of someone recomputing values - smoothing, interpolation, augmentation - and
     writing them back. The strongest single piece of evidence these checks can produce.
     """
     df = build_session_frame()
@@ -282,7 +282,7 @@ def two_session_junction() -> TrackDataset:
 
     This is the real combined file, in miniature. Nothing is wrong with it. A timeline check
     that measures across the junction reports a ~-80 minute jump and 'discovers tampering'
-    in a perfectly sound dataset — the exact false alarm this feature is most exposed to.
+    in a perfectly sound dataset - the exact false alarm this feature is most exposed to.
     """
     first = build_session_frame(session="track1data", n=120, start=T1_START, seed=1)
     second = build_session_frame(session="track2data", n=150, start=T2_START, seed=2)
@@ -292,7 +292,7 @@ def two_session_junction() -> TrackDataset:
 # --- Column that has no variation at all -------------------------------------------------
 @pytest.fixture
 def constant_column_session() -> TrackDataset:
-    """brake never leaves 0.0 — exactly what track 1 looks like in the real dataset.
+    """brake never leaves 0.0 - exactly what track 1 looks like in the real dataset.
 
     A column with one distinct value must be reported as a finding, not fed to statistics
     that need variation (FR-013).

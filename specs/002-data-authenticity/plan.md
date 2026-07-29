@@ -21,13 +21,13 @@ The feature also corrects a live error in M1: steering was treated as continuous
 with continuous densities, but it is recorded on an exact 0.05 lattice with 41 possible values.
 Fitting a continuous density to lattice-valued data is misspecified, which makes M1's χ²
 rejection a property of the model rather than a discovery about the data. Correcting this turns
-χ² from an awkward fit into the textbook-correct tool — a discrete variable over a known finite
+χ² from an awkward fit into the textbook-correct tool - a discrete variable over a known finite
 support needs no binning decisions at all.
 
 ## Technical Context
 
 **Language/Version**: Python 3.10.11 (existing `.venv`, unchanged by this feature)
-**Primary Dependencies**: pandas 2.1.4, numpy 1.26.4, scipy 1.13.1, matplotlib, seaborn — all
+**Primary Dependencies**: pandas 2.1.4, numpy 1.26.4, scipy 1.13.1, matplotlib, seaborn - all
 already pinned in `python/requirements.txt`; **no new dependencies**
 **Storage**: Read-only access to the git-ignored `dataset/`; writes only under `results/eda/`
 and `results/plots/`
@@ -35,7 +35,7 @@ and `results/plots/`
 **Target Platform**: Local Windows workstation; analysis is platform-independent
 **Project Type**: Analysis library + Jupyter notebook (single project, no services)
 **Performance Goals**: Full run over both tracks (32,443 rows) completes in well under a
-minute — this is table-scan statistics, not image decoding
+minute - this is table-scan statistics, not image decoding
 **Constraints**: Deterministic under `SEED=42`; no modification of M1's committed outputs;
 no Unity work; dataset never enters git
 **Scale/Scope**: 2 tracks × ~10.6k and ~21.8k rows; 41-point steering support; 4 numeric columns
@@ -57,13 +57,13 @@ no Unity work; dataset never enters git
 | VI. Reproducibility & Determinism | **PASS** | Reuses `SEED=42` / `ALPHA=0.05` from `config.py`. No new randomness introduced; all statistics are deterministic functions of the input. FR-022 / SC-011 require a double-run equality check. |
 | VII. Dataset Discipline | **PASS** | Read-only on `dataset/`; no images decoded; nothing added to Unity `Assets/`. The RL/BC separation is untouched. |
 | VIII. Test Gates Before Merge | **PASS** | pytest coverage required by FR-025, strengthened beyond the M1 bar: each check family needs a tampered fixture that it detects, plus a clean fixture it does *not* false-alarm on. |
-| IX. Statistical Rigor | **PASS — this is the feature** | Every check carries an explicit H₀, statistic, dof, critical value at α, and decision. Directly serves the course's χ² emphasis. |
+| IX. Statistical Rigor | **PASS - this is the feature** | Every check carries an explicit H₀, statistic, dof, critical value at α, and decision. Directly serves the course's χ² emphasis. |
 
 ### Branch naming (Principle II)
 
 `setup-plan.ps1` reports `BRANCH: 002-data-authenticity`, but Constitution II mandates
 `feature/<kebab-desc>` for all real work, and M1 followed that (`feature/dataset-eda`).
-**The plan adopts `feature/data-authenticity`.** The spec directory keeps its `002-` prefix —
+**The plan adopts `feature/data-authenticity`.** The spec directory keeps its `002-` prefix -
 spec-kit treats directory name and branch name as independent, so there is no conflict to
 resolve, only a convention to apply.
 
@@ -84,17 +84,17 @@ Explicitly **not** touched: `python/eda/loader.py`, `fingerprint.py`, `stats.py`
 
 ### Constitution issue found (out of scope for this feature, needs an amendment)
 
-> **RESOLVED 2026-07-29** — amended in constitution **v1.2.0**. `README.md` §Preduslovi was
+> **RESOLVED 2026-07-29** - amended in constitution **v1.2.0**. `README.md` §Preduslovi was
 > stale in the same way and was corrected alongside it. The paragraph below is kept as the
 > record of why the amendment happened.
 
 The constitution's **Technology Constraints** section still reads *"Unity 2022.3 LTS ·
 `com.unity.ml-agents` 3.0.x"*. That is now factually wrong: the verified, working combination
 is Unity 6000.5.3f1 with `com.unity.ml-agents` 4.0.3 and pip `mlagents` 1.1.0 (Communicator API
-1.5.0 matching on both sides — see `ENVIRONMENT.md`). `DESIGN.md` §8 has been corrected; the
+1.5.0 matching on both sides - see `ENVIRONMENT.md`). `DESIGN.md` §8 has been corrected; the
 constitution has not.
 
-Per the Amendment clause this requires a `docs(spec):` commit and a version bump — **MINOR**
+Per the Amendment clause this requires a `docs(spec):` commit and a version bump - **MINOR**
 (guidance materially changed, no principle removed or redefined), so **1.1.0 → 1.2.0**. This is
 flagged rather than done: it is outside this feature's declared scope, and Principle I forbids
 quietly widening scope. It does not block this feature, which touches no Unity tooling.
@@ -107,14 +107,14 @@ quietly widening scope. It does not block this feature, which touches no Unity t
 specs/002-data-authenticity/
 ├── plan.md              # This file
 ├── spec.md              # Feature specification (done)
-├── research.md          # Phase 0 output — A1..A11 decisions (done)
+├── research.md          # Phase 0 output - A1..A11 decisions (done)
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
 ├── contracts/
 │   └── authenticity-api.md   # Phase 1 output
 ├── checklists/
 │   └── requirements.md  # Spec quality checklist (done, all pass)
-└── tasks.md             # Phase 2 output (/speckit-tasks — NOT created here)
+└── tasks.md             # Phase 2 output (/speckit-tasks - NOT created here)
 ```
 
 ### Source Code (repository root)
@@ -123,7 +123,7 @@ specs/002-data-authenticity/
 python/
 ├── eda/
 │   ├── config.py           # MODIFIED: new named constants (lattice tol, gap factor, MAD k)
-│   ├── loader.py           # unchanged — reused as-is
+│   ├── loader.py           # unchanged - reused as-is
 │   ├── fingerprint.py      # unchanged
 │   ├── stats.py            # unchanged
 │   ├── report.py           # unchanged (M1 orchestration stays intact)
@@ -147,7 +147,7 @@ results/
 ```
 
 **Structure Decision**: Extend the existing single-package layout rather than introduce a new
-package. The two new modules split along a real seam — `integrity.py` answers *structural*
+package. The two new modules split along a real seam - `integrity.py` answers *structural*
 questions about the recording (is it continuous, complete, unduplicated, on-lattice) and needs
 no hypothesis testing, while `authenticity.py` answers *distributional* questions and is
 entirely hypothesis tests plus verdict classification. Keeping them separate means the
@@ -163,5 +163,5 @@ existing convention where only `report.py` writes.
 The one deviation worth naming is not a violation but a deliberate cost: the tampered-fixture
 requirement (FR-025) roughly doubles the test-writing effort versus asserting on clean data
 only. It is accepted because a detector demonstrated only on clean input has not been
-demonstrated at all — and because "how do you know your check works?" is precisely the question
+demonstrated at all - and because "how do you know your check works?" is precisely the question
 an examiner asks about a fraud-detection claim.

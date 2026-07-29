@@ -140,7 +140,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 2.0000000000575113e-07,
-        "evidence": "40 distinct values, every one an integer multiple of 0.05 within 1e-06 (largest residual 2e-07) — a lattice with 41 support points, 1 of them never observed"
+        "evidence": "40 distinct values, every one an integer multiple of 0.05 within 1e-06 (largest residual 2e-07) - a lattice with 41 support points, 1 of them never observed"
       },
       {
         "column": "throttle",
@@ -153,7 +153,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "5,044 values distinct at tolerance 1e-06 (> 100) — recorded at full float resolution, treated as continuous"
+        "evidence": "5,044 values distinct at tolerance 1e-06 (> 100) - recorded at full float resolution, treated as continuous"
       },
       {
         "column": "brake",
@@ -166,7 +166,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "one distinct value (0) in all 10,615 rows — constant; statistics that need variation are not computed on it"
+        "evidence": "one distinct value (0) in all 10,615 rows - constant; statistics that need variation are not computed on it"
       },
       {
         "column": "speed",
@@ -179,7 +179,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "10,533 values distinct at tolerance 1e-06 (> 100) — recorded at full float resolution, treated as continuous"
+        "evidence": "10,533 values distinct at tolerance 1e-06 (> 100) - recorded at full float resolution, treated as continuous"
       }
     ],
     "track2": [
@@ -236,7 +236,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 2.0000000000575113e-07,
-        "evidence": "41 distinct values, every one an integer multiple of 0.05 within 1e-06 (largest residual 2e-07) — a lattice with 41 support points, 0 of them never observed"
+        "evidence": "41 distinct values, every one an integer multiple of 0.05 within 1e-06 (largest residual 2e-07) - a lattice with 41 support points, 0 of them never observed"
       },
       {
         "column": "throttle",
@@ -249,7 +249,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "10,127 values distinct at tolerance 1e-06 (> 100) — recorded at full float resolution, treated as continuous"
+        "evidence": "10,127 values distinct at tolerance 1e-06 (> 100) - recorded at full float resolution, treated as continuous"
       },
       {
         "column": "brake",
@@ -262,7 +262,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "1,708 values distinct at tolerance 1e-06 (> 100) — recorded at full float resolution, treated as continuous"
+        "evidence": "1,708 values distinct at tolerance 1e-06 (> 100) - recorded at full float resolution, treated as continuous"
       },
       {
         "column": "speed",
@@ -275,7 +275,7 @@
         "off_lattice_values": [],
         "tolerance": 1e-06,
         "max_residual": 0.0,
-        "evidence": "21,722 values distinct at tolerance 1e-06 (> 100) — recorded at full float resolution, treated as continuous"
+        "evidence": "21,722 values distinct at tolerance 1e-06 (> 100) - recorded at full float resolution, treated as continuous"
       }
     ]
   },
@@ -346,7 +346,7 @@
   "tests": [
     {
       "test_id": "T1_uniform_gof",
-      "null_hypothesis": "steering je uniformno raspoređen po 41 nivoa rešetke — svaka vrijednost jednako vjerovatna, kako bi ih dao uniformni generator",
+      "null_hypothesis": "steering je uniformno raspoređen po 41 nivoa rešetke - svaka vrijednost jednako vjerovatna, kako bi ih dao uniformni generator",
       "scope": "track1",
       "statistic": 264576.532642487,
       "dof": 40,
@@ -355,7 +355,7 @@
       "alpha": 0.05,
       "reject_null": true,
       "n_categories_pooled": 0,
-      "interpretation": "ODBAČENO, kako smo i očekivali. Steering ima strukturu kakvu uniformni generator slučajnih brojeva ne proizvodi — to je dokaz PROTIV toga da je kolona izmišljena."
+      "interpretation": "ODBAČENO, kako smo i očekivali. Steering ima strukturu kakvu uniformni generator slučajnih brojeva ne proizvodi - to je dokaz PROTIV toga da je kolona izmišljena."
     },
     {
       "test_id": "T2_symmetry",
@@ -368,11 +368,11 @@
       "alpha": 0.05,
       "reject_null": true,
       "n_categories_pooled": 2,
-      "interpretation": "ODBAČENO: lijevo/desno = 1,849 / 344 (odnos 5.375) — razlika je prevelika da bi bila slučajna. Odbacivanje samo po sebi NIJE sumnjivo: ono govori da asimetrija postoji, ne odakle dolazi. Uz to, pri ovolikom uzorku χ² vidi i sasvim malu neravnotežu, pa odnos treba čitati zajedno sa p-vrijednošću. Mehanizam i veličinu efekta vidi u verdiktu."
+      "interpretation": "ODBAČENO: lijevo/desno = 1,849 / 344 (odnos 5.375) - razlika je prevelika da bi bila slučajna. Odbacivanje samo po sebi NIJE sumnjivo: ono govori da asimetrija postoji, ne odakle dolazi. Uz to, pri ovolikom uzorku χ² vidi i sasvim malu neravnotežu, pa odnos treba čitati zajedno sa p-vrijednošću. Mehanizam i veličinu efekta vidi u verdiktu."
     },
     {
       "test_id": "T1_uniform_gof",
-      "null_hypothesis": "steering je uniformno raspoređen po 41 nivoa rešetke — svaka vrijednost jednako vjerovatna, kako bi ih dao uniformni generator",
+      "null_hypothesis": "steering je uniformno raspoređen po 41 nivoa rešetke - svaka vrijednost jednako vjerovatna, kako bi ih dao uniformni generator",
       "scope": "track2",
       "statistic": 198114.92221000555,
       "dof": 40,
@@ -381,7 +381,7 @@
       "alpha": 0.05,
       "reject_null": true,
       "n_categories_pooled": 0,
-      "interpretation": "ODBAČENO, kako smo i očekivali. Steering ima strukturu kakvu uniformni generator slučajnih brojeva ne proizvodi — to je dokaz PROTIV toga da je kolona izmišljena."
+      "interpretation": "ODBAČENO, kako smo i očekivali. Steering ima strukturu kakvu uniformni generator slučajnih brojeva ne proizvodi - to je dokaz PROTIV toga da je kolona izmišljena."
     },
     {
       "test_id": "T2_symmetry",
@@ -394,7 +394,7 @@
       "alpha": 0.05,
       "reject_null": true,
       "n_categories_pooled": 0,
-      "interpretation": "ODBAČENO: lijevo/desno = 5,768 / 5,485 (odnos 1.052) — razlika je prevelika da bi bila slučajna. Odbacivanje samo po sebi NIJE sumnjivo: ono govori da asimetrija postoji, ne odakle dolazi. Uz to, pri ovolikom uzorku χ² vidi i sasvim malu neravnotežu, pa odnos treba čitati zajedno sa p-vrijednošću. Mehanizam i veličinu efekta vidi u verdiktu."
+      "interpretation": "ODBAČENO: lijevo/desno = 5,768 / 5,485 (odnos 1.052) - razlika je prevelika da bi bila slučajna. Odbacivanje samo po sebi NIJE sumnjivo: ono govori da asimetrija postoji, ne odakle dolazi. Uz to, pri ovolikom uzorku χ² vidi i sasvim malu neravnotežu, pa odnos treba čitati zajedno sa p-vrijednošću. Mehanizam i veličinu efekta vidi u verdiktu."
     },
     {
       "test_id": "T3_homogeneity",
@@ -415,15 +415,15 @@
       "finding_id": "track1:brake:constant",
       "summary": "track1: kolona 'brake' ima tačno jednu vrijednost u svih 10,615 redova",
       "classification": "explainable",
-      "mechanism": "staza 1 je ravna zatvorena petlja — vozač nijednom nije zakočio. Obrisana kolona i nikad korištena kolona izgledaju isto u brojkama; razlikuje ih to što ista kolona drugdje varira (track2: 1,708 različitih), dakle format je ispravan i pisač kolone radi",
-      "downstream_consequence": "M1 je nad spojenim podacima prijavio brake_is_dead: false (94,6 % nula). To je artefakt spajanja — po stazi je kolona mrtva",
+      "mechanism": "staza 1 je ravna zatvorena petlja - vozač nijednom nije zakočio. Obrisana kolona i nikad korištena kolona izgledaju isto u brojkama; razlikuje ih to što ista kolona drugdje varira (track2: 1,708 različitih), dakle format je ispravan i pisač kolone radi",
+      "downstream_consequence": "M1 je nad spojenim podacima prijavio brake_is_dead: false (94,6 % nula). To je artefakt spajanja - po stazi je kolona mrtva",
       "mitigation": "kočnicu izvještavati po stazi, nikad spojeno; ne koristiti je kao ulaz za model treniran samo na stazi 1"
     },
     {
       "finding_id": "track1:steering:unobserved_levels",
       "summary": "track1: nivoi [0.95] postoje u rešetki ali se nikad ne pojavljuju",
       "classification": "explainable",
-      "mechanism": "nivo koji vozač jednostavno nije upotrijebio. Da je neko brisao redove, nestajali bi cijeli opsezi vrijednosti i vidjeli bismo rupu i u vremenu — ovdje je nestao jedan izolovan nivo dok mu susjedi i ogledalni parnjak postoje",
+      "mechanism": "nivo koji vozač jednostavno nije upotrijebio. Da je neko brisao redove, nestajali bi cijeli opsezi vrijednosti i vidjeli bismo rupu i u vremenu - ovdje je nestao jedan izolovan nivo dok mu susjedi i ogledalni parnjak postoje",
       "downstream_consequence": null,
       "mitigation": null
     },
@@ -431,7 +431,7 @@
       "finding_id": "track1data:timeline:gap@10614",
       "summary": "track1data: rupa od 0.474 s (prag 0.355 s) na redu 10614",
       "classification": "explainable",
-      "mechanism": "rupa pada na POSLJEDNJI kadar snimka — to je gašenje snimača, ne izrezan komad. Izrezan blok bi ostavio rupu u SREDINI i skok u sadržaju na spoju; ovdje su brzina i steering neprekidni preko nje",
+      "mechanism": "rupa pada na POSLJEDNJI kadar snimka - to je gašenje snimača, ne izrezan komad. Izrezan blok bi ostavio rupu u SREDINI i skok u sadržaju na spoju; ovdje su brzina i steering neprekidni preko nje",
       "downstream_consequence": null,
       "mitigation": null
     },
@@ -439,7 +439,7 @@
       "finding_id": "track1:duplicates:tuples",
       "summary": "track1: 12 ponovljenih četvorki mjerenja na različitim kadrovima",
       "classification": "explainable",
-      "mechanism": "steering ima samo 41 mogući nivo, pa je prostor vrijednosti mali i sudari se dešavaju sami od sebe. Da je riječ o kopiranju redova, ponovile bi se i putanje slika — a njih ima 0",
+      "mechanism": "steering ima samo 41 mogući nivo, pa je prostor vrijednosti mali i sudari se dešavaju sami od sebe. Da je riječ o kopiranju redova, ponovile bi se i putanje slika - a njih ima 0",
       "downstream_consequence": null,
       "mitigation": null
     },
@@ -447,7 +447,7 @@
       "finding_id": "track2:duplicates:tuples",
       "summary": "track2: 4 ponovljenih četvorki mjerenja na različitim kadrovima",
       "classification": "explainable",
-      "mechanism": "steering ima samo 41 mogući nivo, pa je prostor vrijednosti mali i sudari se dešavaju sami od sebe. Da je riječ o kopiranju redova, ponovile bi se i putanje slika — a njih ima 0",
+      "mechanism": "steering ima samo 41 mogući nivo, pa je prostor vrijednosti mali i sudari se dešavaju sami od sebe. Da je riječ o kopiranju redova, ponovile bi se i putanje slika - a njih ima 0",
       "downstream_consequence": null,
       "mitigation": null
     },
@@ -455,47 +455,47 @@
       "finding_id": "track1data:plausibility:outliers",
       "summary": "track1data: 796 kadrova (7.5 %) van pojasa median ± 5×MAD impliciranog ubrzanja",
       "classification": "explainable",
-      "mechanism": "raspodjela impliciranog ubrzanja ima uzak centar i široke repove (MAD = 1.46, ali maksimum = 12.8): gas i kočnica se pri 14 kadrova/s koriste u naletima, pa pojas od 5×MAD oko uskog centra pada oko 97. percentila. Visok procenat je oblik raspodjele, a ne trag friziranja — potpis spajanja bio bi ekstrem koji se POKLAPA sa rupom u vremenu, a takvog poklapanja nema",
+      "mechanism": "raspodjela impliciranog ubrzanja ima uzak centar i široke repove (MAD = 1.46, ali maksimum = 12.8): gas i kočnica se pri 14 kadrova/s koriste u naletima, pa pojas od 5×MAD oko uskog centra pada oko 97. percentila. Visok procenat je oblik raspodjele, a ne trag friziranja - potpis spajanja bio bi ekstrem koji se POKLAPA sa rupom u vremenu, a takvog poklapanja nema",
       "downstream_consequence": "apsolutni broj outliera se ne smije citirati kao mjera ispravnosti podataka",
-      "mitigation": "koristiti ga isključivo relativno — porediti ekstreme sa rupama u vremenu, a ne sa fiksnim pragom"
+      "mitigation": "koristiti ga isključivo relativno - porediti ekstreme sa rupama u vremenu, a ne sa fiksnim pragom"
     },
     {
       "finding_id": "track2data:plausibility:outliers",
       "summary": "track2data: 982 kadrova (4.5 %) van pojasa median ± 5×MAD impliciranog ubrzanja",
       "classification": "explainable",
-      "mechanism": "raspodjela impliciranog ubrzanja ima uzak centar i široke repove (MAD = 2.15, ali maksimum = 25.7): gas i kočnica se pri 14 kadrova/s koriste u naletima, pa pojas od 5×MAD oko uskog centra pada oko 97. percentila. Visok procenat je oblik raspodjele, a ne trag friziranja — potpis spajanja bio bi ekstrem koji se POKLAPA sa rupom u vremenu, a takvog poklapanja nema",
+      "mechanism": "raspodjela impliciranog ubrzanja ima uzak centar i široke repove (MAD = 2.15, ali maksimum = 25.7): gas i kočnica se pri 14 kadrova/s koriste u naletima, pa pojas od 5×MAD oko uskog centra pada oko 97. percentila. Visok procenat je oblik raspodjele, a ne trag friziranja - potpis spajanja bio bi ekstrem koji se POKLAPA sa rupom u vremenu, a takvog poklapanja nema",
       "downstream_consequence": "apsolutni broj outliera se ne smije citirati kao mjera ispravnosti podataka",
-      "mitigation": "koristiti ga isključivo relativno — porediti ekstreme sa rupama u vremenu, a ne sa fiksnim pragom"
+      "mitigation": "koristiti ga isključivo relativno - porediti ekstreme sa rupama u vremenu, a ne sa fiksnim pragom"
     },
     {
       "finding_id": "track1:T1",
       "summary": "track1: uniformnost odbačena (χ² = 264,577, dof = 40)",
       "classification": "explainable",
-      "mechanism": "stvarna vožnja je dominantno pravo — 79.3 % kadrova ima steering tačno 0. Nijedan uniformni generator to ne proizvodi",
+      "mechanism": "stvarna vožnja je dominantno pravo - 79.3 % kadrova ima steering tačno 0. Nijedan uniformni generator to ne proizvodi",
       "downstream_consequence": null,
       "mitigation": null
     },
     {
       "finding_id": "track1:T2:material",
-      "summary": "track1: simetrija odbačena, odnos lijevo/desno = 5.375 — velika, stvarna asimetrija",
+      "summary": "track1: simetrija odbačena, odnos lijevo/desno = 5.375 - velika, stvarna asimetrija",
       "classification": "explainable",
       "mechanism": "zatvorena petlja vožena u jednom smjeru (suprotno kazaljci na satu): svaki krug daje isti broj lijevih zaokreta, a desnih gotovo nema",
-      "downstream_consequence": "ozbiljan rizik za M4 — BC model naučen na ovim podacima vuče lijevo i na pravcu",
+      "downstream_consequence": "ozbiljan rizik za M4 - BC model naučen na ovim podacima vuče lijevo i na pravcu",
       "mitigation": "horizontalno ogledanje slike uz promjenu znaka steeringa (udvostručuje podatke i izjednačava lijevo/desno)"
     },
     {
       "finding_id": "track2:T1",
       "summary": "track2: uniformnost odbačena (χ² = 198,115, dof = 40)",
       "classification": "explainable",
-      "mechanism": "stvarna vožnja je dominantno pravo — 48.4 % kadrova ima steering tačno 0. Nijedan uniformni generator to ne proizvodi",
+      "mechanism": "stvarna vožnja je dominantno pravo - 48.4 % kadrova ima steering tačno 0. Nijedan uniformni generator to ne proizvodi",
       "downstream_consequence": null,
       "mitigation": null
     },
     {
       "finding_id": "track2:T2:negligible",
-      "summary": "track2: simetrija odbačena, ali odnos lijevo/desno = 1.052 — praktično zanemarivo",
+      "summary": "track2: simetrija odbačena, ali odnos lijevo/desno = 1.052 - praktično zanemarivo",
       "classification": "explainable",
-      "mechanism": "veličina uzorka, ne veličina efekta. Pri desetinama hiljada kadrova χ² vidi i neravnotežu od nekoliko procenata. Statistička značajnost nije isto što i praktična — zato uz svaki test izvještavamo i odnos, a ne samo p-vrijednost",
+      "mechanism": "veličina uzorka, ne veličina efekta. Pri desetinama hiljada kadrova χ² vidi i neravnotežu od nekoliko procenata. Statistička značajnost nije isto što i praktična - zato uz svaki test izvještavamo i odnos, a ne samo p-vrijednost",
       "downstream_consequence": null,
       "mitigation": null
     },
@@ -509,7 +509,7 @@
     }
   ],
   "calibration_unchanged": true,
-  "calibration_note": "Prag |Δsteering| (P95) ponovo izračunat: 0.5500001 naspram M1 0.5500001. Robustan opseg steeringa (P1–P99): (-1.000, 1.000) naspram M1 (-1.000, 1.000). NEPROMIJENJENO. Razlog: oba broja su percentili, dakle redoslijedne statistike — čitaju se iz sortiranih vrijednosti i potpuno su nezavisne od toga da li varijablu zovemo diskretnom ili kontinualnom. Uzgred, prag je 11 koraka rešetke, što potvrđuje da pada tačno na dozvoljenu vrijednost.",
+  "calibration_note": "Prag |Δsteering| (P95) ponovo izračunat: 0.5500001 naspram M1 0.5500001. Robustan opseg steeringa (P1–P99): (-1.000, 1.000) naspram M1 (-1.000, 1.000). NEPROMIJENJENO. Razlog: oba broja su percentili, dakle redoslijedne statistike - čitaju se iz sortiranih vrijednosti i potpuno su nezavisne od toga da li varijablu zovemo diskretnom ili kontinualnom. Uzgred, prag je 11 koraka rešetke, što potvrđuje da pada tačno na dozvoljenu vrijednost.",
   "seed": 42,
   "alpha": 0.05,
   "lattice_tolerance": 1e-06

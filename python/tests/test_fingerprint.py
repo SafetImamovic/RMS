@@ -1,7 +1,7 @@
 """Tests for python/eda/fingerprint.py (US1).
 
 We build a frame whose numeric columns have KNOWN identities and assert the rule-based
-inference recovers them — including the case where columns are shuffled, proving the
+inference recovers them - including the case where columns are shuffled, proving the
 inference relies on statistics, not on position/name.
 """
 

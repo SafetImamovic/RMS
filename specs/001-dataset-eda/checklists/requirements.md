@@ -34,5 +34,5 @@
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
 - One tension noted: the spec names the dataset domain (Udacity simulator, CSV columns) and
   Python as the environment. These are treated as given project context/assumptions, not as
-  premature implementation choices — the *how* (specific libraries, notebook structure, fit
+  premature implementation choices - the *how* (specific libraries, notebook structure, fit
   procedure) is deliberately left to `/speckit-plan`.

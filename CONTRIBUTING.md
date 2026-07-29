@@ -1,8 +1,8 @@
-# CONTRIBUTING — git konvencije
+# CONTRIBUTING - git konvencije
 
 Solo projekat, ali historija se vodi kao da je tim: git flow grane + atomic commiti.
 Unity specifičnosti verzionisanja (šta se commita, .meta fajlovi, LFS) su u
-[WORKFLOW.md](WORKFLOW.md) §3 — pročitati prije prvog commita.
+[WORKFLOW.md](WORKFLOW.md) §3 - pročitati prije prvog commita.
 
 ## Grane (git flow)
 
@@ -36,13 +36,13 @@ git branch -d feature/car-agent
 ## Atomic commiti
 
 Jedan commit = **jedna logička promjena** koja ostavlja projekat u konzistentnom
-stanju. Test: možeš li commit opisati jednom rečenicom bez "i"? Ako ne — podijeli
+stanju. Test: možeš li commit opisati jednom rečenicom bez "i"? Ako ne - podijeli
 (`git add -p` za djelimično stage-anje).
 
 - ✅ `feat(unity): add checkpoint system with direction detection`
 - ✅ `docs: add reward table to DESIGN.md`
-- ❌ `feat: add checkpoints, fix car physics and update README` — tri commita
-- ❌ `wip` / `changes` / `update` — ništa ne govori
+- ❌ `feat: add checkpoints, fix car physics and update README` - tri commita
+- ❌ `wip` / `changes` / `update` - ništa ne govori
 
 Unity napomena: skripta + njen `.meta` + izmjena scene koja je koristi = jedna
 logička promjena, ide zajedno. `.meta` fajl nikad ne smije ostati van commita
@@ -53,7 +53,7 @@ svog fajla.
 ```
 <tip>(<scope>): <opis u imperativu, malim slovom, ≤50 znakova>
 
-<tijelo — opciono: ZAŠTO, ne šta; wrap na 72>
+<tijelo - opciono: ZAŠTO, ne šta; wrap na 72>
 ```
 
 | Tip | Kada |
@@ -81,7 +81,7 @@ near-zero steering variance on straight segments.
 
 ## Checklist prije commita
 
-1. `git status` — samo očekivani fajlovi? Nema `Library/`, `data/`, `.venv/`?
+1. `git status` - samo očekivani fajlovi? Nema `Library/`, `data/`, `.venv/`?
 2. Svaki novi fajl u `Assets/` ima svoj `.meta` u istom commitu?
 3. Projekat konzistentan (Unity Console bez grešaka / testovi prolaze)?
 4. Poruka po formatu, jedna logička promjena?

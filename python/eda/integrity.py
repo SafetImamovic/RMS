@@ -5,7 +5,7 @@ convenient than it really is: dropping the bad runs, copying a good stretch to i
 row count, gluing two recordings together, hand-"fixing" values.
 
 Every function here answers one question of the form *"if someone had done X, what would the
-data look like?"* — and then measures whether the data looks like that. A check without a
+data look like?"* - and then measures whether the data looks like that. A check without a
 stated expected signature proves nothing, so each one carries its signature in the docstring.
 
 All functions are pure: they read a TrackDataset and return plain values. Nothing here
@@ -24,7 +24,7 @@ import pandas as pd
 from . import config
 from .loader import TrackDataset, _basename
 
-# The recorder names frames  <cam>_YYYY_MM_DD_HH_MM_SS_mmm.jpg  — the capture time is the
+# The recorder names frames  <cam>_YYYY_MM_DD_HH_MM_SS_mmm.jpg  - the capture time is the
 # only clock the dataset carries, so the whole timeline analysis rests on this pattern.
 _TS_PATTERN = re.compile(r"(\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}_\d{3})")
 _TS_FORMAT = "%Y_%m_%d_%H_%M_%S_%f"
@@ -39,7 +39,7 @@ _MAX_EXAMPLES = 20
 # =======================================================================================
 @dataclass(frozen=True)
 class RecordingSession:
-    """One contiguous run of driving-log records — the unit over which time is meaningful.
+    """One contiguous run of driving-log records - the unit over which time is meaningful.
 
     Sessions are contiguous and non-overlapping in ROW INDEX, but may invert in TIME: the
     combined file lists track1 first, yet track2 was recorded earlier the same day. Nothing
@@ -131,7 +131,7 @@ def parse_capture_times(ds: TrackDataset) -> tuple[pd.Series, int]:
     """Extract capture timestamps from the centre-image filenames.
 
     Returns `(times, n_unparseable)`. Rows whose filename carries no timestamp come back as
-    NaT and are COUNTED — a caller can never mistake "no failures" for "failures were
+    NaT and are COUNTED - a caller can never mistake "no failures" for "failures were
     quietly dropped" (FR-001).
     """
     names = ds.df["center"].astype(str).map(_basename)
@@ -164,7 +164,7 @@ def split_sessions(ds: TrackDataset) -> list[RecordingSession]:
     """Segment a source into contiguous recording sessions (FR-002, research A1).
 
     track1 and track2 yield one session each; the combined file yields two. Sessions are
-    derived from the data, never assumed — and a session boundary is a hard wall: no
+    derived from the data, never assumed - and a session boundary is a hard wall: no
     timeline or plausibility figure is ever computed across one.
     """
     labels = _session_labels(ds)
@@ -206,7 +206,7 @@ def _session_times(ds: TrackDataset, session: RecordingSession) -> pd.Series:
 
 
 # =======================================================================================
-# US1 — provenance and integrity audit
+# US1 - provenance and integrity audit
 # =======================================================================================
 def check_timeline(ds: TrackDataset) -> list[TimelineReport]:
     """Is each recording continuous and complete? (FR-003)
@@ -218,7 +218,7 @@ def check_timeline(ds: TrackDataset) -> list[TimelineReport]:
 
     So the whole interval distribution is reported, not only the maximum. The gap threshold
     is derived from the data (`GAP_FACTOR x median`), never guessed, and everything is
-    computed PER SESSION — measuring across the combined file's junction would report a
+    computed PER SESSION - measuring across the combined file's junction would report a
     ~-80 minute jump in a perfectly sound dataset (research A1).
     """
     _, n_unparseable_total = parse_capture_times(ds)
@@ -315,7 +315,7 @@ def check_duplicates(ds: TrackDataset) -> DuplicationReport:
     dup_images = df["center"].duplicated(keep="first")
     dup_tuples = df.duplicated(subset=config.NUMERIC_COLUMNS, keep="first")
 
-    # Class 3 is specifically "same numbers, different frame" — a row that also repeats its
+    # Class 3 is specifically "same numbers, different frame" - a row that also repeats its
     # image belongs to class 1/2 and must not be counted here as well.
     tuples_only = dup_tuples & ~dup_images
 
@@ -351,7 +351,7 @@ def check_plausibility(ds: TrackDataset) -> list[PlausibilityReport]:
 
     The criterion is deliberately RELATIVE. The `speed` column's unit is undocumented in the
     Udacity format, so a claim like "the acceleration stays under 1 g" would rest on an
-    assumption we cannot check — and false precision is worse than an honest relative
+    assumption we cannot check - and false precision is worse than an honest relative
     measure. What we can say is which steps stand out against the rest of the same
     recording, which is exactly the signature of splicing or deleting rows.
 
@@ -425,7 +425,7 @@ _UNITS_NOTE = (
 
 
 # =======================================================================================
-# US2 — measurement granularity
+# US2 - measurement granularity
 # =======================================================================================
 # Candidate lattice steps are grouped at 1e-12 before taking the most common one: four
 # orders of magnitude finer than LATTICE_ATOL, and four coarser than float noise (~1e-16),
@@ -454,7 +454,7 @@ def _lattice_spacing(unique_values: np.ndarray) -> float | None:
     it is exactly the statistic a tampered value destroys: one number nudged by 0.023 makes
     the smallest step 0.023 and the whole column stops looking like a lattice, hiding the
     culprit instead of naming it. The most common step survives a handful of edits, so the
-    offending values can be pointed at individually — which is the finding we want.
+    offending values can be pointed at individually - which is the finding we want.
     """
     if unique_values.size < 2:
         return None
@@ -470,13 +470,13 @@ def profile_granularity(ds: TrackDataset) -> list[GranularityProfile]:
     """How finely was each numeric column actually recorded? (FR-006..FR-008)
 
     This is the question M1 never asked, and it changes what a correct test looks like.
-    Steering turns out to live on a 0.05 lattice with 41 possible values — a *discrete*
+    Steering turns out to live on a 0.05 lattice with 41 possible values - a *discrete*
     variable. Fitting a smooth density to it is misspecified by construction, so M1's
     chi-square rejection was a property of the model, not a discovery about the data.
 
     Expected signature of tampering: a value that is NOT an integer multiple of the step in
-    an otherwise perfect lattice. That means someone computed a new number — smoothing,
-    interpolation, augmentation — and wrote it back (research A3).
+    an otherwise perfect lattice. That means someone computed a new number - smoothing,
+    interpolation, augmentation - and wrote it back (research A3).
     """
     atol = config.LATTICE_ATOL
     profiles: list[GranularityProfile] = []
@@ -518,7 +518,7 @@ def profile_granularity(ds: TrackDataset) -> list[GranularityProfile]:
                     tolerance=atol,
                     evidence=(
                         f"one distinct value ({observed[0]:g}) in all {values.size:,} rows "
-                        "— constant; statistics that need variation are not computed on it"
+                        "- constant; statistics that need variation are not computed on it"
                     ),
                 )
             )
@@ -536,7 +536,7 @@ def profile_granularity(ds: TrackDataset) -> list[GranularityProfile]:
                     tolerance=atol,
                     evidence=(
                         f"{n_distinct:,} values distinct at tolerance {atol:g} "
-                        f"(> {config.DISCRETE_MAX_DISTINCT}) — recorded at full float "
+                        f"(> {config.DISCRETE_MAX_DISTINCT}) - recorded at full float "
                         "resolution, treated as continuous"
                     ),
                 )
@@ -579,7 +579,7 @@ def profile_granularity(ds: TrackDataset) -> list[GranularityProfile]:
         if is_lattice:
             evidence = (
                 f"{n_distinct} distinct values, every one an integer multiple of "
-                f"{spacing:g} within {atol:g} (largest residual {max_residual:.3g}) — a "
+                f"{spacing:g} within {atol:g} (largest residual {max_residual:.3g}) - a "
                 f"lattice with {len(support)} support points, {len(unobserved)} of them "
                 "never observed"
             )
@@ -587,7 +587,7 @@ def profile_granularity(ds: TrackDataset) -> list[GranularityProfile]:
             evidence = (
                 f"{n_distinct} distinct values on an otherwise regular {spacing:g} step, "
                 f"but {off_lattice.size} value(s) are NOT integer multiples of it (largest "
-                f"residual {max_residual:.3g} vs tolerance {atol:g}) — the signature of "
+                f"residual {max_residual:.3g} vs tolerance {atol:g}) - the signature of "
                 "recomputed values written back into the log"
             )
 

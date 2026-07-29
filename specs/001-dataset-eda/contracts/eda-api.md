@@ -28,13 +28,13 @@ def resolve_image_paths(ds: TrackDataset) -> TrackDataset:
 
 def check_integrity(ds: TrackDataset) -> IntegrityReport:
     """Return row_count, image_count, integrity_ok (rows*3 == images),
-    and unresolved_rows (sampled + full count). Never raises on data issues — reports them."""
+    and unresolved_rows (sampled + full count). Never raises on data issues - reports them."""
 ```
 
 **Contract guarantees**
 - `load_track` never silently drops rows; malformed rows surface as a raised error or a
   reported count, never a quiet skip.
-- `resolve_image_paths` is path-string only — it does not open image files.
+- `resolve_image_paths` is path-string only - it does not open image files.
 - `check_integrity` is side-effect free (no writes).
 
 ## fingerprint.py
@@ -72,6 +72,6 @@ def run_m1(primary: str = "combined") -> CalibrationOutput:
 ```
 
 **Contract guarantees**
-- Writes only under `results/` — never touches `dataset/`, never mutates git.
+- Writes only under `results/` - never touches `dataset/`, never mutates git.
 - Given the fixed SEED, two runs produce identical `m1_stats.json` (SC-006).
 - `m1_stats.json` contains exactly the CalibrationOutput fields feeding DESIGN §4.4/§4.5.

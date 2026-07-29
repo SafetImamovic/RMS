@@ -104,14 +104,14 @@ CHI2_MIN_EXPECTED_PER_BIN: int = 5
 # real log showed that is too tight: every steering level with |value| > 0.45 is recorded
 # with a systematic offset of up to 2e-7 (-0.9500002, 0.5000001, ...), while +-0.7 and +-1.0
 # are exact. That is how the simulator writes the column, not a manipulation of it, and at
-# 1e-8 the check would have reported 18 sound levels as tampered — the exact false alarm
+# 1e-8 the check would have reported 18 sound levels as tampered - the exact false alarm
 # this feature exists to avoid. 1e-6 absorbs it while staying 50,000x below the 0.05 step,
 # so it can never merge two neighbouring levels. The largest residual actually observed is
 # reported in every granularity profile, so nothing hides behind the tolerance.
 LATTICE_ATOL: float = 1e-6
 
 # A column with at most this many distinct values is a candidate discrete column. Observed:
-# ~41 levels for steering vs 5,090-21,743 for throttle/speed — three orders of magnitude, so
+# ~41 levels for steering vs 5,090-21,743 for throttle/speed - three orders of magnitude, so
 # the exact cut-off does not matter, only that it is named and not buried (research A3).
 DISCRETE_MAX_DISTINCT: int = 100
 

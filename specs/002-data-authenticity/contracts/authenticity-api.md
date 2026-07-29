@@ -65,7 +65,7 @@ def check_plausibility(ds: TrackDataset) -> list[PlausibilityReport]:
   `constant` rather than emitting statistics undefined on it.
 - Lattice detection tolerates floating-point representation error; exact equality is never
   required.
-- All functions are side-effect free — no writes, no mutation of the input `TrackDataset`.
+- All functions are side-effect free - no writes, no mutation of the input `TrackDataset`.
 
 ## authenticity.py
 
@@ -120,8 +120,8 @@ Each check family requires **both** directions of evidence:
 | duplicates | a copied-and-appended block | repeated measurement tuples with distinct images |
 | lattice | one value nudged off-lattice | float representation error in on-lattice values |
 | plausibility | an injected impossible speed jump | ordinary acceleration |
-| session split | — | a synthetic two-session junction (no cross-boundary alarm) |
+| session split | - | a synthetic two-session junction (no cross-boundary alarm) |
 
 The right-hand column is not optional. A check that flags a clean dataset as tampered is as
 serious a defect as one that misses tampering, and it is the failure mode this feature is most
-exposed to — the combined-source time inversion (research A1) is exactly that trap.
+exposed to - the combined-source time inversion (research A1) is exactly that trap.

@@ -38,10 +38,10 @@
 Two issues were found on the first pass and corrected before this checklist was marked
 complete:
 
-1. **Implementation leakage** — an early draft named the two new modules and their file paths
+1. **Implementation leakage** - an early draft named the two new modules and their file paths
    directly in the functional requirements. Rewritten as capability statements; the module
    split now appears only in Assumptions as a structural constraint, not as a requirement.
-2. **Unfalsifiable success criterion** — an early SC read "the dataset is shown to be
+2. **Unfalsifiable success criterion** - an early SC read "the dataset is shown to be
    untampered", which cannot fail and presumes the conclusion. Replaced with SC-002/SC-003,
    which require the *evidence* to be reported regardless of which way it comes out.
 
@@ -52,6 +52,6 @@ the Assumptions section:
 | Decision | Default chosen | Rationale |
 |---|---|---|
 | Replace or retain M1's continuous fit in the notebook | Retain, present alongside corrected treatment | Showing the misspecification is pedagogically stronger and preserves reviewed history |
-| Regenerate M1 machine-readable output | No — write new files, amend prose only | M1 outputs are committed, reviewed artifacts; silent regeneration breaks traceability |
+| Regenerate M1 machine-readable output | No - write new files, amend prose only | M1 outputs are committed, reviewed artifacts; silent regeneration breaks traceability |
 | Whether this feature blocks M2 | Does not block | It changes no value the Unity environment consumes unless FR-018 finds otherwise |
 | Significance level | α = 0.05, inherited from M1 | Consistency across milestones; deviation would need justification |
