@@ -90,6 +90,7 @@ Per numeric column: how finely the value was actually recorded (FR-006..FR-008).
 | `unobserved_support` | `list[float]` | Support points never observed on this track |
 | `off_lattice_values` | `list[float]` | Values not on the lattice — the strongest tampering signal |
 | `tolerance` | `float` | The tolerance used, reported (FR-008) |
+| `max_residual` | `float` | Largest observed distance to the nearest lattice point (research A3.1) |
 | `evidence` | `str` | One-line plain-language justification |
 
 **Rules**
@@ -99,6 +100,8 @@ Per numeric column: how finely the value was actually recorded (FR-006..FR-008).
 - `support` spans observed min..max on the lattice, so a never-observed interior point appears
   in `unobserved_support` rather than silently shrinking the support.
 - `off_lattice_values` non-empty is a finding in its own right, regardless of any test.
+- `max_residual` is reported even when the column is a clean lattice, so the tolerance can
+  never become a place to hide a deviation behind.
 
 ---
 

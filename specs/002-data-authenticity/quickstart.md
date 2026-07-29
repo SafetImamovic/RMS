@@ -47,28 +47,58 @@ M1's reviewed, committed artifacts and are never regenerated (research A9).
 
 ## What the results should say
 
-Based on the exploratory probe that motivated this feature, a correct run reports:
+The table below is the **verified** output of the implemented run (2026-07-29), not a
+prediction. Three rows differ from what the exploratory probe originally suggested; each is
+marked and explained underneath.
 
 | Check | Expected outcome |
 |---|---|
 | Timeline monotonic | yes, both sessions, zero violations |
-| Frame interval | ≈ 0.070–0.071 s → ≈ 14.1–14.3 fps |
-| Gaps above threshold | none |
+| Unparseable timestamps | 0 — no row is silently dropped |
+| Frame interval | track1 0.0710 s (14.08 fps), track2 0.0700 s (14.29 fps) |
+| Gaps above threshold | **track1: 1** (0.474 s, on the last row); track2: 0 ⚠️ *revised* |
 | Duplicate rows / image refs | 0 / 0 |
-| Duplicate measurement tuples | small (≈ 12 on track1, ≈ 4 on track2) — expected, benign |
+| Duplicate measurement tuples | 12 on track1, 4 on track2 — expected, benign |
 | steering granularity | **discrete**, lattice spacing 0.05, support −1.0…+1.0 (41 levels) |
+| steering max residual | 2.0e-07 on both tracks ⚠️ *new* |
+| steering off-lattice values | none |
 | steering unobserved support | `+0.95` on track1; none on track2 |
 | throttle / speed granularity | continuous (thousands of distinct values) |
 | track1 brake | **constant** (single value 0.0) — reported as a finding, not a statistic |
-| T1 uniform GoF | reject decisively (good — rules out a uniform RNG) |
-| T2 symmetry | reject on track1 (explainable: CCW loop), likely not on track2 |
-| T3 homogeneity | reject (good — confirms two genuinely different recordings) |
-| Verdicts | ≥ 1 explainable with named mechanism; ≥ 1 carrying a downstream consequence |
-| `calibration_unchanged` | `true` — order statistics are unaffected by the discreteness finding |
+| track2 brake | continuous, 1,708 distinct values |
+| Acceleration outliers | 796 (7.5 %) track1, 982 (4.5 %) track2 ⚠️ *new* |
+| T1 uniform GoF | reject decisively on both (χ² ≈ 264,577 / 198,115, dof 40, crit 55.76) |
+| T2 symmetry | **reject on both** — track1 ratio 5.375 (material), track2 ratio 1.052 (negligible) ⚠️ *revised* |
+| T3 homogeneity | reject (χ² ≈ 4,300, dof 40) — confirms two genuinely different recordings |
+| Verdicts | 12 findings, **0 unexplained** |
+| `calibration_unchanged` | `true` — P95 \|Δsteering\| = 0.5500001, P1–P99 = (−1, 1), both identical to M1 |
 
-**If any of the first six rows disagrees with this table, stop.** Either the dataset on disk is
-not the one this feature was written against, or a check is wrong. Both are worth knowing before
-the numbers go into a report.
+**If any row disagrees, stop.** Either the dataset on disk is not the one this feature was
+written against, or a check is wrong. Both are worth knowing before the numbers go into a
+report.
+
+### The three revisions, and why
+
+1. **`LATTICE_ATOL` widened 1e-8 → 1e-6, and `max_residual` added.** The simulator writes every
+   steering level with |value| > 0.45 at a systematic offset of up to 2e-7 (`0.5000001`,
+   `-0.9500002`), while ±0.7 and ±1.0 are exact. At 1e-8 the check reported **18 sound levels as
+   tampered** — the precise false alarm this feature exists to prevent. See research A3.1. The
+   largest residual is now always reported so the tolerance cannot become a hiding place.
+
+2. **track1 has one gap, and it is fine.** 0.474 s ≈ 6 lost frames, and it lands on the
+   **final row** of the recording with speed and steering continuous across it: a recorder
+   shutdown, not an excision. An excision would sit mid-recording and typically coincide with an
+   acceleration extreme — the report checks for that coincidence explicitly and finds none.
+
+3. **T2 rejects on track2 as well, and that is not a problem.** With n = 21,828 a χ² test
+   detects a left/right ratio of 1.052. Statistical significance is not practical significance;
+   the verdict layer separates the two, classifying track1's 5.375 as material (with an M4
+   consequence and mitigation) and track2's 1.052 as negligible.
+
+The acceleration outlier rate (7.5 % / 4.5 %) is high because the implied-acceleration
+distribution has a tight core and broad tails — a 5×MAD band lands near P97 by construction.
+The multiplier is deliberately **not** tuned to produce a prettier number; that would be
+fitting the threshold to the desired answer. The rate is reported and explained instead.
 
 ## Definition of done
 

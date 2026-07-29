@@ -70,9 +70,29 @@ Isti stil kao M1 (`specs/001-dataset-eda/research.md`): *Prosto* → *Odluka* �
   broj različitih vrijednosti ≤ 100 **i** rešetka se poklopi; inače **kontinualna**.
   Tolerancija se ispisuje u izvještaju.
 - **Zašto tolerancija**: 0.05 nije tačno predstavljiv u binarnom zapisu; traženje tačne
-  jednakosti bi lažno proglasilo rešetku nepostojećom. `1e-8` je daleko iznad greške
-  predstavljanja za ove veličine, a daleko ispod stvarnog koraka (0.05), pa ne može spojiti
-  dva susjedna nivoa.
+  jednakosti bi lažno proglasilo rešetku nepostojećom. Tolerancija mora biti daleko ispod
+  stvarnog koraka (0.05) da ne bi spojila dva susjedna nivoa.
+
+> **Dopuna A3.1 (implementacija, 2026-07-29): `LATTICE_ATOL` 1e-8 → 1e-6.**
+> Prvobitna vrijednost `1e-8` je izvedena iz probe koja je vrijednosti zaokruživala. Nad
+> **stvarnim** logom pokazalo se da simulator svaki nivo sa |steering| > 0.45 zapisuje sa
+> sistematskim pomakom do **2e-7** (`-0.9500002`, `0.5000001`, …), dok su ±0.7 i ±1.0
+> tačni. To je način na koji simulator **piše** kolonu, a ne manipulacija njome — pri
+> `1e-8` provjera bi prijavila **18 ispravnih nivoa** kao friziranje, tj. tačno onu lažnu
+> uzbunu zbog koje ovaj feature postoji (A10, zadnji red). `1e-6` apsorbuje pomak a ostaje
+> 50.000× ispod koraka 0.05.
+> Da tolerancija ne bi postala mjesto za skrivanje, `GranularityProfile` sada **uvijek**
+> izvještava `max_residual` — stvarno najveće odstupanje od rešetke (2.0e-7), pa čitalac
+> vidi koliko je tolerancije potrošeno.
+
+> **Dopuna A3.2 (implementacija): korak rešetke = *najčešća*, ne najmanja razlika.**
+> A3 predlaže najmanju pozitivnu razliku kao kandidata za korak. To je tačno dok je kolona
+> netaknuta, ali je upravo ta statistika koju friziranje uništava: jedna vrijednost
+> pomjerena za 0.023 čini najmanju razliku 0.023, cijela kolona prestane ličiti na rešetku,
+> i **krivac se sakrije umjesto da bude imenovan**. Najčešća razlika preživi nekoliko
+> izmjena, pa se vrijednosti van rešetke mogu pokazati pojedinačno — a to je nalaz koji nam
+> treba. Klasifikacija (diskretna ⇔ ≤ 100 različitih **i** rešetka se poklopi) ostaje kako
+> je A3 odlučio.
 - **Zašto prag 100**: opaženo je 40–41 nivo za steering naspram 5.090–21.743 za throttle i
   speed — razlika je tri reda veličine, pa granica nije osjetljiva na tačnu vrijednost. Prag
   je izložen kao imenovana konstanta, ne zakopan u kod.
