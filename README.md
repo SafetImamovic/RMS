@@ -7,9 +7,11 @@ Simulacija autonomne vožnje u kojoj se porede dva pristupa učenju upravljanja 
 1. **Reinforcement Learning (PPO)** — agent u Unity simulaciji uči voziti kroz
    pokušaje i grešku, na osnovu raycast senzora i nagrada za napredak po stazi.
 2. **Behavioral Cloning (BC)** — konvolucijska mreža (PilotNet) trenirana
-   supervizirano na stvarnim podacima vožnje
-   ([Self-driving Car Dataset](https://www.kaggle.com/datasets/chethuhn/selfdriving-car):
-   slike kamere + steering uglovi).
+   supervizirano na podacima ljudske vožnje
+   ([Self-Driving Car Simulator](https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator):
+   slike kamere + steering uglovi, Udacity simulator format, dvije staze).
+   *Dataset iz originalne postavke zadatka je uklonjen sa Kagglea; profesor je odobrio
+   ovu zamjenu — detalji u [DESIGN.md](DESIGN.md).*
 
 Poenta poređenja: RL uči **zadatak** (proći stazu bez sudara), BC uči **stil**
 (imitira čovjeka). Evaluacija poredi distribucije steering odluka RL agenta, BC
@@ -37,18 +39,21 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ parametri okruženja i rewarda
 | `python/notebooks/` | Analiza dataseta (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch) |
 | `python/evaluation/` | Poređenje RL / BC / ljudski podaci |
-| `data/` | Kaggle dataset (nije u gitu — vidi Postavljanje) |
+| `dataset/` | Kaggle dataset (nije u gitu — vidi Postavljanje) |
 | `results/` | Trening logovi, grafovi, trenirani modeli |
 | `DESIGN.md` | Arhitektura i sve dizajn odluke |
 | `WORKFLOW.md` | Kako Unity radi + razvojni proces |
 | `CONTRIBUTING.md` | Git konvencije (git flow, atomic commiti) |
+| `ENVIRONMENT.md` | Provjereno stanje mašine i zamke pri instalaciji |
 
 ## Preduslovi
 
+Tačne, provjerene verzije i zamke: `ENVIRONMENT.md`.
+
 | Alat | Verzija | Napomena |
 |------|---------|----------|
-| Unity Hub + Unity Editor | 2022.3 LTS | preko [Unity Hub](https://unity.com/download) |
-| Python | 3.10.x | novije verzije nekompatibilne sa `mlagents` |
+| Unity Hub + Unity Editor | 6000.5.3f1 | preko [Unity Hub](https://unity.com/download); `com.unity.ml-agents` 4.0.3 traži Unity 6000.0+ |
+| Python | 3.10.11 | novije verzije nekompatibilne sa `mlagents` |
 | Git + Git LFS | aktuelne | `git lfs install` jednom po mašini |
 | NVIDIA GPU + CUDA drajveri | — | opciono, ubrzava BC trening |
 | Kaggle nalog | — | za preuzimanje dataseta |
@@ -65,9 +70,9 @@ py -3.10 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r python/requirements.txt
 
-# 3. Dataset → data/
-kaggle datasets download -d chethuhn/selfdriving-car -p data --unzip
-#   (ili ručno sa Kaggle stranice, raspakovati u data/)
+# 3. Dataset → dataset/ (git-ignorisan; koristimo spojeni dataset/dataset/)
+kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
+#   (ili ručno sa Kaggle stranice, raspakovati u dataset/)
 
 # 4. Unity projekat
 #    Unity Hub → Add → odaberi unity/SelfDrivingSim → otvori
@@ -77,6 +82,11 @@ kaggle datasets download -d chethuhn/selfdriving-car -p data --unzip
 ## Upotreba
 
 ```powershell
+# M1 — analiza dataseta (EDA): statistika, χ² fit, kalibracija za Unity
+python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
+jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
+pytest python/tests -q               # testovi (loader, fingerprint, stats)
+
 # RL trening (pa pritisni Play u Unity Editoru kad trainer javi da sluša)
 mlagents-learn config/ppo_car.yaml --run-id=ppo_car_v01
 

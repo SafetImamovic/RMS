@@ -1,0 +1,18 @@
+{
+  "steering_range_raw": [
+    -1.0,
+    1.0
+  ],
+  "steering_range_robust": [
+    -1.0,
+    1.0
+  ],
+  "delta_steering_threshold": 0.5500001,
+  "speed_range": [
+    3.474659e-06,
+    17.486463799999996
+  ],
+  "steering_zero_pct": 58.55500416114416,
+  "brake_zero_pct": 94.61517122337638,
+  "brake_is_dead": false
+}

@@ -2,8 +2,27 @@
 
 **Predmet:** Računarsko modeliranje i simulacija (II ciklus)
 **Alat (fiksan):** Unity ML-Agents
-**Dataset:** Self-driving Car Dataset — https://www.kaggle.com/datasets/chethuhn/selfdriving-car
-(Udacity simulator format: slike kamere + steering uglovi)
+**Dataset:** Self-Driving Car Simulator (Udacity) —
+https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator
+(Udacity simulator format: slike kamere + `driving_log.csv` sa steering/throttle/brake/speed)
+
+> **Napomena o datasetu:** URL iz postavke zadatka
+> (`kaggle.com/datasets/chethuhn/selfdriving-car`) vraća 404 — dataset je uklonjen
+> sa Kagglea (provjereno 2026-07-12). **Profesor je odobrio zamjenu (2026-07-23):**
+> `zaynena/selfdriving-car-simulator` — etablirani dataset istog domena, u Udacity
+> simulator formatu. Ovaj dataset ima **dvije staze**:
+>
+> | Folder (raspakovano) | Redova u `driving_log.csv` | Sadržaj |
+> |----------------------|----------------------------|---------|
+> | `track1data/` | 10.615 | Staza 1 (ravna, lakša petlja) |
+> | `track2data/` | 21.828 | Staza 2 (planinska, oštre krivine) |
+> | `dataset/` | 32.443 | Obje spojene (= track1 + track2) |
+>
+> Za BC trening i kao ljudsku referencu koristimo **spojeni `dataset/`** (najviše
+> podataka, obje vrste vožnje). `driving_log.csv` je **bez headera**, 7 kolona:
+> `center, left, right, steering, throttle, brake, speed`. Putanje slika u CSV-u su
+> Windows-apsolutne (`Desktop\...\IMG\...`) → preprocessing ih svodi na basename i
+> re-rootuje na stvarni `IMG/` folder. Podaci su lokalno pod `dataset/` (git-ignorisan).
 
 ---
 
@@ -59,7 +78,7 @@ RMS/
 ├── WORKFLOW.md                    # kako Unity radi, razvojni proces, testiranje, asseti
 ├── CONTRIBUTING.md                # git konvencije (git flow, atomic commiti)
 ├── LICENSE                        # MIT
-├── .gitignore                     # Unity generisano, data/, .venv, trening output
+├── .gitignore                     # Unity generisano, dataset/, .venv, trening output
 ├── .gitattributes                 # LFS za binarne assete i modele; YAML kao tekst
 ├── unity/SelfDrivingSim/          # Unity projekat
 │   └── Assets/
@@ -85,7 +104,10 @@ RMS/
 │   │   └── evaluate.py            # MSE na test splitu, histogram predikcija
 │   └── evaluation/
 │       └── compare.py             # RL log vs BC predikcije vs ljudski podaci
-├── data/                          # Kaggle dataset (u .gitignore, na GC ide zasebno)
+├── dataset/                       # Kaggle dataset, nested (u .gitignore, na GC ide zasebno)
+│   ├── track1data/track1data/     #   staza 1: IMG/ + driving_log.csv
+│   ├── track2data/track2data/     #   staza 2: IMG/ + driving_log.csv
+│   └── dataset/dataset/           #   obje spojene (ovo koristimo za BC + referencu)
 └── results/
     ├── EXPERIMENTS.md             # log trening eksperimenata (run-id, izmjena, ishod)
     ├── tensorboard/               # RL trening krive (git-ignorisano; grafovi se izvoze u plots/)
@@ -121,8 +143,32 @@ RMS/
 | Trenutni steering | 1 | omogućava glatkoću |
 
 ### 4.4 Akcije (kontinualne, 2)
-- `steering` ∈ [-1, 1] → mapiran na ±25° (raspon potvrditi iz dataseta u M1)
-- `throttle` ∈ [-1, 1] → gas / kočnica
+- `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
+  **puni opseg** — čak i robustan raspon P1–P99 iznosi (−1, 1) (track2 ima mnogo punog
+  zaokreta), pa je mapiranje cijelog [-1,1] na ±25° opravdano podacima, ne saturacijom.
+- `throttle` ∈ [-1, 1] → gas / kočnica. Napomena (M1): kočnica se u datasetu koristi rijetko
+  (~95% nula), gas dominira — nije problem jer RL agent uči vlastiti throttle.
+
+> **Ispravka „~95 % nula" (potiče iz feature-a 002, 2026-07-29).** Ta brojka (tačno 94,6 %)
+> je izračunata nad **spojenim** datasetom i zato je zavaravajuća. Po stazi:
+>
+> | staza | različitih vrijednosti `brake` | stvarno stanje |
+> |---|---|---|
+> | track1 | **1** (samo 0.0, u svih 10.615 redova) | kolona je **konstantna** — mrtva |
+> | track2 | 1.708 | kolona se stvarno koristi |
+>
+> M1 je nad spojenim podacima prijavio `brake_is_dead: false`; to je **artefakt spajanja**,
+> jer track2 „oživi" kolonu koja na track1 uopšte ne postoji kao signal. Pravilo koje iz
+> ovoga slijedi: **kočnicu izvještavati po stazi, nikad spojeno**, i ne koristiti je kao
+> ulaz za model treniran samo na stazi 1. Detalji i verdikt:
+> `results/eda/authenticity_report.md`, §4 i §7.
+>
+> Usput, ovo je i lijep primjer za odbranu: obrisana kolona i nikad korištena kolona
+> izgledaju **identično** u brojkama. Razlikuje ih dokaz da pisač kolone radi — a to imamo,
+> jer ista kolona na drugoj stazi ima 1.708 različitih vrijednosti.
+
+> Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
+> `python -m python.eda.report`). Tipične brzine iz dataseta: 0–17.5 (P99), sredina ~10.2.
 
 ### 4.5 Reward funkcija
 | Događaj | Reward | Svrha |
@@ -132,7 +178,7 @@ RMS/
 | Sudar sa zidom | −5.0 + kraj epizode | sigurnost |
 | Svaki step | −0.001 | podstiče brzinu |
 | Brzina naprijed | +0.001 × v_norm | podstiče kretanje |
-| Nagli steering (|Δsteering| > prag) | −0.005 × |Δ| | glatkoća; prag iz dataseta (M1) |
+| Nagli steering (\|Δsteering\| > **0.55**) | −0.005 × \|Δ\| | glatkoća; prag = P95 od \|Δsteering\| iz dataseta (M1) |
 
 Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).
@@ -155,6 +201,76 @@ Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 - Izlaz: `.onnx` model → nazad u Unity za inference demo.
 
 ## 6. BC pipeline (PyTorch, CUDA)
+
+### 6.1 Format dataseta i referenciranje slika
+
+`driving_log.csv` je **bez header reda**, 7 kolona. **Jedan red = jedan vremenski
+trenutak = 3 slike** (tri kamere na vozilu) + 4 mjerena broja:
+
+| Kolona | Sadržaj | Primjer |
+|--------|---------|---------|
+| 1 | putanja **center** kamere | `Desktop\track1data\IMG\center_2019_04_02_19_25_33_671.jpg` |
+| 2 | putanja **left** kamere | `Desktop\track1data\IMG\left_2019_04_02_19_25_33_671.jpg` |
+| 3 | putanja **right** kamere | `Desktop\track1data\IMG\right_2019_04_02_19_25_33_671.jpg` |
+| 4 | `steering` | `0` |
+| 5 | `throttle` | `0` |
+| 6 | `brake` | `0` |
+| 7 | `speed` | `1.058134E-05` |
+
+Referenciranje:
+- Prve 3 kolone su **string putanje** do fajlova (ne sama slika). Sve tri dijele isti
+  timestamp u imenu (`..._2019_04_02_19_25_33_671`) — to je jedinstveni ID reda i veže
+  center/left/right snimke istog trenutka.
+- Putanje su **Windows-apsolutne sa mašine snimatelja** (`Desktop\...\IMG\...`), pa se
+  ne mogu koristiti direktno. Preprocessing uzima samo basename i re-rootuje na stvarni
+  `IMG/` folder:
+  ```python
+  filename = row[0].split("\\")[-1]        # "center_..._671.jpg"
+  path = IMG_DIR / filename                # stvarna lokalna putanja
+  ```
+- Provjera integriteta (M1 gate): `broj_redova × 3 == broj_fajlova u IMG/`
+  (npr. track1: 10.615 × 3 = 31.845 slika).
+
+#### Kako znamo značenje kolona (dataset je bez headera)
+
+Kaggle stranica ne opisuje kolone, pa se mapiranje ne pretpostavlja — **dokazuje se na
+tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
+
+1. **Kolone 1–3 dokazane imenima fajlova** — putanje sadrže `center_/left_/right_`, nema
+   sumnje šta je šta.
+2. **Kolone 4–7 = Udacity simulator standard** — dataset je output open-source Udacity
+   self-driving-car simulatora, koji uvijek piše redoslijed
+   `center, left, right, steering, throttle, brake, speed`. To je konvencija, ne dokaz
+   iz našeg fajla.
+3. **Kolone 4–7 potvrđene statistički** — deskriptivna statistika na track1 (10.615
+   redova) daje "otisak" koji jednoznačno veže broj za značenje:
+
+   | kolona | min | max | % negativnih | % nula | zaključak |
+   |--------|-----|-----|--------------|--------|-----------|
+   | kol 4 | −1.000 | 1.000 | 17.4 % | 79.3 % | jedina negativna, simetrična oko 0, većina 0 (prava vožnja) → **steering** |
+   | kol 5 | 0.000 | 1.000 | 0 % | 51.8 % | [0,1], nikad negativna → **throttle** (gas) |
+   | kol 6 | 0.000 | 0.000 | 0 % | 100 % | konstantno 0 (u ovom snimku nema kočenja) → **brake** |
+   | kol 7 | 0.000 | 21.949 | 0 % | 0 % | uvijek ≥0, velika magnituda (mean 13.15) → **speed** |
+
+   Logika: samo steering može biti negativan (volan lijevo) → kol 4. Speed je uvijek
+   pozitivan i velike magnitude → kol 7. Throttle je [0,1] gas → kol 5; brake je
+   preostala [0,1] kolona → kol 6.
+
+   Posljedica za analizu: `brake` je 100 % nula na track1 → skoro beskorisna kolona;
+   u M1 se provjerava i track2, pa ako je i tamo konstantna, izbacuje se iz obrade.
+   **Provjereno (feature 002):** na track2 kolona ima 1.708 različitih vrijednosti, dakle
+   nije konstantna i ostaje u obradi — ali se izvještava **po stazi** (vidi §4.4).
+
+> Ovaj postupak (identifikacija promjenljivih preko deskriptivne statistike) je i sam
+> dio statističkog naglaska predmeta — vidi §7.1 i M1.
+
+Upotreba kamera u BC-u:
+- **center** slika je primarni ulaz: `center → steering`.
+- **left/right** slike su augmentacija: koriste se sa korigovanim steeringom
+  (`+0.2` za left, `−0.2` za right) kao da je auto pomjeren u stranu — efektivno 3×
+  više podataka bez novog snimanja.
+
+### 6.2 Trening
 
 - Ulaz: `driving_log.csv` + slike centralne kamere (lijeva/desna kamera sa
   steering korekcijom ±0.2 kao augmentacija).
@@ -185,25 +301,71 @@ Težine su početne — tjuniraju se tokom M3. Svaka promjena se dokumentuje
 - BC model se ne vozi u Unityju (trenirao je na slikama drugog simulatora) — to se
   eksplicitno navodi kao ograničenje i razlog zašto je poređenje na nivou distribucija.
 
+> **Napomena za M5 — rezolucija zapisa nije isto što i stil vožnje**
+> *(potiče iz feature-a 002, 2026-07-29)*
+>
+> RL agent emituje **kontinualan** steering (PPO politika daje realan broj), a ljudska
+> referenca je **rešetkasta**: 41 dozvoljena vrijednost, korak 0.05 (vidi
+> `results/eda/authenticity_report.md`, §4).
+>
+> Ako se te dvije raspodjele porede direktno, svaka metrika razlike (KL divergencija, KS,
+> χ²) će prijaviti veliku razliku — ali će mjeriti **razliku u rezoluciji zapisa**, a ne
+> razliku u vožnji. Ljudski histogram ima 41 tanku iglu; agentov je gladak. To bi izgledalo
+> kao dramatičan nalaz, a bio bi artefakt.
+>
+> **Mjera prije poređenja:** kvantizovati izlaz agenta na **istu rešetku**
+> (`round(steering / 0.05) * 0.05`, ograničeno na [−1, 1]) i tek onda porediti. Kvantizacija
+> se primjenjuje na agenta, ne na čovjeka — čovjekov zapis je referenca i ne dira se.
+>
+> Isto vrijedi i za KL divergenciju iz tabele gore: KL između diskretne i kontinualne
+> raspodjele nije definisan bez zajedničke podrške, pa je zajednička rešetka preduslov, a
+> ne kozmetika.
+
+### 7.1 Statistička obrada (naglasak predmeta)
+
+Predmet insistira na statističkim metodama — poređenje se izvodi statistički, ne "na oko":
+
+- **Deskriptivna statistika** za svaku distribuciju (steering, brzina, Δsteering): obim
+  uzorka, aritmetička sredina (matematičko očekivanje), disperzija (varijansa/std),
+  min/max, histogram relativnih učestalosti.
+- **Prilagođavanje raspodjele + test saglasnosti (M1):** na ljudski steering se prilagodi
+  kandidat-raspodjela (normalna / eksponencijalna / mješavina sa pikom oko nule) i
+  testira se **χ² testom saglasnosti** (uz Kolmogorov–Smirnov kao dopunu) — računa se
+  χ² statistika, kritična vrijednost χ²(n, α), i donosi odluka o prihvatanju/odbacivanju
+  hipoteze (postupak iz predavanja).
+- **Kvantifikovano poređenje RL vs BC vs čovjek:** KL divergencija + dvouzoračni
+  **KS test** (i/ili χ²) umjesto vizuelne procjene; izvještava se p-vrijednost.
+- **Taksonomija modela (za odbranu):** model je stohastički (nedeterministički zbog
+  randomizacije starta i stohastičke PPO politike), sa kontinualnim stanjima, diskretnim
+  vremenom (fiksni Unity timestep), agentski (agent-based), vremenski invarijantan,
+  neanticipatorski — terminologijom iz predavanja.
+
 ## 8. Verzije alata
 
-| Alat | Verzija |
-|------|---------|
-| Unity Editor | 2022.3 LTS (ili Unity 6 LTS ako ML-Agents paket verifikovan) |
-| com.unity.ml-agents (Unity paket) | 3.0.x (Release 22) |
-| Python | 3.10.x |
-| mlagents (pip) | 1.1.0 |
-| PyTorch | 2.x + CUDA |
-| Ostalo | pandas, numpy, matplotlib, opencv-python, onnx |
+| Alat | Verzija | Status |
+|------|---------|--------|
+| Unity Editor | 6000.5.3f1 | verifikovano 2026-07-26 |
+| com.unity.ml-agents (Unity paket) | 4.0.3 | verifikovano (min. Unity 6000.0) |
+| com.unity.ai.inference | 2.6.1 | povlači se kao zavisnost ML-Agents paketa |
+| Python | 3.10.11 | verifikovano |
+| mlagents (pip) | 1.1.0 | verifikovano |
+| PyTorch | 2.6.0+cu124 | verifikovano, CUDA aktivna (RTX 3050 6GB) |
+| Communicator API | 1.5.0 | usklađen Unity paket ↔ Python paket |
+| Ostalo | pandas, numpy, matplotlib, opencv-python, onnx | |
 
 Verzije se zaključavaju u `requirements.txt` — ML-Agents je osjetljiv na
 neusklađenost Unity paketa i Python paketa.
+
+Kombinacija je provjerena end-to-end na 3DBall primjeru (`mlagents-learn` → Play →
+nagrada 100 → izvezen `.onnx`). Stvarno stanje mašine i zamke pri instalaciji su
+dokumentovani u [`ENVIRONMENT.md`](ENVIRONMENT.md) — taj fajl je izvor istine za
+instalirane verzije, ova tabela za namjeravane.
 
 ## 9. Plan rada (milestones)
 
 | M | Sadržaj | Izlaz |
 |---|---------|-------|
-| M1 | Kaggle dataset + EDA notebook | distribucije steering/brzina → konkretni parametri za 4.4 i 4.5 |
+| M1 | Kaggle dataset + EDA notebook (deskriptivna statistika, prilagođavanje raspodjele, χ² test saglasnosti) | distribucije steering/brzina → konkretni parametri za 4.4 i 4.5 + statistički izvještaj |
 | M2 | Unity projekat: scena, vozilo, CarAgent, checkpointi; heuristička vožnja (ručno upravljanje) radi | vozilo vozivo tastaturom, observacije provjerene |
 | M3 | PPO trening + tjuniranje rewarda | .onnx model, TensorBoard krive, agent završava krugove |
 | M4 | BC trening na datasetu | treniran CNN, validacijske metrike |
@@ -221,7 +383,27 @@ Redoslijed M3/M4 može biti paralelan (RL trening traje — u međuvremenu BC).
 | Dataset struktura drugačija od očekivane | M1 prvo verifikuje format (driving_log.csv kolone) prije svega ostalog |
 | Reward hacking (agent vrti u krug) | checkpoint sistem sa smjerom + kazna za pogrešan smjer |
 
-## 11. Predaja (Google Classroom)
+## 11. Srodni projekti (prior art)
+
+Ne izmišljamo toplu vodu — pristup je etabliran; ovi projekti služe kao referenca
+za dizajn i kao "related work" na odbrani. Kod se ne kopira (samostalna
+realizacija + individualna odbrana), preuzimaju se provjereni obrasci.
+
+| Projekat | Šta je | Šta preuzimamo |
+|----------|--------|----------------|
+| [Unity Karting Microgame + ML-Agents](https://learn.unity.com/project/karting-template) | Unityjev **službeni** template: kart uči voziti stazu raycast senzorima (KartAgent komponenta) | Validacija cijelog našeg pristupa (raycast + PPO + checkpointi); referentna struktura reward funkcije i agent skripte |
+| [udacity/self-driving-car-sim](https://github.com/udacity/self-driving-car-sim) | Open-source Unity simulator iz kojeg potiče format našeg dataseta (`driving_log.csv`) | Referenca za postavku kamere na vozilu i format logovanja (naš `DrivingLogger.cs` piše kompatibilne kolone); dokaz da je dataset "Unity-native" |
+| [OzAltagar7/Smarticar](https://github.com/OzAltagar7/Smarticar) | ML-Agents self-driving auto, 8 raycasta | Poređenje broja/rasporeda zraka |
+| [grantgasser/autonomous-vehicles-mlagents-unity](https://github.com/grantgasser/autonomous-vehicles-mlagents-unity) | Držanje trake u Unity okruženju (RL) | Ideje za reward shaping |
+| [mchrbn/unity-traffic-simulation](https://github.com/mchrbn/unity-traffic-simulation) | Waypoint traffic sistem (raskrsnice, semafori) | Kontekst za odbranu: proširenje ka multi-agent saobraćaju (potencijal za magistarski) |
+| [AWSIM (Autoware)](https://autowarefoundation.github.io/AWSIM-Labs/) | Industrijski AV simulator baziran na Unityju | Argument da je Unity legitiman alat za AV simulaciju, ne samo igre |
+
+Zaključak za dizajn: naša kombinacija (raycast observacije, PPO, checkpoint
+reward) odgovara Unityjevom službenom Karting ML-Agents obrascu — dodana
+vrijednost ovog projekta je integracija stvarnog dataseta (kalibracija + BC
+poređenje), što nijedan od navedenih projekata nema.
+
+## 12. Predaja (Google Classroom)
 
 - Unity projekat (bez Library/ foldera), Python kod, config, DESIGN.md, README.md
 - Dataset (zip ili link, kako profesor traži "dataset + izvorne datoteke")
