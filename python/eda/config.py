@@ -92,3 +92,39 @@ STEERING_FIT_CANDIDATES: list[str] = ["norm", "laplace", "uniform"]
 # Minimum expected count per bin for the chi-square test to be valid (standard rule,
 # research R2). Bins with fewer expected are merged into neighbours.
 CHI2_MIN_EXPECTED_PER_BIN: int = 5
+
+# --- Authenticity / integrity checks (feature 002) --------------------------------------
+# Everything below is additive. No constant above changes value, so M1's numbers stay
+# reproducible (contract: specs/002-data-authenticity/contracts/authenticity-api.md).
+
+# Absolute tolerance for lattice detection. 0.05 is not exactly representable in binary, so
+# demanding exact equality would falsely declare a real lattice non-existent.
+#
+# Research A3 set this to 1e-8 on the strength of an exploratory probe. Running against the
+# real log showed that is too tight: every steering level with |value| > 0.45 is recorded
+# with a systematic offset of up to 2e-7 (-0.9500002, 0.5000001, ...), while +-0.7 and +-1.0
+# are exact. That is how the simulator writes the column, not a manipulation of it, and at
+# 1e-8 the check would have reported 18 sound levels as tampered — the exact false alarm
+# this feature exists to avoid. 1e-6 absorbs it while staying 50,000x below the 0.05 step,
+# so it can never merge two neighbouring levels. The largest residual actually observed is
+# reported in every granularity profile, so nothing hides behind the tolerance.
+LATTICE_ATOL: float = 1e-6
+
+# A column with at most this many distinct values is a candidate discrete column. Observed:
+# ~41 levels for steering vs 5,090-21,743 for throttle/speed — three orders of magnitude, so
+# the exact cut-off does not matter, only that it is named and not buried (research A3).
+DISCRETE_MAX_DISTINCT: int = 100
+
+# A frame interval counts as a gap when it exceeds this multiple of the session median.
+# At ~14 fps, 5x median means ~4-5 consecutive frames were lost: one dropped frame is normal
+# simulator load, five in a row is an event. Median-relative, so it self-adjusts (research A2).
+GAP_FACTOR: float = 5.0
+
+# Implied acceleration outlier rule: |a - median(a)| > ACCEL_MAD_K * MAD(a). MAD rather than
+# standard deviation, because a few injected jumps inflate sigma enough to hide themselves
+# (research A7).
+ACCEL_MAD_K: float = 5.0
+
+# Substrings in the recorded image path that identify which recording a row belongs to.
+# Time is only meaningful inside one session; the combined file concatenates two (research A1).
+SESSION_PATH_MARKERS: tuple[str, ...] = ("track1data", "track2data")
