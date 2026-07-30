@@ -290,10 +290,15 @@ def test_each_recording_reproduces_its_documented_steering_figure():
 def test_track1_is_outside_track2s_band():
     """The comparator discriminates, and this is what makes the whole exercise meaningful.
 
-    Two real humans driving the same simulator differ by 2.33x in steering activity, which
-    is more than the factor of two the band forgives. So track1's genuine human drive is
-    refused against track2's band. This is also why research C4 asks for a factor rather
-    than a value: there is no single human figure to aim at.
+    The two recordings differ by 2.33x in steering activity, which is more than the factor
+    of two the band forgives, so track1's genuine human drive is refused against track2's
+    band. This is why research C4 asks for a factor rather than a value: there is no single
+    human figure to aim at.
+
+    Note what the 2.33x is and is not. The image timestamps put both recordings on the same
+    evening about an hour apart, so this is very likely one driver on two tracks rather
+    than two people. The factor therefore measures what the terrain demands of a driver,
+    which makes it a stricter thing to sit inside than a spread across two people would be.
     """
     result = compare(human_log("track1"), path="track1", reference_track="track2")
     assert not result.passed
