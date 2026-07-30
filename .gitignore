@@ -47,6 +47,15 @@ results/tensorboard/
 results/*/events.out.tfevents.*
 results/*/checkpoint*.pt
 
+# ── Drive logovi (M2) ──
+# Svaki pritisak na Play pravi novi CSV, pa bi ih commitovanje sve redom zatrpalo.
+# Vožnje koje se CITIRAJU u DESIGN.md (T022-T026) dodaju se namjerno:
+#     git add -f results/drive_logs/<ime>.csv
+# stability_log.csv se PRATI: to je dokaz za odluku iz research C5 (fizika vs kinematika),
+# a odluka bez dokaza na disku nije provjerljiva.
+results/drive_logs/*.csv
+!results/drive_logs/stability_log.csv
+
 # ── OS ──
 Thumbs.db
 Desktop.ini
