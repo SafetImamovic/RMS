@@ -34,6 +34,11 @@ namespace SelfDrivingSim.Logging
         public string TurnRadius;
         public string BodyTilt;
         public string Resets;
+        public string Recording;
+        public string Stability;
+        public string Off;
+        public string Rows;
+        public string Breach;
 
         // Live row suffixes
         public string OfMax;
@@ -69,6 +74,11 @@ namespace SelfDrivingSim.Logging
             TurnRadius = "turn radius",
             BodyTilt = "body tilt",
             Resets = "resets",
+            Recording = "recording",
+            Stability = "stability",
+            Off = "off",
+            Rows = "rows",
+            Breach = "BREACH",
 
             OfMax = "of max",
             Straight = "(straight)",
@@ -102,6 +112,11 @@ namespace SelfDrivingSim.Logging
             TurnRadius = "poluprečnik",
             BodyTilt = "nagib",
             Resets = "resetovanja",
+            Recording = "snimanje",
+            Stability = "stabilnost",
+            Off = "isklj.",
+            Rows = "redova",
+            Breach = "PRESLO",
 
             OfMax = "od maks.",
             Straight = "(pravo)",

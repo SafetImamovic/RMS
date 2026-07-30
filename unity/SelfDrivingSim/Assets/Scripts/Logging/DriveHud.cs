@@ -40,6 +40,8 @@ namespace SelfDrivingSim.Logging
 
         private DriveTelemetry _telemetry;
         private CarController _car;
+        private DriveLogger _logger;
+        private StabilityMonitor _stability;
         private GUIStyle _label;
         private GUIStyle _header;
         private Texture2D _panelTexture;
@@ -52,6 +54,11 @@ namespace SelfDrivingSim.Logging
         {
             _telemetry = GetComponent<DriveTelemetry>();
             _car = GetComponent<CarController>();
+
+            // Both optional. The HUD is instrumentation and must still draw on a car that
+            // has no logger or no stability monitor attached.
+            _logger = GetComponent<DriveLogger>();
+            _stability = GetComponent<StabilityMonitor>();
 
             if (PlayerPrefs.HasKey(LanguagePrefKey))
             {
@@ -85,7 +92,12 @@ namespace SelfDrivingSim.Logging
 
             if (keyboard.rKey.wasPressedThisFrame)
             {
+                // One key restarts everything the drive is judged on. If the telemetry
+                // restarted but the log did not, the CSV and the panel beside it would be
+                // measuring two different runs, and the panel is what the driver trusts.
                 _telemetry.ResetRun();
+                _stability?.BeginRun();
+                _logger?.BeginRun();
             }
 
             if (keyboard.bKey.wasPressedThisFrame)
@@ -146,8 +158,8 @@ namespace SelfDrivingSim.Logging
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             try
             {
-                DrawLivePanel(new Rect(12f, 12f, panelWidth, 250f));
-                DrawRunPanel(new Rect(12f + panelWidth + 10f, 12f, panelWidth + 90f, 250f));
+                DrawLivePanel(new Rect(12f, 12f, panelWidth, 290f));
+                DrawRunPanel(new Rect(12f + panelWidth + 10f, 12f, panelWidth + 90f, 290f));
             }
             finally
             {
@@ -188,6 +200,28 @@ namespace SelfDrivingSim.Logging
             GUI.color = Color.white;
 
             Row(T.Resets, $"{_car.ResetCount,6:D}");
+
+            // Whether this drive is actually being written down. Discovering after a good
+            // run that nothing was recorded is the failure this line exists to prevent.
+            if (_logger != null)
+            {
+                GUI.color = _logger.IsRecording ? Good : Bad;
+                Row(T.Recording, _logger.IsRecording
+                    ? $"{_logger.RowCount,6:N0} {T.Rows} @ {_logger.LogHz:F0} Hz"
+                    : $"     {T.Off}");
+                GUI.color = Color.white;
+            }
+
+            // The research C5 tally. Shown even at 0 of 3, because a counter only visible
+            // once it is non-zero is a counter nobody trusts.
+            if (_stability != null)
+            {
+                bool breached = _stability.BreachedThisRun;
+                GUI.color = breached ? Bad : (_stability.ConsecutiveBadRuns > 0 ? Idle : Good);
+                Row(T.Stability, $"{_stability.ConsecutiveBadRuns,6:D}/3   #{_stability.RunIndex}" +
+                                 (breached ? $"  {T.Breach}" : string.Empty));
+                GUI.color = Color.white;
+            }
 
             GUILayout.EndArea();
         }

@@ -1270,6 +1270,8 @@ GameObject:
   - component: {fileID: 2103184330}
   - component: {fileID: 2103184335}
   - component: {fileID: 2103184334}
+  - component: {fileID: 2103184337}
+  - component: {fileID: 2103184336}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -1397,6 +1399,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveHud
   visible: 1
   fontSize: 13
+  language: 0
   panelWidth: 340
 --- !u!114 &2103184335
 MonoBehaviour:
@@ -1412,6 +1415,41 @@ MonoBehaviour:
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveTelemetry
   car: {fileID: 2103184330}
   profileFileName: vehicle_profile.json
+--- !u!114 &2103184336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103184329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15baccccfe95a8349b1e39052d52f2d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveLogger
+  sourceLabel: unity
+  minKeepSeconds: 2
+  flushEveryRows: 256
+--- !u!114 &2103184337
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103184329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18c57d05b87e3944f9b862495293943b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Vehicle.StabilityMonitor
+  tiltThresholdDeg: 45
+  idleWindowS: 10
+  idleDriftM: 0.1
+  idleSpeedMs: 0.05
+  upsideDownDeg: 120
+  stuckSecondsS: 3
+  minRunDurationS: 60
+  consecutiveRunsForSwitch: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

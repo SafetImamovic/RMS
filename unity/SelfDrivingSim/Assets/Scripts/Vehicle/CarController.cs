@@ -103,6 +103,36 @@ namespace SelfDrivingSim.Vehicle
         /// <summary>How many times the out-of-bounds reset has fired this session.</summary>
         public int ResetCount { get; private set; }
 
+        /// <summary>
+        /// Resets caused by the car dropping below the world, counted apart from the ones
+        /// caused by wandering off the plane. StabilityMonitor treats only the first kind as
+        /// a physics failure: straying is a driver going too far, falling is the ground
+        /// failing to hold the car (research C5, condition 3).
+        /// </summary>
+        public int FallResetCount { get; private set; }
+
+        /// <summary>Resets caused by leaving the bounds radius. Driver error, not instability.</summary>
+        public int StrayResetCount { get; private set; }
+
+        /// <summary>
+        /// How many of the four wheels are touching the ground this physics step.
+        ///
+        /// Written without <see cref="Wheels"/> because this is read every FixedUpdate and
+        /// that helper allocates a fresh array on each call.
+        /// </summary>
+        public int GroundedWheelCount
+        {
+            get
+            {
+                int n = 0;
+                if (frontLeft != null && frontLeft.isGrounded) n++;
+                if (frontRight != null && frontRight.isGrounded) n++;
+                if (rearLeft != null && rearLeft.isGrounded) n++;
+                if (rearRight != null && rearRight.isGrounded) n++;
+                return n;
+            }
+        }
+
         private void Awake()
         {
             _body = GetComponent<Rigidbody>();
@@ -297,6 +327,15 @@ namespace SelfDrivingSim.Vehicle
 
             ResetToSpawn();
             ResetCount++;
+            if (fell)
+            {
+                FallResetCount++;
+            }
+            else
+            {
+                StrayResetCount++;
+            }
+
             Debug.Log($"[CarController] out of bounds ({(fell ? "fell" : "strayed")}), reset #{ResetCount}");
         }
 
