@@ -115,6 +115,53 @@ namespace SelfDrivingSim.Logging
             }
 
             _envelope = file.envelope;
+            WarnIfProfileDrifted(file.profile);
+        }
+
+        /// <summary>
+        /// Check the car's profile against the exported one and shout if they disagree.
+        ///
+        /// The car's profile is a SERIALISED field, so the scene holds its own copy of every
+        /// value, written when the component was added. Retuning a constant in config.py and
+        /// in VehicleProfile.cs does not touch it: the scene keeps the old number and the car
+        /// keeps driving to it. This is not hypothetical. Retuning the steering rate from 2.0
+        /// to 3.7 in T023 left the scene on 2.0, and the only symptom would have been a drive
+        /// that mysteriously failed to improve.
+        ///
+        /// The EditMode mirror test cannot catch this, because it compares the compiled
+        /// default against the JSON and never opens the scene.
+        /// </summary>
+        private void WarnIfProfileDrifted(VehicleProfileRecord exported)
+        {
+            if (exported == null || car == null)
+            {
+                return;
+            }
+
+            VehicleProfile p = car.Profile;
+            const float tol = 1e-4f;
+
+            CheckField("wheelbase_m", exported.wheelbase_m, p.wheelbaseM, tol);
+            CheckField("steer_max_deg", exported.steer_max_deg, p.steerMaxDeg, tol);
+            CheckField("steer_rate_norm_per_s", exported.steer_rate_norm_per_s, p.steerRateNormPerS, tol);
+            CheckField("v_max_ms", exported.v_max_ms, p.vMaxMs, tol);
+            CheckField("accel_ms2", exported.accel_ms2, p.accelMs2, tol);
+            CheckField("brake_ms2", exported.brake_ms2, p.brakeMs2, tol);
+            CheckField("radius_margin", exported.radius_margin, p.radiusMargin, tol);
+        }
+
+        private static void CheckField(string name, float exported, float inScene, float tol)
+        {
+            if (Mathf.Abs(exported - inScene) <= tol)
+            {
+                return;
+            }
+
+            Debug.LogError(
+                $"[DriveTelemetry] {name}: the scene is driving {inScene} but " +
+                $"vehicle_profile.json says {exported}. The serialised copy on the Car has " +
+                "gone stale. Fix it on the CarController component in the Inspector, then " +
+                "drive again: this run is calibrated to the wrong car.");
         }
 
         /// <summary>Start a fresh measurement run. The HUD binds this to a key.</summary>

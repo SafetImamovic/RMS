@@ -1294,7 +1294,7 @@ MonoBehaviour:
   profile:
     wheelbaseM: 2.5
     steerMaxDeg: 25
-    steerRateNormPerS: 2
+    steerRateNormPerS: 3.7
     vMaxMs: 10
     accelMs2: 5
     brakeMs2: 5.85

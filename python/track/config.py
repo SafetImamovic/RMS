@@ -49,12 +49,20 @@ RADIUS_MARGIN: float = 1.3
 # never enters a comparison; FR-004 and normalise_speed handle that instead (C3, FR-003).
 V_MAX_MS: float = 10.0
 
-# How fast the steering input may travel, in normalised units per second. Provisional.
-# Task T023 settles it by measuring a human keyboard drive: the 95th-percentile steering
-# change must land within a factor of two of the recorded human figure at COMPARE_HZ.
-# A factor rather than a target, because the two recordings differ by 2.33x between
-# themselves and so cannot define one (C4, FR-005).
-STEER_RATE_NORM_PER_S: float = 2.0
+# How fast the steering input may travel, in normalised units per second. Settled by T023
+# against a measured keyboard drive rather than chosen: the 95th-percentile steering change
+# must land within a factor of two of the recorded human figure at COMPARE_HZ. A factor
+# rather than a target, because the two recordings differ by 2.33x between themselves and so
+# cannot define one (C4, FR-005).
+#
+# Measured: a 91 s drive at 2.0 produced P95 |dsteer| = 0.1615, inside the band [0.15, 0.60]
+# but sitting on its floor. One step at COMPARE_HZ lasts 1/14.08 s, so the reachable change
+# per step is rate/14.08 and the response is near-linear in the rate; 2.0 * (0.30/0.1615)
+# = 3.72 puts the drive on track1's 0.30 instead of at the edge of passing.
+#
+# Passing at the floor of a band is not the same as being calibrated. The floor is the point
+# where the drive is half as active as the human; the target is where it matches.
+STEER_RATE_NORM_PER_S: float = 3.7
 
 # Achievable acceleration and braking. Provisional, settled by T024 against the recorded
 # speed-change distribution on the normalised scale. The braking figure starts at the P95

@@ -4,7 +4,7 @@
   "profile": {
     "wheelbase_m": 2.5,
     "steer_max_deg": 25.0,
-    "steer_rate_norm_per_s": 2.0,
+    "steer_rate_norm_per_s": 3.7,
     "v_max_ms": 10.0,
     "accel_ms2": 5.0,
     "brake_ms2": 5.85,

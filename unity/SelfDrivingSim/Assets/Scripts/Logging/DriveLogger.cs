@@ -88,7 +88,7 @@ namespace SelfDrivingSim.Logging
             {
                 _path = Path.Combine(RepoPaths.DriveLogsDir, $"{RepoPaths.TimestampStamp()}.csv");
                 _writer = new StreamWriter(_path, append: false);
-                _writer.WriteLine("t,steering,throttle,brake,speed,source");
+                _writer.WriteLine("t,steering,throttle,brake,speed,speed_mag,x,y,z,yaw_deg,source");
             }
             catch (IOException e)
             {
@@ -153,14 +153,27 @@ namespace SelfDrivingSim.Logging
             // which writes 0,5 rather than 0.5; inside a comma-separated file that turns one
             // column into two and every row after the first would be silently misaligned.
             // The HUD forces the same culture for the same reason.
+            // speed is the forward projection, which is what the dataset's own column means
+            // and therefore what compare_drive uses. speed_mag is the actual ground speed.
+            // Both are recorded because their disagreement is itself a measurement: it is
+            // how the car was caught exceeding its stated top speed by 61 percent.
+            //
+            // Position and heading are here for the turning-circle check (T022), which
+            // cannot be done from speed alone: a circle has to be fitted to a path.
+            Vector3 p = transform.position;
             _writer.WriteLine(string.Format(
                 CultureInfo.InvariantCulture,
-                "{0:F4},{1:F5},{2:F4},{3:F4},{4:F5},{5}",
+                "{0:F4},{1:F5},{2:F4},{3:F4},{4:F5},{5:F5},{6:F4},{7:F4},{8:F4},{9:F3},{10}",
                 _elapsed,
                 _car.SteerNorm,
                 _car.Throttle,
                 _car.Brake,
                 _car.SpeedMs,
+                _car.SpeedMagnitudeMs,
+                p.x,
+                p.y,
+                p.z,
+                transform.eulerAngles.y,
                 sourceLabel));
 
             _rows++;

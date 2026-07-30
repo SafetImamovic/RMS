@@ -91,8 +91,35 @@ namespace SelfDrivingSim.Vehicle
         /// <summary>Brake in [0, 1], in the dataset's own column terms.</summary>
         public float Brake { get; private set; }
 
-        /// <summary>Forward speed in m/s. A simulation quantity: never compared unnormalised.</summary>
+        /// <summary>Forward speed in m/s. A simulation quantity: never compared unnormalised.
+        ///
+        /// This is the projection of the velocity onto the car's nose, which is the quantity
+        /// the dataset's own speed column corresponds to and therefore the one the drive log
+        /// records. It is NOT the right quantity to govern the top speed with: see
+        /// <see cref="SpeedMagnitudeMs"/>.
+        /// </summary>
         public float SpeedMs => Vector3.Dot(_body.linearVelocity, transform.forward);
+
+        /// <summary>
+        /// How fast the car is actually travelling over the ground, regardless of where it
+        /// is pointing. Vertical motion is excluded so that falling does not read as speed.
+        ///
+        /// The distinction matters because the two can disagree. <see cref="SpeedMs"/> is a
+        /// projection, so it is smaller than the truth whenever the car is not travelling
+        /// exactly where it points, and it is the smaller number that a governor comparing
+        /// against the top speed would see. Governing on the projection lets the car exceed
+        /// its own stated maximum: the first keyboard drive reached 16.2 m/s against a
+        /// stated 10.0, spending 25 of 91 seconds above the limit.
+        /// </summary>
+        public float SpeedMagnitudeMs
+        {
+            get
+            {
+                Vector3 planar = _body.linearVelocity;
+                planar.y = 0f;
+                return planar.magnitude;
+            }
+        }
 
         /// <summary>Road-wheel angle actually applied, in degrees. Used by the turning-circle check.</summary>
         public float SteerAngleDeg => SteerNorm * profile.steerMaxDeg;
@@ -261,13 +288,26 @@ namespace SelfDrivingSim.Vehicle
             // The top speed is a stated constant, not a claim about the dataset (research C3).
             // Cutting torque at the limit rather than clamping the velocity keeps the physics
             // continuous, so the car coasts down instead of hitting an invisible wall.
-            bool atTopSpeed = speed >= profile.vMaxMs;
+            //
+            // Governed on the ACTUAL ground speed, not on the forward projection. The two
+            // differ whenever the car is not travelling exactly where it points, and the
+            // projection is always the smaller of the pair, so a governor watching it lets
+            // the car through. Measured on the first keyboard drive: 16.2 m/s reached
+            // against a stated maximum of 10.0.
+            float actualSpeed = SpeedMagnitudeMs;
+            bool atTopSpeed = actualSpeed >= profile.vMaxMs;
             float motor = (Throttle > 0f && !atTopSpeed) ? Throttle * driveTorque : 0f;
             float braking = Brake * brakeTorque;
 
             // Reverse: holding brake at a standstill backs the car up slowly, which is what a
             // driver expects and what makes a bad spawn recoverable without a reset.
-            if (Brake > 0f && speed < 0.1f)
+            //
+            // The speed condition is on the signed forward speed, because reversing is a
+            // direction and not a magnitude. The extra bound is a separate matter: without
+            // it, reverse torque was applied for as long as the key was held, with no limit
+            // of any kind, because the top-speed test above only ever looked at going
+            // forward. Reverse is capped at half of the forward maximum.
+            if (Brake > 0f && speed < 0.1f && actualSpeed < profile.vMaxMs * 0.5f)
             {
                 motor = -Brake * driveTorque * 0.4f;
                 braking = 0f;

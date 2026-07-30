@@ -26,8 +26,11 @@ namespace SelfDrivingSim.Vehicle
         [Tooltip("Road-wheel angle at full lock. Fixed by DESIGN 4.4.")]
         public float steerMaxDeg = 25.0f;
 
-        [Tooltip("How fast the steering input may travel, normalised units per second (research C4).")]
-        public float steerRateNormPerS = 2.0f;
+        [Tooltip("How fast the steering input may travel, normalised units per second (research C4).\n\n" +
+                 "Settled by T023 from a measured drive, not chosen: at 2.0 a 91 s keyboard drive " +
+                 "produced a 95th-percentile steering change of 0.1615, which passed its band but " +
+                 "sat on the floor of it. 3.7 targets track1's measured 0.30.")]
+        public float steerRateNormPerS = 3.7f;
 
         [Tooltip("Top speed. A playability choice, never used in a dataset comparison (research C3).")]
         public float vMaxMs = 10.0f;
