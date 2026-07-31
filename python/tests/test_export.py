@@ -91,11 +91,13 @@ def test_the_document_matches_the_schema_shape(out_dir):
 
 def test_the_generator_block_can_rebuild_the_centre_line(out_dir):
     """The block is auditable, not decorative: it must actually regenerate the points."""
-    document = json.loads(export.export_track(4, out_dir=out_dir).read_text(encoding="utf-8"))
+    # Seed 4 was used here until the amplitude range widened and it started failing the
+    # radius floor. An export test needs a seed that exports.
+    document = json.loads(export.export_track(2, out_dir=out_dir).read_text(encoding="utf-8"))
     block = document["generator"]
 
     rebuilt = generator.centre_line(generator.TrackSeed(
-        seed=4, amplitude=block["amplitude"], phases=tuple(block["phases"])))
+        seed=2, amplitude=block["amplitude"], phases=tuple(block["phases"])))
 
     stored_x = np.array([p["x"] for p in document["centre_line"]])
     # Rebuilt from rounded parameters, so agreement is close rather than exact.
@@ -262,13 +264,32 @@ def test_the_acceptance_rate_clears_the_stated_minimum(out_dir):
     assert report.acceptance_rate >= 0.50
 
 
-def test_a_batch_of_twenty_or_more_seeds_is_within_the_bound():
-    """SC-010, judged on the pooled figure and never on per-seed ones."""
-    bound = export.pooled_bound(config.TRAIN_SEEDS)
+def test_a_batch_of_twenty_or_more_seeds_is_within_the_bound(out_dir):
+    """SC-010, judged on the pooled figure over ACCEPTED seeds and never on per-seed ones."""
+    report = export.generate_batch(config.TRAIN_SEEDS, out_dir=out_dir, name="train")
+    bound = export.pooled_bound(report.accepted_seeds)
 
     assert bound.n_seeds_pooled >= 20
     assert bound.within_bound is True
     assert bound.worst_percentile is None
+
+
+def test_pooling_a_rejected_seed_is_refused(out_dir):
+    """Including one inverts the verdict, so it must not be possible to do quietly.
+
+    A rejected seed has a corner below the radius floor, and a corner below the floor demands
+    more than full lock. Pooling the six rejected train seeds takes the peak from 0.789 to
+    1.072, past the human maximum of 1.0, and the bound fails. That reads as a finding about
+    the generator when it is only a seed that was already excluded.
+    """
+    report = export.generate_batch(config.TRAIN_SEEDS, out_dir=out_dir, name="train")
+    if not report.rejections:
+        pytest.skip("no seed is currently rejected, so there is nothing to mis-pool")
+
+    rejected = report.rejections[0][0]
+
+    with pytest.raises(export.SeedRejected):
+        export.pooled_bound(report.accepted_seeds + [rejected])
 
 
 # -----------------------------------------------------------------------------------------

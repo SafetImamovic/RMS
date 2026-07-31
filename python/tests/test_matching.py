@@ -7,6 +7,7 @@ tests is a comment.
 
 from __future__ import annotations
 
+import functools
 import inspect
 
 import numpy as np
@@ -20,6 +21,32 @@ PROFILE = vehicle.build_profile()
 @pytest.fixture(scope="module")
 def reference() -> np.ndarray:
     return matching.reference_distribution("track1")
+
+
+@functools.lru_cache(maxsize=1)
+def accepted_seeds() -> tuple[int, ...]:
+    """The train seeds that pass every geometric check.
+
+    SC-010 is judged over ACCEPTED seeds, and the distinction is not academic. A rejected seed
+    has a corner below the radius floor, which demands more steering than full lock, so
+    pooling one takes the peak past the human maximum and inverts the verdict. These tests
+    pooled over every seed until the amplitude range widened and six seeds started failing.
+
+    Cached: the self-intersection check is quadratic in the 2000 samples of each of 40 seeds,
+    and several tests want this list. Safe to cache because it is a pure function of committed
+    constants.
+    """
+    from python.track import geometry
+
+    return tuple(s for s in config.TRAIN_SEEDS
+                 if geometry.check_geometry(generator.generate(s), PROFILE).ok)
+
+
+@functools.lru_cache(maxsize=4)
+def pooled_demand(seeds: tuple[int, ...] | None = None) -> np.ndarray:
+    return np.concatenate([
+        matching.required_steering(generator.generate(s), PROFILE).required_steer
+        for s in (seeds if seeds is not None else accepted_seeds())])
 
 
 # -----------------------------------------------------------------------------------------
@@ -262,12 +289,9 @@ def test_a_single_seed_report_says_so():
 
 def test_a_pooled_batch_is_bounded_above_by_the_human_recording(reference):
     """SC-010 as revised: the track never demands more than a human was recorded supplying."""
-    pooled = np.concatenate([
-        matching.required_steering(generator.generate(s), PROFILE).required_steer
-        for s in config.TRAIN_SEEDS])
-
-    bound = matching.demand_bound(pooled, reference, scope="train",
-                                  n_seeds_pooled=len(config.TRAIN_SEEDS))
+    seeds = accepted_seeds()
+    bound = matching.demand_bound(pooled_demand(seeds), reference, scope="train",
+                                  n_seeds_pooled=len(seeds))
 
     assert bound.within_bound is True
     assert bound.worst_percentile is None
@@ -278,11 +302,7 @@ def test_a_pooled_batch_is_bounded_above_by_the_human_recording(reference):
 
 def test_every_percentile_gap_is_negative_for_a_generated_batch(reference):
     """The gap must not merely be non-positive on average, but at every reported percentile."""
-    pooled = np.concatenate([
-        matching.required_steering(generator.generate(s), PROFILE).required_steer
-        for s in config.TRAIN_SEEDS])
-
-    bound = matching.demand_bound(pooled, reference)
+    bound = matching.demand_bound(pooled_demand(), reference)
 
     for p, gap in bound.percentile_gaps.items():
         assert gap <= 0.0, f"track demands {gap:+.3f} more than the human at P{p:g}"
@@ -322,10 +342,21 @@ def test_the_bound_checks_only_the_upper_percentiles(reference):
     """
     assert min(matching.BOUND_PERCENTILES) >= 50.0
 
-    single = matching.required_steering(generator.generate(1), PROFILE).required_steer
-    assert np.percentile(single, 5) > np.percentile(reference, 5)
+    # Searched rather than hardcoded. This test named seed 1 until the amplitude range
+    # widened, at which point that seed's P5 fell below the human one and the test failed for
+    # having picked an illustration rather than for the property changing.
+    offenders = [
+        s for s in accepted_seeds()
+        if np.percentile(
+            matching.required_steering(generator.generate(s), PROFILE).required_steer, 5)
+        > np.percentile(reference, 5)]
 
-    assert matching.demand_bound(single, reference).within_bound is True
+    assert offenders, "no accepted seed demands more than the human at P5"
+
+    for seed in offenders:
+        demand = matching.required_steering(generator.generate(seed), PROFILE).required_steer
+        assert matching.demand_bound(demand, reference).within_bound is True, (
+            f"seed {seed} was failed for turning everywhere, which is by design")
 
 
 def test_the_bound_note_explains_why_it_is_not_a_distribution_match():
@@ -349,15 +380,14 @@ def test_the_distance_is_still_reported_as_a_diagnostic(reference):
     """match_distance stays, and stays honest: it is no longer the SC-010 gate.
 
     Pinned at its measured value so a change in the generator shows up here rather than
-    passing unnoticed.
+    passing unnoticed. It did its job: widening AMPLITUDE_RANGE from (0.40, 0.70) to
+    (0.70, 0.90) moved this from 0.0930 to 0.0706, and this test is what reported it.
     """
-    pooled = np.concatenate([
-        matching.required_steering(generator.generate(s), PROFILE).required_steer
-        for s in config.TRAIN_SEEDS])
+    seeds = accepted_seeds()
+    report = matching.match_distance(pooled_demand(seeds), reference, scope="train",
+                                     n_seeds_pooled=len(seeds))
 
-    report = matching.match_distance(pooled, reference, scope="train", n_seeds_pooled=40)
-
-    assert report.distance == pytest.approx(0.0930, abs=0.001)
+    assert report.distance == pytest.approx(0.0706, abs=0.001)
     assert report.accepted is False
     assert report.distance < config.W1_STRUCTURELESS
 

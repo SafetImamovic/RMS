@@ -245,19 +245,33 @@ def generate_batch(seeds, out_dir: Path | None = None, name: str = "batch",
 
 
 def pooled_bound(seeds, profile: VehicleProfile | None = None) -> matching.DemandBound:
-    """The batch-scope bound SC-010 is judged on.
+    """The batch-scope bound SC-010 is judged on, over ACCEPTED seeds only.
 
     No per-seed report answers SC-010: twenty tracks each missing in a different direction pool
     to a good result while twenty missing the same way do not, and only the pooled figure
     separates those cases.
+
+    A rejected seed is refused here rather than quietly pooled, because including one inverts
+    the result. A seed is rejected for having a corner below the radius floor, and a corner
+    below the floor demands more steering than full lock: pooling the six seeds rejected from
+    the train batch takes the peak demand from 0.789 to 1.072, past the human maximum of 1.0,
+    and the bound fails. That failure would look like a finding about the generator when it is
+    only a seed that was already excluded. This function raising is what stopped exactly that
+    mistake reaching a report.
     """
     profile = profile or build_profile()
-    pooled = np.concatenate([
-        matching.required_steering(centre_line(draw_parameters(s)), profile).required_steer
-        for s in seeds])
+    seeds = list(seeds)
+
+    demands = []
+    for seed in seeds:
+        line = centre_line(draw_parameters(seed))
+        report = geometry.check_geometry(line, profile)
+        if not report.ok:
+            raise SeedRejected(seed, report.rejection_reason or "unknown")
+        demands.append(matching.required_steering(line, profile).required_steer)
 
     return matching.demand_bound(
-        pooled, scope="batch", n_seeds_pooled=len(list(seeds)))
+        np.concatenate(demands), scope="batch", n_seeds_pooled=len(seeds))
 
 
 def write_split(reports: dict[str, BatchReport],

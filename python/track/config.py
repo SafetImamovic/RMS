@@ -118,7 +118,26 @@ DATASET_STEER_ZERO_PCT: float = 58.555
 
 TRACK_R0_M: float = 30.0
 HARMONICS: tuple[int, ...] = (2, 3, 4, 5)
-AMPLITUDE_RANGE: tuple[float, float] = (0.40, 0.70)
+# Widened from (0.40, 0.70) on 2026-07-31, after the first batch was generated and looked at.
+#
+# At the original range every one of the 40 train seeds was accepted, but the median tightest
+# corner was 14.9 m against a floor of 6.97 m. A track whose hardest corner is 14.9 m never
+# asks for more than about half the steering range, so the whole set was gentle blobs and
+# nothing in it would exercise a driver or an agent near its limits.
+#
+# At (0.70, 0.90) the median tightest corner is 9.6 m, still 38 percent clear of the floor,
+# and acceptance is 85 percent, comfortably above the 50 percent SC-011 requires. The SC-010
+# bound still holds at every checked percentile with margin: -0.031 at P50 through -0.358 at
+# P99.
+#
+# What this does NOT fix, and is not intended to: generated tracks remain far gentler than
+# human driving. Sweeping the whole usable span moves the P95 gap only from -0.299 to -0.224,
+# because the shortfall is driving behaviour rather than track geometry, which is why SC-010
+# was revised from a distribution match to a bound. Amplitude has little leverage there and
+# this change is not an attempt to gain any.
+#
+# One constant. Reverting it and regenerating restores the previous batch exactly.
+AMPLITUDE_RANGE: tuple[float, float] = (0.70, 0.90)
 SAMPLES_PER_TRACK: int = 2000
 
 # =========================================================================================
