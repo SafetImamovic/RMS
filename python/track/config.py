@@ -127,6 +127,22 @@ SAMPLES_PER_TRACK: int = 2000
 
 TRACK_WIDTH_M: float = 6.0
 MIN_SEPARATION_M: float = 12.0  # 2 x track width
+
+# How far apart along the curve two points must be before their spatial distance is allowed
+# to count as a near-pass.
+#
+# This is deliberately NOT equal to MIN_SEPARATION_M, and the two being equal was a real bug.
+# Two points an arc s apart on a circle of radius R are only 2*R*sin(s / 2R) apart in space,
+# always less than s. With a 12 m window and a 12 m threshold, a plain circle of radius 16 m
+# reports its closest qualifying pair at 2*16*sin(0.375) = 11.72 m and FAILS, having never
+# come near itself at all. The check was measuring the difference between a chord and its arc.
+#
+# Four track widths leaves the chord comfortably clear of the threshold even at the tightest
+# corner the radius floor permits: at r_floor 6.97 m an arc of 24 m subtends a chord of
+# 13.8 m, still above the 12 m minimum. A genuine pinch, where two different parts of the lap
+# approach, is separated by far more than 24 m along the curve and is still caught.
+SEPARATION_ARC_WINDOW_M: float = 4.0 * TRACK_WIDTH_M
+
 N_CHECKPOINTS: int = 24
 START_LATERAL_M: float = 1.5
 START_YAW_DEG: float = 10.0
