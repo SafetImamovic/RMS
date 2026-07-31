@@ -88,7 +88,9 @@ namespace SelfDrivingSim.Logging
             {
                 _path = Path.Combine(RepoPaths.DriveLogsDir, $"{RepoPaths.TimestampStamp()}.csv");
                 _writer = new StreamWriter(_path, append: false);
-                _writer.WriteLine("t,steering,throttle,brake,speed,speed_mag,x,y,z,yaw_deg,source");
+                _writer.WriteLine(
+                "t,steering,throttle,brake,speed,speed_mag,wheel_ms,motor_nm,headroom," +
+                "x,y,z,yaw_deg,source");
             }
             catch (IOException e)
             {
@@ -163,13 +165,17 @@ namespace SelfDrivingSim.Logging
             Vector3 p = transform.position;
             _writer.WriteLine(string.Format(
                 CultureInfo.InvariantCulture,
-                "{0:F4},{1:F5},{2:F4},{3:F4},{4:F5},{5:F5},{6:F4},{7:F4},{8:F4},{9:F3},{10}",
+                "{0:F4},{1:F5},{2:F4},{3:F4},{4:F5},{5:F5},{6:F5},{7:F1},{8:F4}," +
+                "{9:F4},{10:F4},{11:F4},{12:F3},{13}",
                 _elapsed,
                 _car.SteerNorm,
                 _car.Throttle,
                 _car.Brake,
                 _car.SpeedMs,
                 _car.SpeedMagnitudeMs,
+                _car.WheelSurfaceSpeedMs,
+                _car.LastMotorTorque,
+                _car.LastHeadroom,
                 p.x,
                 p.y,
                 p.z,

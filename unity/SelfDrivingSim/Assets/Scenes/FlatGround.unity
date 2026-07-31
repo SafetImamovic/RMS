@@ -1272,6 +1272,7 @@ GameObject:
   - component: {fileID: 2103184334}
   - component: {fileID: 2103184337}
   - component: {fileID: 2103184336}
+  - component: {fileID: 2103184338}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -1310,6 +1311,8 @@ MonoBehaviour:
   wheelMeshRotationOffset: {x: 0, y: 0, z: 90}
   massKg: 1200
   centreOfMassOffset: {x: 0, y: -0.6, z: 0}
+  gripSafetyFactor: 2
+  slipCeilingMs: 1
   inputActions: {fileID: 0}
   boundsRadiusM: 250
   fallResetM: 10
@@ -1450,6 +1453,20 @@ MonoBehaviour:
   stuckSecondsS: 3
   minRunDurationS: 60
   consecutiveRunsForSwitch: 3
+--- !u!114 &2103184338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103184329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29bf6d9b5c5daa24a8fe4b1a63402264, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Vehicle.ScriptedDriver
+  manoeuvre: 0
+  exitPlayModeWhenDone: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
