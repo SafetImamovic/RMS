@@ -174,6 +174,49 @@ koje se ne mogu odlučiti unaprijed. Snimljeni skokovi volana punog opsega u jed
 dokaz o **ulaznom uređaju** (tastatura ili miš), ne specifikacija vozila; auto koji ih
 reprodukuje bio bi neupravljiv.
 
+**Izmjerene vrijednosti (T022 do T025, zatvoreno 31.07.2026.).** Ovo su jedine brojke u
+projektu koje dolaze iz mjerenja a ne iz odluke:
+
+| Veličina | Vrijednost | Mjerenje | Odstupanje |
+|---|---|---|---|
+| `steer_rate_norm_per_s` | **3.7** | P95 \|dsteer\| = 0.2949 na 14.08 Hz, vožnja 67.2 s | 1.7 % od cilja 0.30 |
+| `accel_ms2` | **5.0** | izmjereno +4.79 m/s² | -4.2 % |
+| `brake_ms2` | **5.85** | izmjereno -5.65 m/s² | -3.4 % |
+| poluprečnik punog zaokreta | **5.787 m** | vs `r_min_m` 5.361 m | +7.9 % |
+
+`accel_ms2` i `brake_ms2` su **potvrđeni, nisu podešavani**. Zadatak T024 je dozvoljavao
+izmjenu ako mjerenje promaši 10 %, ali nije promašilo, pa vrijednosti ostaju kakve su bile.
+
+Poluprečnik je +7.9 % širi od bicikl modela zato što **oba prednja točka dobijaju isti ugao
+zakretanja**, bez Ackermann razlike između unutrašnjeg i vanjskog. Unutrašnja guma zato
+struže i gura auto prema vani. To je svojstvo modela, ne greška, i ostaje unutar tolerancije
+od 10 %.
+
+**Brzina je dio ovog mjerenja, ne uzgredna okolnost.** Prvi pokušaj poluprečnika držao je
+fiksni gas umjesto brzine, dosegao 6.54 m/s, dakle 0.72 g bočnog opterećenja, i prijavio
+6.065 m (+13.1 %, pad). Ponovljen pri držanih 2.02 m/s, dakle 0.07 g, daje 5.787 m i prolazi.
+Poluprečnik je geometrija i mjerljiv je samo tamo gdje su uglovi klizanja zanemarivi.
+
+**Ništa izmjereno prije popravke fizike točka nije vrijedilo.** Ranije vožnje su za isti
+profil prijavljivale ubrzanje između +0.03 i +2.53 m/s². Razlika nikad nisu bili parametri
+vozila nego solver trenja koji je oscilovao: jedan impuls trenja mijenja obodnu brzinu točka
+za `2*F*dt/(m_točka*r)`, što je 8.4 m/s sa fabričkom krivom, dakle više nego greška koju
+ispravlja. Točak je prelijetao i vraćao se svaki korak, i to sa **nula** pogonskog momenta.
+Rješenje je `ConfigureVehicleSubsteps(5, 30, 30)`, koje dijeli korak samo za solver točka i
+spušta korekciju na 0.67 m/s po podkoraku. Da su `accel_ms2` i `brake_ms2` podešavani prema
+starim brojkama, artefakt solvera bi trajno ušao u konfiguraciju.
+
+**Poznato odstupanje: `speed max/P99` = 1.038 naspram trake [1.13, 1.38].** Ovo nije
+nedostatak vozila. Odnos mjeri koliko vršna brzina prelazi tipičnu, a auto na ravnoj ploči
+bez krivina nema razloga da ikad uspori, pa stoji prikovan za ograničenje od 10 m/s i P99 se
+izjednači s maksimumom. Vozač u datasetu je bio na stazi koja ga je tjerala da koči i ponovo
+ubrzava. Mjeri se, dakle, **odsustvo staze**, i provjera može proći tek kad US2 generiše
+stazu.
+
+> Vožnje T022, T024 i T025 izvodi `ScriptedDriver` fiksnim ulazima, pa su ponovljive i mogu
+> se premjeriti poslije svake izmjene (Princip VI). T023 je namjerno **ljudska** vožnja: on
+> poredi ljudski steering s ljudskim datasetom, pa bi skripta mjerila samu sebe.
+
 > Izvor: `specs/003-unity-environment/research.md` C1 do C4 i C15. Vrijednosti žive u
 > `python/track/config.py`, izvoze se u `unity/.../Assets/Tracks/vehicle_profile.json`, a
 > C# kopija se poredi s njim u `VehicleProfileMirrorTests`. Razilaženje pada kao test, ne
