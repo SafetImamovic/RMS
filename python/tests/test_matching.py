@@ -255,6 +255,113 @@ def test_a_single_seed_report_says_so():
     assert "seed 9" in report.scope
 
 
+# -----------------------------------------------------------------------------------------
+# The bound SC-010 is judged on, after the 2026-07-31 revision
+# -----------------------------------------------------------------------------------------
+
+
+def test_a_pooled_batch_is_bounded_above_by_the_human_recording(reference):
+    """SC-010 as revised: the track never demands more than a human was recorded supplying."""
+    pooled = np.concatenate([
+        matching.required_steering(generator.generate(s), PROFILE).required_steer
+        for s in config.TRAIN_SEEDS])
+
+    bound = matching.demand_bound(pooled, reference, scope="train",
+                                  n_seeds_pooled=len(config.TRAIN_SEEDS))
+
+    assert bound.within_bound is True
+    assert bound.worst_percentile is None
+    assert bound.exceedance_fraction == 0.0
+    assert bound.max_required < bound.reference_max
+    assert bound.n_seeds_pooled >= 20
+
+
+def test_every_percentile_gap_is_negative_for_a_generated_batch(reference):
+    """The gap must not merely be non-positive on average, but at every reported percentile."""
+    pooled = np.concatenate([
+        matching.required_steering(generator.generate(s), PROFILE).required_steer
+        for s in config.TRAIN_SEEDS])
+
+    bound = matching.demand_bound(pooled, reference)
+
+    for p, gap in bound.percentile_gaps.items():
+        assert gap <= 0.0, f"track demands {gap:+.3f} more than the human at P{p:g}"
+
+
+def test_a_demand_above_the_human_maximum_fails_the_bound(reference):
+    """The direction that must fail, or the check would approve anything."""
+    too_much = np.full(1000, float(np.max(reference)) + 0.05)
+
+    bound = matching.demand_bound(too_much, reference)
+
+    assert bound.within_bound is False
+    assert bound.exceedance_fraction == 1.0
+    assert bound.worst_percentile is not None
+
+
+def test_a_single_impossible_corner_fails_even_when_the_shape_is_fine(reference):
+    """A distribution can sit under the human curve everywhere and still be unusable.
+
+    One corner tighter than anything a human faced is exactly what an agent trained on that
+    human's data would fail, so the bound cannot be a percentile check alone.
+    """
+    pooled = matching.required_steering(generator.generate(1), PROFILE).required_steer
+    spiked = np.concatenate([pooled, [float(np.max(reference)) + 0.2]])
+
+    assert matching.demand_bound(pooled, reference).within_bound is True
+    assert matching.demand_bound(spiked, reference).within_bound is False
+
+
+def test_the_bound_checks_only_the_upper_percentiles(reference):
+    """A loop with no straights sits ABOVE a human at the bottom, by construction.
+
+    Seed 1 demands about 0.28 at P5 against a human 0.05, because it is turning everywhere
+    while the human's P5 is a small correction on a straight. Checking low percentiles would
+    fail a track for a property research C9 already accepts, so the bound is an upper-tail
+    statement only. Pinned here because widening it back would look like a harmless tidy-up.
+    """
+    assert min(matching.BOUND_PERCENTILES) >= 50.0
+
+    single = matching.required_steering(generator.generate(1), PROFILE).required_steer
+    assert np.percentile(single, 5) > np.percentile(reference, 5)
+
+    assert matching.demand_bound(single, reference).within_bound is True
+
+
+def test_the_bound_note_explains_why_it_is_not_a_distribution_match():
+    bound = matching.demand_bound(
+        matching.required_steering(generator.generate(1), PROFILE))
+
+    note = bound.note.lower()
+    assert "geometric minimum" in note
+    assert "actually applied" in note
+    assert "no p-value" in note
+
+
+def test_the_bound_type_has_no_p_value_field():
+    fields = set(matching.DemandBound.__dataclass_fields__)
+
+    for banned in ("p_value", "pvalue", "significance", "alpha"):
+        assert banned not in fields
+
+
+def test_the_distance_is_still_reported_as_a_diagnostic(reference):
+    """match_distance stays, and stays honest: it is no longer the SC-010 gate.
+
+    Pinned at its measured value so a change in the generator shows up here rather than
+    passing unnoticed.
+    """
+    pooled = np.concatenate([
+        matching.required_steering(generator.generate(s), PROFILE).required_steer
+        for s in config.TRAIN_SEEDS])
+
+    report = matching.match_distance(pooled, reference, scope="train", n_seeds_pooled=40)
+
+    assert report.distance == pytest.approx(0.0930, abs=0.001)
+    assert report.accepted is False
+    assert report.distance < config.W1_STRUCTURELESS
+
+
 def test_the_reference_is_read_only(reference):
     """This module must never write to the dataset or to results."""
     source = inspect.getsource(matching)

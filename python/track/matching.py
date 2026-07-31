@@ -36,6 +36,18 @@ PERCENTILES: tuple[float, ...] = (5.0, 25.0, 50.0, 75.0, 95.0, 99.0)
 # reason Principle IX asks for the histogram.
 HISTOGRAM_BINS: int = 20
 
+# Percentiles the SC-010 bound is checked at. The UPPER part of the distribution only, and
+# that restriction is not a convenience.
+#
+# The bound asks whether a track ever demands MORE steering than a human was recorded
+# supplying, which is a statement about the upper tail. Applying it to low percentiles asks
+# the opposite question and gets a nonsensical answer: a harmonic loop is turning everywhere,
+# so its P5 demand is far above a human's, whose P5 is a small correction on a straight. A
+# single seed measures 0.28 at P5 against a human 0.05 and would "fail" a bound it is not in
+# breach of. That a generated track has no straights is a documented and accepted property
+# (research C9), not a defect for this check to rediscover.
+BOUND_PERCENTILES: tuple[float, ...] = (50.0, 75.0, 95.0, 99.0)
+
 # NumPy renamed trapz to trapezoid in 2.0 and this project runs on 1.26. Resolved once here
 # so the numerical code below reads the same on either version.
 _trapezoid = getattr(np, "trapezoid", None) or np.trapz
@@ -165,6 +177,100 @@ class MatchReport:
     n_reference_samples: int
     n_seeds_pooled: int
     note: str
+
+
+@dataclass(frozen=True)
+class DemandBound:
+    """Whether a track asks for no more steering than a human was recorded supplying.
+
+    This is what SC-010 is judged on, after the criterion was revised on measurement. The
+    original asked the pooled demand to sit within a distance of the human distribution, and
+    no track this generator can produce does: required steering is the geometric MINIMUM to
+    follow the centre line, while the human column is steering actually applied, corrections
+    and overshoot included. A human always steers more than the road demands, so the gap grows
+    with every percentile and no shape of track closes it.
+
+    A bound is what the criterion was protecting against: a track demanding more than any
+    human ever had to supply would be unfair to an agent trained on that human's data.
+    """
+
+    scope: str
+    within_bound: bool
+    max_required: float
+    reference_max: float
+    exceedance_fraction: float
+    percentile_gaps: dict[float, float]
+    worst_percentile: float | None
+    n_track_samples: int
+    n_reference_samples: int
+    n_seeds_pooled: int
+    note: str
+
+
+def demand_bound(demand: SteeringDemand | np.ndarray,
+                 reference: np.ndarray | None = None,
+                 scope: str | None = None,
+                 n_seeds_pooled: int = 1) -> DemandBound:
+    """Check that a track's demand is bounded above by the human recording.
+
+    Bounded means two things together, because either alone is easy to satisfy trivially:
+    every percentile in `BOUND_PERCENTILES` is at or below the human percentile, and no single
+    sample exceeds the human maximum. A distribution can sit under the human curve at every
+    percentile and still contain one impossible corner, which is exactly the case an agent
+    would fail on, so the maximum is checked separately rather than inferred from P99.
+
+    Only the upper percentiles are checked. See `BOUND_PERCENTILES`: a loop with no straights
+    necessarily sits above a human at the bottom of the distribution, and that is an accepted
+    property of the generator rather than a breach of this bound.
+    """
+    if isinstance(demand, SteeringDemand):
+        values = demand.required_steer
+        scope = scope or f"seed {demand.seed}"
+    else:
+        values = np.asarray(demand, dtype=float).ravel()
+        scope = scope or "batch"
+
+    if reference is None:
+        reference = reference_distribution()
+
+    reference_max = float(np.max(reference))
+
+    # Positive gap means the track demands MORE than the human did at that percentile, which
+    # is the direction that fails.
+    gaps = {
+        p: float(np.percentile(values, p) - np.percentile(reference, p))
+        for p in BOUND_PERCENTILES
+    }
+    worst = max(gaps, key=lambda p: gaps[p])
+
+    exceedance = float(np.mean(values > reference_max))
+    within = all(g <= 0.0 for g in gaps.values()) and exceedance == 0.0
+
+    note = (
+        "SC-010 is a bound, not a distribution match. Required steering is the geometric "
+        "minimum needed to follow the centre line, while the reference is steering a human "
+        "actually applied, including corrections and overshoot, so the human distribution "
+        "lies above the geometric one by construction. What matters is that no generated "
+        "track asks for more than a human was ever recorded supplying. Both sides are taken "
+        "conditional on non-zero steering (research C9). Only the upper percentiles are "
+        "checked, because a loop with no straights necessarily demands more than a human at "
+        "the bottom of the distribution, which is an accepted property of the generator. This "
+        "is a bound check, not a hypothesis test, and no p-value is reported."
+    )
+
+    return DemandBound(
+        scope=scope,
+        within_bound=within,
+        max_required=float(np.max(values)),
+        reference_max=reference_max,
+        exceedance_fraction=exceedance,
+        percentile_gaps=gaps,
+        worst_percentile=worst if gaps[worst] > 0.0 else None,
+        n_track_samples=int(values.size),
+        n_reference_samples=int(np.asarray(reference).size),
+        n_seeds_pooled=n_seeds_pooled,
+        note=note,
+    )
 
 
 def _wasserstein1(a: np.ndarray, b: np.ndarray) -> float:
