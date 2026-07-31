@@ -189,6 +189,20 @@ namespace SelfDrivingSim.Vehicle
             _body = GetComponent<Rigidbody>();
             _body.mass = massKg;
 
+            // Smooth the car's RENDERED motion between physics steps.
+            //
+            // Physics runs at 50 Hz and the display refreshes faster, so without this some
+            // frames show a new position and some repeat the previous one. The unevenness
+            // reads as jitter, and it was reported as such the first time the car was driven
+            // on a track: on the open plane there was nothing close enough to judge motion
+            // against, while barriers a few metres away make it obvious.
+            //
+            // The drive log is unaffected, which is the reason this is safe. Interpolation
+            // changes what the transform reports during Update, not during FixedUpdate, and
+            // DriveLogger samples in FixedUpdate. The measurements stay the physics truth
+            // while the picture stops stuttering.
+            _body.interpolation = RigidbodyInterpolation.Interpolate;
+
             // Lowering the centre of mass is the single most effective anti-flip measure on a
             // WheelCollider car, and it costs nothing. See FR-010 and SC-006.
             _body.centerOfMass = centreOfMassOffset;
