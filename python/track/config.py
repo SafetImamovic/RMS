@@ -177,8 +177,22 @@ MATCH_DISTANCE_THRESHOLD: float = 0.05
 
 # The three measured scales, carried in every MatchReport so a bare distance is readable.
 W1_SELF_CONSISTENCY: float = 0.0231  # track1 first half vs second half
-W1_STRUCTURELESS: float = 0.1047  # track1 vs uniform on [0, max_required_steer]
 W1_HUMAN_TO_HUMAN: float = 0.2635  # track1 vs track2
+
+# track1 |steering| conditional on non-zero, against a uniform on [0, max_required_steer].
+#
+# **Corrected from 0.1047 on 2026-07-31.** Recomputing this from the definition C15 states
+# gives 0.1142, under two independent implementations: this project's quantile-integral
+# Wasserstein and scipy.stats.wasserstein_distance, which agree to four decimal places. The
+# same two implementations reproduce W1_SELF_CONSISTENCY at 0.0231 and W1_HUMAN_TO_HUMAN at
+# 0.2636 against the recorded 0.2635, so the machinery is not in question, only this value.
+# The support was checked as the cause and is not: a uniform on [0, 1] gives 0.2127 and an
+# unconditional reference gives 0.3359, neither near 0.1047.
+#
+# No decision changes. This is the ceiling scale, and MATCH_DISTANCE_THRESHOLD must sit
+# strictly below it; 0.05 is below both the old and the new figure. Research C15 still records
+# 0.1047 and should be corrected to match.
+W1_STRUCTURELESS: float = 0.1142
 
 # =========================================================================================
 # Seeds (research C13)
