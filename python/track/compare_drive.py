@@ -38,6 +38,7 @@ import numpy as np
 import pandas as pd
 
 from python.track import config
+from python.track.vehicle import build_profile
 
 # The columns a drive log must carry. Same names as the dataset's own columns, so that no
 # renaming step sits between the two sides of the comparison (FR-008).
@@ -164,6 +165,115 @@ def normalise_speed(speed: np.ndarray) -> np.ndarray:
 
 
 # =============================================================================================
+# Turning circle (T022, SC-004)
+# =============================================================================================
+
+
+@dataclass(frozen=True)
+class TurningCircle:
+    """A circle fitted to the path the car actually drove at full lock."""
+
+    radius_m: float
+    centre_x: float
+    centre_z: float
+    residual_m: float
+    n_samples: int
+    duration_s: float
+    mean_abs_steer: float
+
+    def agrees_with(self, r_min_m: float, tolerance: float = 0.10) -> bool:
+        """SC-004: the driven circle must match the derived minimum within 10 percent."""
+        if not np.isfinite(self.radius_m) or r_min_m <= 0:
+            return False
+        return abs(self.radius_m - r_min_m) / r_min_m <= tolerance
+
+
+def fit_circle(x: np.ndarray, z: np.ndarray) -> tuple[float, float, float, float]:
+    """Least-squares circle through a set of points. Returns (cx, cz, r, residual).
+
+    Algebraic (Kasa) fit: a circle satisfies ``x^2 + z^2 = 2*cx*x + 2*cz*z + k``, which is
+    linear in the unknowns, so the fit is one lstsq call with no starting guess and no
+    iteration to fail to converge.
+
+    The residual is returned because the fit alone cannot be trusted: a straight line has a
+    perfectly good best-fit circle, one of enormous radius, and it would otherwise be
+    reported as a measurement rather than as the absence of one.
+    """
+    x = np.asarray(x, dtype=float)
+    z = np.asarray(z, dtype=float)
+    if x.size < 3:
+        return (float("nan"),) * 4
+
+    a = np.column_stack([2 * x, 2 * z, np.ones_like(x)])
+    b = x**2 + z**2
+    (cx, cz, k), *_ = np.linalg.lstsq(a, b, rcond=None)
+
+    r_sq = k + cx**2 + cz**2
+    if r_sq <= 0:
+        return (float("nan"),) * 4
+    r = math.sqrt(r_sq)
+
+    residual = float(np.sqrt(np.mean((np.hypot(x - cx, z - cz) - r) ** 2)))
+    return float(cx), float(cz), float(r), residual
+
+
+def measure_turning_circle(
+    df: pd.DataFrame,
+    min_abs_steer: float = 0.95,
+    min_duration_s: float = 2.0,
+) -> TurningCircle | None:
+    """Measure the circle the car drove during its longest sustained full-lock turn.
+
+    Returns None when the drive contains no such turn, which is a different answer from a
+    bad measurement and has to stay distinguishable from one: it means "go and drive a
+    circle", not "the car turns wrongly".
+
+    Needs the ``x`` and ``z`` columns, so it only works on logs written after those were
+    added to DriveLogger.
+    """
+    if not {"x", "z"}.issubset(df.columns):
+        return None
+
+    steer = df["steering"].to_numpy(dtype=float)
+    t = df["t"].to_numpy(dtype=float)
+    at_lock = np.abs(steer) >= min_abs_steer
+    if not at_lock.any():
+        return None
+
+    # Longest continuous run of full lock. Longest rather than first, because the first is
+    # usually the driver discovering the key and the longest is the deliberate circle.
+    best_start = best_len = cur_start = cur_len = 0
+    for i, on in enumerate(at_lock):
+        if on:
+            if cur_len == 0:
+                cur_start = i
+            cur_len += 1
+            if cur_len > best_len:
+                best_start, best_len = cur_start, cur_len
+        else:
+            cur_len = 0
+
+    if best_len < 3:
+        return None
+
+    sl = slice(best_start, best_start + best_len)
+    duration = float(t[sl][-1] - t[sl][0])
+    if duration < min_duration_s:
+        return None
+
+    cx, cz, r, residual = fit_circle(df["x"].to_numpy(float)[sl], df["z"].to_numpy(float)[sl])
+    return TurningCircle(
+        radius_m=r,
+        centre_x=cx,
+        centre_z=cz,
+        residual_m=residual,
+        n_samples=int(best_len),
+        duration_s=duration,
+        mean_abs_steer=float(np.mean(np.abs(steer[sl]))),
+    )
+
+
+# =============================================================================================
 # Report types
 # =============================================================================================
 
@@ -205,6 +315,8 @@ class DriveComparison:
     compare_hz: float
     results: list[QuantityResult] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    circle: TurningCircle | None = None
+    r_min_m: float = 0.0
 
     @property
     def passed(self) -> bool:
@@ -226,6 +338,34 @@ class DriveComparison:
         ]
         lines.extend(r.line() for r in self.results)
         lines.append("")
+
+        # SC-004. Reported separately from the envelope quantities because it is not one:
+        # it needs a specific manoeuvre rather than a minute of ordinary driving, so a drive
+        # without one is incomplete rather than failing.
+        if self.circle is None:
+            lines.append(
+                "  turning circle: no sustained full-lock turn in this drive. "
+                "Hold A or D at low speed for a few seconds to measure it (T022)."
+            )
+        else:
+            c = self.circle
+            ok = c.agrees_with(self.r_min_m)
+            lines.append(
+                f"  {'OK  ' if ok else 'FAIL'} turning circle             "
+                f"{c.radius_m:8.3f} m  vs r_min {self.r_min_m:.3f} m  "
+                f"({100 * (c.radius_m - self.r_min_m) / self.r_min_m:+.1f}%)"
+            )
+            lines.append(
+                f"       fitted over {c.duration_s:.1f}s at mean |steer| "
+                f"{c.mean_abs_steer:.3f}, path residual {c.residual_m:.3f} m"
+            )
+            if c.residual_m > 0.5:
+                lines.append(
+                    "       ! residual is large; the path was not a clean circle, "
+                    "so this radius is not a measurement to trust."
+                )
+        lines.append("")
+
         if self.warnings:
             lines.extend(f"  ! {w}" for w in self.warnings)
             lines.append("")
@@ -360,6 +500,12 @@ def compare(
     source = str(res["source"].iloc[0]) if "source" in res.columns and len(res) else "unknown"
     t = df["t"].to_numpy(dtype=float)
 
+    # Fitted on the RAW log, not the resampled one. Resampling exists to make per-frame
+    # differences comparable against a 14.08 Hz recording; a circle is a shape in space and
+    # gains nothing from being thinned to a third of its points.
+    circle = measure_turning_circle(df)
+    profile = build_profile()
+
     return DriveComparison(
         path=str(path),
         source=source,
@@ -371,6 +517,8 @@ def compare(
         compare_hz=hz,
         results=results,
         warnings=warnings,
+        circle=circle,
+        r_min_m=profile.r_min_m,
     )
 
 

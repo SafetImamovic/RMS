@@ -356,6 +356,131 @@ def test_a_quantity_result_knows_whether_it_is_inside():
 
 
 # =============================================================================================
+# Turning circle (T022, SC-004)
+# =============================================================================================
+
+
+def circle_log(radius: float, duration_s: float = 12.0, hz: float = 50.0,
+               steer: float = 1.0, noise: float = 0.0, seed: int = 0) -> pd.DataFrame:
+    """A log whose x/z path is a circle of known radius, driven at the given lock."""
+    n = int(duration_s * hz)
+    t = np.arange(n) / hz
+    speed = 4.0
+    theta = speed * t / radius
+    rng = np.random.default_rng(seed)
+    x = radius * np.cos(theta) + rng.normal(0, noise, n)
+    z = radius * np.sin(theta) + rng.normal(0, noise, n)
+
+    log = make_log(duration_s=duration_s, hz=hz,
+                   steering=np.full(n, steer), speed=np.full(n, speed))
+    log["x"], log["y"], log["z"] = x, 0.5, z
+    log["yaw_deg"] = np.degrees(theta) % 360
+    return log
+
+
+@pytest.mark.parametrize("radius", [2.0, 5.361, 12.0, 40.0])
+def test_a_known_circle_is_recovered(radius):
+    """Only an arc is used, not a full lap: a real full-lock turn rarely closes."""
+    angles = np.linspace(0.0, 1.5, 200)
+    cx, cz, r, residual = compare_drive.fit_circle(
+        radius * np.cos(angles) + 7.0, radius * np.sin(angles) - 3.0
+    )
+    assert r == pytest.approx(radius, rel=1e-6)
+    assert residual < 1e-6
+    assert cx == pytest.approx(7.0, abs=1e-6)
+    assert cz == pytest.approx(-3.0, abs=1e-6)
+
+
+def test_a_noisy_circle_is_still_recovered_and_says_so():
+    """The residual has to grow with the noise, otherwise it carries no information."""
+    log = circle_log(5.361, noise=0.05, seed=1)
+    c = compare_drive.measure_turning_circle(log)
+    assert c is not None
+    assert c.radius_m == pytest.approx(5.361, rel=0.02)
+    assert 0.01 < c.residual_m < 0.5
+
+
+def test_a_straight_line_is_detected_by_its_residual_not_its_radius():
+    """A straight path still yields a best-fit circle, and the radius alone looks innocent.
+
+    Collinear points make the fit degenerate, so lstsq returns its least-norm answer: for a
+    60 m straight this is a radius of about 17 m, which is not obviously absurd and would be
+    reported as a measurement. The residual is what gives it away, at nearly 9 m off the
+    fitted arc. This is why the radius is never reported without it.
+    """
+    n = 500
+    x = np.linspace(0, 60, n)
+    _, _, r, residual = compare_drive.fit_circle(x, np.zeros(n))
+
+    assert residual > 1.0, "a straight line must not fit a circle tightly"
+    assert residual > r / 10.0, "the residual must be large relative to the claimed radius"
+
+
+def test_the_report_flags_an_untrustworthy_circle():
+    """A large residual must reach the reader, not just the dataclass."""
+    log = make_log(duration_s=12.0, hz=50.0, steering=np.ones(600))
+    log["x"], log["z"] = np.linspace(0, 60, 600), 0.0
+    text = compare(log).report()
+    assert "not a measurement to trust" in text
+
+
+def test_a_drive_with_no_full_lock_turn_returns_none():
+    """None means 'go and drive a circle', not 'the car turns wrongly'. The two answers must
+    stay distinguishable."""
+    log = circle_log(5.361, steer=0.4)
+    assert compare_drive.measure_turning_circle(log) is None
+
+
+def test_a_brief_flick_of_full_lock_is_not_a_measurement():
+    n = 3000
+    steering = np.zeros(n)
+    steering[1000:1020] = 1.0  # 0.4 s at lock
+    log = make_log(duration_s=60.0, steering=steering)
+    log["x"], log["z"] = 0.0, 0.0
+    assert compare_drive.measure_turning_circle(log) is None
+
+
+def test_the_longest_lock_segment_is_chosen_not_the_first():
+    """The first full-lock stretch is usually the driver finding the key. The deliberate
+    circle is the long one."""
+    log = circle_log(5.361, duration_s=12.0)
+    steer = log["steering"].to_numpy(float)
+    steer[:150] = 1.0
+    steer[150:220] = 0.0  # a short early flick, then a gap, then the real circle
+    log["steering"] = steer
+    c = compare_drive.measure_turning_circle(log)
+    assert c is not None
+    # The early flick is 150 samples (3.0 s); the real circle is 380 (7.6 s).
+    assert c.duration_s == pytest.approx(7.58, abs=0.05)
+    assert c.radius_m == pytest.approx(5.361, rel=1e-3)
+
+
+def test_agreement_uses_a_ten_percent_tolerance():
+    c = compare_drive.TurningCircle(5.361, 0, 0, 0.01, 100, 10.0, 1.0)
+    assert c.agrees_with(5.361)
+    assert c.agrees_with(5.361 * 1.09)
+    assert not c.agrees_with(5.361 * 1.5)
+
+
+def test_a_log_without_position_columns_returns_none():
+    """Logs written before DriveLogger gained x/z must not crash the comparator."""
+    assert compare_drive.measure_turning_circle(make_log(duration_s=10.0)) is None
+
+
+def test_the_report_says_what_to_do_when_no_circle_was_driven():
+    result = compare(make_log(duration_s=60.0))
+    assert "no sustained full-lock turn" in result.report()
+
+
+def test_the_report_shows_a_measured_circle_against_r_min():
+    result = compare(circle_log(5.361))
+    text = result.report()
+    assert "turning circle" in text
+    assert result.circle is not None
+    assert result.r_min_m == pytest.approx(5.361, abs=0.001)
+
+
+# =============================================================================================
 # Malformed input must fail loudly
 # =============================================================================================
 
