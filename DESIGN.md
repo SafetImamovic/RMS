@@ -222,14 +222,43 @@ stazu.
 > C# kopija se poredi s njim u `VehicleProfileMirrorTests`. Razilaženje pada kao test, ne
 > kao tiho pogrešna geometrija.
 
-### 4.3 Observacije (ukupno ~19 vrijednosti + raycast)
+### 4.3 Observacije (ukupno 19 vrijednosti)
 | Observacija | Dim | Napomena |
 |-------------|-----|----------|
-| RayPerceptionSensor3D | 13 zraka × (hit + udaljenost) | 180° naprijed, detektuje `Wall`; ugrađena ML-Agents komponenta |
+| Raycast udaljenosti | 13 | 180° naprijed, domet 20 m, normalizovano na [0, 1] |
 | Brzina (lokalna, normalizovana) | 2 | naprijed + bočna komponenta |
 | Ugaona brzina (yaw) | 1 | |
-| Smjer ka sljedećem checkpointu (dot product) | 2 | forward·dir, right·dir |
+| Smjer ka sljedećem markeru (dot product) | 2 | forward·dir, right·dir |
 | Trenutni steering | 1 | omogućava glatkoću |
+
+**Odlučene vrijednosti senzora (fiksirano u M2, prije bilo kakvog koda faze 5).**
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `RAY_COUNT` | **13** | neparan broj, pa jedna zraka gleda tačno naprijed; 15° razmak |
+| `RAY_FOV_DEG` | **180** | polukrug ispred; iza vozila nema šta da se izbjegne na jednosmjernoj petlji |
+| `RAY_LENGTH_M` | **20** | **izvedeno, nije izabrano**, vidi ispod |
+
+**Domet od 20 m je izveden iz kočenja, ne odabran.** Pri `v_max_ms` 10 m/s i `brake_ms2`
+5.85 m/s^2 put zaustavljanja je `v^2 / (2a)` = 8.55 m. Domet od 20 m je nešto više od
+dvostrukog tog puta, pa agent prepreku vidi sa **vremenom da reaguje**, a ne tek sa vremenom
+da stane. Domet jednak putu zaustavljanja bio bi formalno dovoljan i praktično beskoristan:
+zid bi ušao u vidno polje tačno u trenutku kad je puna kočnica jedini preostali potez.
+
+**Nepogodak mora biti razlučiv od pogotka na nuli (FR-025).** Zraka koja ništa ne pogodi i
+zraka koja pogodi zid tik uz branik su suprotne situacije, a naivno kodiranje ih obje svede
+na jedan broj blizu ekstrema. Nepogodak se zato kodira kao **1.0** (puna, slobodna
+udaljenost), a pogodak kao `udaljenost / RAY_LENGTH_M`, pa pogodak na nuli daje 0.0. Dva
+kraja opsega, dvije suprotne stvari.
+
+Ne koristi se ugrađeni `RayPerceptionSensor3D`. Njegovo kodiranje je one-hot po tagu plus
+udaljenost, što je više vrijednosti nego što ovdje treba, a broj koji ulazi u mrežu se ne
+može pročitati u toku vožnje. T057 traži da se **svaka** observacija vidi uživo i provjeri
+protiv situacije čiji je tačan odgovor vidljiv (T062, kapija za M2), i to je lakše nad
+sopstvenim, jednostavnijim kodiranjem.
+
+> Izvor: research C11. Vrijednosti žive u `python/track/config.py` i prenose se u
+> `vehicle_profile.json` kao i sve ostalo.
 
 ### 4.4 Akcije (kontinualne, 2)
 - `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
@@ -288,6 +317,31 @@ Tabela se provjerava red po red u `python/tests/test_vehicle.py` i u
 
 Težine su početne - tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).
+
+**Odlučene vrijednosti markera i starta (fiksirano u M2, prije bilo kakvog koda faze 5).**
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `N_CHECKPOINTS` | **24** | oko 8 m razmaka na stazi od ~200 m, dakle nekoliko markera po krivini |
+| `START_LATERAL_M` | **1.5** | pola razmaka do ivice pri širini staze 6 m |
+| `START_YAW_DEG` | **10** | dovoljno da start ne bude savršen, premalo da bude nemoguć |
+
+**Marker se dodjeljuje samo ako je onaj koji je na redu.** Prsten markera pamti
+`next_index`; dodir bilo kojeg drugog ne daje ništa. Bez tog pravila agent koji preskoči
+polovinu kruga i uđe na markeru dalje niz stazu bio bi nagrađen za prečicu, a nagrada za
+napredak bi mjerila poziciju umjesto pređenog puta. Krug se broji kad se indeks obrne.
+
+**Pogrešan smjer se prijavljuje, ne boduje** (FR-028). Postavlja se kad vozilo priđe već
+prođenom markeru. Bodovanje pripada M3, a pravilo iz kojeg bi ono slijedilo pripada ovdje;
+razdvojeno je da prvo podešavanje rewarda ne mijenja fajlove koje je M2 proglasio
+provjerenim.
+
+**Start se randomizuje, i to nije kozmetika (research C12).** Epizoda počinje na
+**slučajnom markeru**, sa bočnim pomakom do 1.5 m i zakretom do 10 stepeni. Uvijek isti
+start znači da agent vidi prvu krivinu staze desetine hiljada puta, a zadnju rijetko, pa
+nauči redoslijed umjesto vožnje. Isti razlog stoji iza podjele na train i eval skup seedova:
+politika koja je naučila jednu stazu napamet pada na drugoj, a to se vidi samo ako druga
+staza postoji.
 
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili

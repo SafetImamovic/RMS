@@ -13,6 +13,9 @@
 # (git lfs install obavezno prije prvog commita ovih tipova)
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
+# GIF snimci vožnje su desetine megabajta po fajlu (human-driving.gif je 63 MB).
+# Bez ovog pravila bi ušli u historiju direktno i tamo ostali zauvijek.
+*.gif filter=lfs diff=lfs merge=lfs -text
 *.jpeg filter=lfs diff=lfs merge=lfs -text
 *.psd filter=lfs diff=lfs merge=lfs -text
 *.fbx filter=lfs diff=lfs merge=lfs -text
