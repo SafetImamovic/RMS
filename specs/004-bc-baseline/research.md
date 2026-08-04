@@ -106,7 +106,18 @@ mass; track2's decays cleanly and is the one that sets the figure.
 | 8 s | 20 | 4 | 25,959 | 4,676 | 1,808 | 5.6 | 15.3 |
 
 **Chosen: guard 8 s, 10 blocks per track, 2 held out.** It costs 2.8 percent of the data, which
-is cheap for the guarantee, and it lands at 17.7 percent validation against a 20 percent target.
+is cheap for the guarantee, and it lands near 17.7 percent validation against a 20 percent
+target.
+
+> **The sweep above is an estimate; the achieved figures are slightly different.** The sweep
+> converts the guard to a fixed row count (`round(8 * 14.08)` = 113 rows per side), which is
+> what makes a fast comparison across nine settings possible. `bc.split` trims by **actual
+> timestamps** instead, so it removes however many rows really fall inside 8 s rather than a
+> nominal count. Measured on 2026-08-04: **train 25,957, validation 5,576, guard 910, achieved
+> fraction 0.1768, minimum train-to-validation gap 8.09 s.** The sweep predicted 5,582 and 904.
+> The gap of six rows is the difference between a nominal frame rate and the real intervals,
+> and the timestamp version is the authoritative one because it is the one that carries the
+> guarantee.
 
 - **Why 10 blocks and 2 held out, not 5 and 1**: two separated held-out blocks per track sample
   two different parts of the lap. A single contiguous 20 percent stretch could be one corner

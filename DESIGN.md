@@ -345,13 +345,14 @@ Upotreba kamera u BC-u:
 >
 > | Guard | Blokova | Izdvojeno | Trening | Val | Odbačeno | Odbačeno % | Val % |
 > |---|---|---|---|---|---|---|---|
-> | 8 s | 10 | 2 | 25.957 | 5.582 | 904 | 2.8 | 17.7 |
+> | 8 s | 10 | 2 | 25.957 | 5.576 | 910 | 2.8 | 17.68 |
 >
 > **Dostignutih 17.7 % se prijavljuje, ne ispravlja.** Blokovi su cjelobrojni a pojas ih grize,
 > pa to je ono što pravilo proizvede. Pomjeranje granice da se pogodi 20 % bilo bi
 > podešavanje podjele prema broju umjesto prema podacima.
 >
-> Provjera je mašinska: `min_train_val_gap_s` mora biti najmanje 8.0.
+> Provjera je mašinska: `min_train_val_gap_s` mora biti najmanje 8.0. Izmjereno
+> 2026-08-04: **8.09 s**.
 
 > **Balansiranje: jedna odluka → dva trening runa (feature 004, 2026-08-04).**
 >

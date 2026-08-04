@@ -70,11 +70,11 @@ Writes `results/bc/split.json`. Ten contiguous blocks per track, two held out, e
 
 | Property | Expected |
 |---|---|
-| `n_train_rows` | about 25,957 |
-| `n_val_rows` | about 5,582 |
-| `n_guard_rows` | about 904, roughly 2.8 percent |
-| `min_train_val_gap_s` | at least 8.0 |
-| `val_fraction_actual` | about 0.177, **not** 0.20 |
+| `n_train_rows` | 25,957 |
+| `n_val_rows` | 5,576 |
+| `n_guard_rows` | 910, roughly 2.8 percent |
+| `min_train_val_gap_s` | 8.09, and never below 8.0 |
+| `val_fraction_actual` | 0.1768, **not** 0.20 |
 
 The last two rows are the point worth understanding.
 
@@ -160,10 +160,11 @@ The three tests Principle VIII names by hand:
 - the model accepts the documented input shape,
 - augmentation negates steering on a horizontal flip.
 
-Note that the M1 and feature 002 tests also live in `python/tests` and will run here under a
-different numpy than the one they were written against. If any of them fails only under
-`.venv-bc`, that is a finding about environment sensitivity and belongs in the research
-document, not a thing to paper over.
+The M1 and feature 002 tests also live in `python/tests` and run here too. `requirements-bc.txt`
+pins numpy to 1.26.4, the same version `.venv` carries, specifically so those tests are not
+being asked to reproduce M1's numbers under a different build. If any of them ever fails only
+under `.venv-bc`, that is a finding about environment sensitivity and belongs in the research
+document rather than being papered over.
 
 ---
 

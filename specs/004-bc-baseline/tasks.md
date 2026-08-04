@@ -30,10 +30,10 @@ module.
 **Purpose**: the package skeleton and the environment. No logic.
 
 - [X] T001 Create `python/bc/__init__.py` as an empty package, matching the `python/eda/` and `python/track/` layout
-- [ ] T002 Write `requirements-bc.txt` pinning torch 2.6.0+cu124 with its index URL, plus pandas, numpy, Pillow and matplotlib. Pin exact versions, not ranges: Principle VI requires a reader to reconstruct the environment, and a range reconstructs a different one next month
-- [ ] T003 Create `.venv-bc` from Python 3.10.11 and install `requirements-bc.txt`. Confirm `torch.cuda.is_available()` is true and record the reported device name. `.gitignore` already covers `.venv-*/`, so nothing there needs changing
+- [X] T002 Write `requirements-bc.txt` pinning torch 2.6.0+cu124 with its index URL, plus pandas, numpy, Pillow and matplotlib. Pin exact versions, not ranges: Principle VI requires a reader to reconstruct the environment, and a range reconstructs a different one next month
+- [X] T003 Create `.venv-bc` from Python 3.10.11 and install `requirements-bc.txt`. Confirm `torch.cuda.is_available()` is true and record the reported device name. `.gitignore` already covers `.venv-*/`, so nothing there needs changing
 - [X] T004 [P] Create `results/bc/` with a `.gitkeep`
-- [ ] T005 [P] Create `results/EXPERIMENTS.md` with its header and column format. The constitution names it a companion document and Principle VI requires one entry per training run, but the file does not exist yet, so the first BC run would have nowhere to be logged
+- [X] T005 [P] Create `results/EXPERIMENTS.md` with its header and column format. The constitution names it a companion document and Principle VI requires one entry per training run, but the file does not exist yet, so the first BC run would have nowhere to be logged
 
 ---
 
@@ -78,10 +78,12 @@ session in time, train once, and read the validation error beside the mean-predi
 
 ### Split
 
-- [ ] T011 [US1] Implement `plan_split`, `write_split` and `read_split` in `python/bc/split.py`: cut each track into `N_BLOCKS` contiguous blocks, assign `N_HOLDOUT` evenly spaced blocks per track to validation, and discard every frame within `GUARD_SECONDS` of a boundary **from both sides**. Produce the `SplitPlan` fields from `data-model.md`, with `val_fraction_actual` and `min_train_val_gap_s` derived and reported rather than forced
-- [ ] T012 [US1] Implement `verify_no_leak` in `python/bc/split.py`, raising when the minimum time distance between any training frame and any validation frame is under `GUARD_SECONDS`, naming both row indices and the distance found. This is the machine-checkable form of FR-004, and it is a stronger check than the session-overlap test the withdrawn plan called for
-- [ ] T013 [US1] Add the `python -m python.bc.split --seed <n> --val-fraction <f>` command line entry, writing `results/bc/split.json`
-- [ ] T014 [US1] Write `python/tests/test_bc_split.py`: the same seed produces byte-identical output across two calls and across processes; `verify_no_leak` accepts a plan built by `plan_split` on the real recording; a hand-built plan with a training frame 1 s from a validation frame is rejected with both row indices and the distance named; an empty validation side is rejected; train, validation and guard rows are pairwise disjoint and sum to the row count, so no frame is silently lost or double counted; `val_fraction_actual` is asserted to be **reported**, with the test allowing the roughly 0.177 achieved figure to differ from the 0.20 target rather than requiring a match
+- [X] T011 [US1] Implement `plan_split`, `write_split` and `read_split` in `python/bc/split.py`: cut each track into `N_BLOCKS` contiguous blocks, assign `N_HOLDOUT` evenly spaced blocks per track to validation, and discard every frame within `GUARD_SECONDS` of a boundary **from both sides**. Produce the `SplitPlan` fields from `data-model.md`, with `val_fraction_actual` and `min_train_val_gap_s` derived and reported rather than forced
+- [X] T012 [US1] Implement `verify_no_leak` in `python/bc/split.py`, raising when the minimum time distance between any training frame and any validation frame is under `GUARD_SECONDS`, naming both row indices and the distance found. This is the machine-checkable form of FR-004, and it is a stronger check than the session-overlap test the withdrawn plan called for
+- [X] T013 [US1] Add the `python -m python.bc.split --seed <n> --val-fraction <f>` command line entry, writing `results/bc/split.json`
+  - Achieved on 2026-08-04: train 25,957, validation 5,576, guard 910, fraction 0.1768, minimum train-to-validation gap **8.09 s** against the 8.0 s guard
+  - These differ by six rows from the sweep in research R2, which estimated the guard as a fixed row count so nine settings could be compared quickly. `bc.split` trims by real timestamps, so it is the authoritative figure and the sweep is the shortlist that led to it
+- [X] T014 [US1] Write `python/tests/test_bc_split.py`: the same seed produces byte-identical output across two calls and across processes; `verify_no_leak` accepts a plan built by `plan_split` on the real recording; a hand-built plan with a training frame 1 s from a validation frame is rejected with both row indices and the distance named; an empty validation side is rejected; train, validation and guard rows are pairwise disjoint and sum to the row count, so no frame is silently lost or double counted; `val_fraction_actual` is asserted to be **reported**, with the test allowing the roughly 0.177 achieved figure to differ from the 0.20 target rather than requiring a match
 
 ### Dataset
 
