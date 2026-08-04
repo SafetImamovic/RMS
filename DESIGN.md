@@ -266,21 +266,139 @@ tri nivoa** (princip: verifikuj format iz uzorka, ne iz naslova):
 
 Upotreba kamera u BC-u:
 - **center** slika je primarni ulaz: `center → steering`.
-- **left/right** slike su augmentacija: koriste se sa korigovanim steeringom
-  (`+0.2` za left, `−0.2` za right) kao da je auto pomjeren u stranu - efektivno 3×
-  više podataka bez novog snimanja.
+- **left/right** slike su augmentacija: koriste se sa korigovanim steeringom kao da je auto
+  pomjeren u stranu - efektivno 3× više podataka bez novog snimanja.
+
+> **Ispravka korekcije kamera: konstanta ±0.2 → raspon 0.10-0.30 (feature 004, 2026-08-04).**
+>
+> Prvobitno je ovdje pisalo `+0.2` za left i `−0.2` za right, preuzeto iz NVIDIA PilotNet
+> konvencije. Ta konstanta je **izmjerena** prije nego što je bilo šta trenirano, i nije
+> bezopasna.
+>
+> | Pojas | Samo center kamera | Sve tri kamere, konstanta 0.20 |
+> |---|---|---|
+> | tačno 0 | 58.6 % | 20.3 % |
+> | 0.15 < abs(s) <= 0.20 | 2.4 % | **40.6 %** |
+>
+> Konstanta ne rješava neuravnoteženost, nego je **premješta**: dvije trećine mase koja je
+> bila na nuli sleti na tačno ±0.20. Kako je 0.20 stvarna tačka rešetke (korak 0.05, feature
+> 002), ta dva vrha se u histogramu **ne razlikuju** od pravog ljudskog steeringa na 0.20. A
+> raspodjela predikcija je upravo ono što M5 poredi.
+>
+> **Odluka: offset se izvlači po uzorku iz uniformnog raspona 0.10-0.30**, srednja vrijednost
+> ostaje tačno 0.20. Raspon je biran mjerenjem:
+>
+> | Politika | Najpuniji pojas ispod 0.30 | Masa iznad 0.30 |
+> |---|---|---|
+> | konstanta 0.20 | 40.6 % | 27.4 % |
+> | jitter 0.15-0.25 | 21.7 % | 27.5 % |
+> | **jitter 0.10-0.30** | **19.5 %** | **27.6 %** |
+> | jitter 0.05-0.35 | 19.5 % | 33.9 % |
+> | samo center | 58.6 % | 26.1 % |
+>
+> Druga kolona je ta koja odbacuje opcije. Masa iznad 0.30 je **stvarni** ljudski steering u
+> oštrim krivinama. Raspon dovoljno širok da gurne sintetizovane uzorke u tu zonu razblažuje
+> prave podatke izmišljenim, što je gora greška od vrha koji je trebalo popraviti; zato je
+> 0.05-0.35 odbačen. Na 0.10-0.30 najpuniji pojas od 19.5 % je **sama nula**, dakle
+> augmentovana masa je već spljoštena ispod prirodnog vrha i šire širenje ne donosi ništa.
+>
+> Offset se izvlači **jednom, iz sjemena**, a ne iznova svake epohe. Ponovno izvlačenje bi
+> bilo jača augmentacija, ali bi raspodjela ciljeva bila drugi objekat u svakoj epohi, a ovaj
+> feature mora moći da prijavi kakva je ta raspodjela bila.
+>
+> Ostaje **izabrana** vrijednost, ne izvedena: tačna korekcija za bočno pomjerenu kameru
+> zavisi od brzine i zakrivljenosti, a dataset ne dokumentuje ni jedno ni drugo. Raspon
+> priznaje tu neizvjesnost umjesto da se pravi da je jedan broj rješava.
 
 ### 6.2 Trening
 
-- Ulaz: `driving_log.csv` + slike centralne kamere (lijeva/desna kamera sa
-  steering korekcijom ±0.2 kao augmentacija).
+- Ulaz: `driving_log.csv` + slike centralne kamere (lijeva/desna kamera sa steering
+  korekcijom iz raspona 0.10-0.30 kao augmentacija, vidi §6.1).
 - Preprocessing: crop neba/haube, resize 66×200, YUV (PilotNet standard),
   normalizacija; augmentacija: horizontalni flip (+negacija steeringa), random brightness.
-- Balansiranje: downsampling uzoraka sa steering ≈ 0 (dataset je dominantno prava vožnja).
 - Model: PilotNet (5 conv + 4 FC slojeva, ~250k parametara).
-- Split: 80/20 train/val, loss MSE, Adam, early stopping.
+- Loss MSE, Adam, early stopping.
 - Evaluacija: MSE/MAE na validaciji, scatter predikcija vs stvarni ugao,
   histogram predikcija vs histogram dataseta.
+
+> **Split: 80/20 slučajno → blokovski holdout sa zaštitnim pojasom (feature 004, 2026-08-04).**
+>
+> Prvobitno je pisalo samo "Split: 80/20 train/val". Snimak ide na ~14 kadrova u sekundi, pa
+> su dva kadra razmaknuta 70 ms **skoro ista slika sa skoro istim steeringom**. Slučajna
+> podjela po kadru stavi jedan u trening a susjeda u validaciju, i prijavljena greška onda
+> mjeri interpolaciju između susjednih kadrova, a ne generalizaciju. To je najčešći način da
+> projekat ovog oblika prijavi lijep broj koji ne znači ništa.
+>
+> **Holdout po sesijama je prvo probavan i nije dostupan.** `split_sessions` daje tačno **dvije**
+> sesije na spojenom fajlu (po jedna po stazi), a najveći prekid igdje u snimcima je **0.5 s**.
+> To su dva neprekidna snimka, nema se šta rezati. Holdout po sesiji bi značio trening na
+> track1 i validacija na track2, što mjeri prenos između dva profila vožnje, a ne
+> generalizaciju unutar jednog.
+>
+> **Odluka: svaka staza se siječe na 10 uzastopnih blokova, 2 ravnomjerno raspoređena bloka
+> idu u validaciju, i svaki kadar unutar 8 s od granice se odbacuje sa OBJE strane.**
+>
+> Zaštitni pojas od 8 s je **izveden iz autokorelacije steeringa**, ne izabran: to je najkraći
+> pomak na kojem obje staze padnu ispod 0.1 (track1 +0.085, track2 +0.011). Odbacuje se sa obje
+> strane jer je susjedstvo simetrično; čuvanje samo validacione strane ostavlja trening kadrove
+> priljubljene uz granicu.
+>
+> | Guard | Blokova | Izdvojeno | Trening | Val | Odbačeno | Odbačeno % | Val % |
+> |---|---|---|---|---|---|---|---|
+> | 8 s | 10 | 2 | 25.957 | 5.582 | 904 | 2.8 | 17.7 |
+>
+> **Dostignutih 17.7 % se prijavljuje, ne ispravlja.** Blokovi su cjelobrojni a pojas ih grize,
+> pa to je ono što pravilo proizvede. Pomjeranje granice da se pogodi 20 % bilo bi
+> podešavanje podjele prema broju umjesto prema podacima.
+>
+> Provjera je mašinska: `min_train_val_gap_s` mora biti najmanje 8.0.
+
+> **Balansiranje: jedna odluka → dva trening runa (feature 004, 2026-08-04).**
+>
+> Prvobitno je pisalo "downsampling uzoraka sa steering ≈ 0" kao jedna odluka. Problem je što
+> downsampling pravi bolji prediktor, a **namjerno pomjera raspodjelu predikcija dalje od
+> ljudske** - a upravo tu raspodjelu M5 poredi. Učiti bolje i porediti pošteno vuku na
+> suprotne strane.
+>
+> **Odluka: treniraju se dva runa koja se razlikuju u tačno jednoj stvari, politici
+> balansiranja.** Sve ostalo (sjeme, split, arhitektura, preprocessing, augmentacija,
+> hiperparametri) je identično, inače razlika između njih mjeri više od balansiranja. Oba se
+> ocjenjuju na **istom, nebalansiranom** validacionom skupu: balansiranje je svojstvo trening
+> uzorka, a primjena na validaciju bi pomjerila mjerilo zajedno sa modelom.
+>
+> Razlika između ta dva runa **jeste** cijena balansiranja, izražena u brojevima umjesto
+> tvrdnjom. Prijavljuje se na obje ose (tačnost i udaljenost od ljudske raspodjele) i **ne**
+> svodi se na jednog pobjednika: run koji dobije na jednoj a izgubi na drugoj osi je očekivani
+> ishod i on je nalaz.
+>
+> **Izmjerene vrijednosti (poslije jitter augmentacije iz §6.1):**
+>
+> | Vrijednost | Udio trening uzoraka |
+> |---|---|
+> | tačno 0.00 | **20.38 %** |
+> | −0.25 | 6.17 % |
+> | −0.20 | 6.16 % |
+> | ±0.15 | ~5.98 % |
+>
+> - `ZERO_STEERING_BAND = 0.0`, dakle **samo tačne nule**. Susjedni nivoi rešetke (±0.05,
+>   ±0.10) nose po 2.6-3.8 % i to su stvarne ljudske odluke; širenje pojasa bi bacalo prave
+>   uzorke da bi se popravio vrh koji je cijeli na tačnoj nuli.
+> - `BALANCE_KEEP_FRACTION = 0.30`, izvedeno iz pravila: **spusti vrh na nuli dok ne bude veći
+>   od sljedeće najčešće vrijednosti rešetke.** Zadržavanje 0.30 daje 6.78 % naspram 6.17 %
+>   koliko nosi −0.25. Uzorak padne sa 97.329 na 84.031.
+>
+> Napomena koja se lako previdi: poslije augmentacije sa tri kamere tačne nule su već pale sa
+> 58.6 % (po redovima) na 19.5 % (po uzorcima). Balansiranje je zato **manje presudno** nego
+> što sirova brojka od 58.6 % sugeriše, i poređenje dva runa treba čitati sa artefaktom
+> offseta iz §6.1 u vidu.
+
+> **Kvantizacija na ljudsku rešetku pripada poređenju, ne modelu (feature 004).**
+>
+> Model emituje kontinualne vrijednosti; ljudska kolona je rešetkasta (41 nivo, korak 0.05).
+> M4 čuva **sirove kontinualne predikcije** i uz njih zapisuje činjenicu o rešetki. Tretman
+> zajedničke rešetke (`round(s / 0.05) * 0.05`, ograničeno na [−1, 1]) primjenjuje se tamo
+> gdje se raspodjele porede, dakle u M5, gdje ga §7 već i smješta. Kvantizacija na izlazu
+> modela bi nepovratno bacila informaciju koju kasnije poređenje možda traži.
 
 ## 7. Evaluacija i poređenje (ključno za odbranu)
 

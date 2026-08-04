@@ -70,6 +70,7 @@ refers to and what target that camera implies.
 | `is_augmented` | bool | true for left and right, false for center |
 | `track` | str | track1 or track2, from the path marker (research R6) |
 | `block` | int | which contiguous block this row belongs to |
+| `camera_offset` | float or None | the offset actually drawn for this sample, None for center |
 
 **Validation rules**
 
@@ -78,7 +79,11 @@ refers to and what target that camera implies.
   the tests, not merely intended: a synthesised target is not a human target, and validating
   against one scores the model on our own invention.
 - `steering` for a center sample equals the recorded value exactly. For a side camera it is the
-  recorded value plus or minus the offset, clipped to [-1, 1].
+  recorded value plus or minus an offset **drawn per sample** from `CAMERA_OFFSET_RANGE`, clipped
+  to [-1, 1]. The draw is seeded and happens once, not per epoch, so the training target
+  distribution is fixed and inspectable (research R4).
+- `camera_offset` is stored on the sample. A drawn value that is not recorded cannot be audited,
+  and the whole reason for jittering was that the previous constant was invisible in the output.
 - Every `SampleSpec` resolves to an image file that exists. Checked once, before training, over
   the whole set (FR-002).
 

@@ -155,12 +155,84 @@ is a stronger and simpler check than the session-overlap test the previous plan 
 - **A derivation would need** the lateral distance between the cameras and the lookahead time
   the correction is meant to act over. The dataset documents neither, and the simulator that
   produced it is not the simulator we built.
-- **Decision**: keep 0.2, record it as a **chosen hyperparameter**, and report its effect rather
-  than assume it is negligible. Since two runs are already being produced for the balancing
-  question, the offset is held identical across both, so it never becomes a confound.
-- **What would change this**: if the side-camera augmentation turns out to dominate the result,
-  the honest response is a sensitivity check at a second offset value, recorded as a finding.
-  That is a follow-up, not a blocker, and it is out of scope unless the first runs suggest it.
+### Measured 2026-08-04: the effect is not negligible, it is the largest distortion in the pipeline
+
+The previous version of this section said to "report its effect rather than assume it is
+negligible". The effect was then measured, and it is large enough to change how the offset is
+treated.
+
+| Band | Center camera only | All three cameras |
+|---|---|---|
+| exactly 0 | 58.6 % | 20.3 % |
+| 0.00 < abs(s) <= 0.05 | 2.6 % | 2.6 % |
+| 0.05 < abs(s) <= 0.10 | 2.7 % | 2.6 % |
+| 0.10 < abs(s) <= 0.15 | 2.6 % | 2.4 % |
+| **0.15 < abs(s) <= 0.20** | **2.4 %** | **40.6 %** |
+
+Turning one row into three samples at `s`, `s + 0.2` and `s - 0.2` cuts the exact-zero mass from
+58.6 percent to 20.3 percent. That looks like it solves the imbalance the balancing policy
+exists to address. It does not solve it, it **moves** it: two thirds of the old zero mass lands
+on exactly plus and minus 0.2, and one band goes from 2.4 percent to 40.6 percent of all
+training samples.
+
+**Why this is worse than the imbalance it appears to fix.** A spike at zero is honest: the human
+really did drive straight most of the time. A spike at plus and minus 0.2 is an artefact of a
+copied constant. And 0.20 is a real lattice point, so in a histogram those two modes are
+indistinguishable from genuine human steering at 0.20. The prediction distribution is exactly
+what M5 compares, and the model is being taught to produce them.
+
+**Consequence for the balancing question.** With side cameras on, exact zeros are already down
+to 20.3 percent of training samples, so the zero spike the balancing policy targets is far
+smaller than the row-level 58.6 percent implied. The balancing comparison is still worth running,
+but it must be read with the offset artefact in view rather than as the only distribution effect
+in play.
+
+### Decision: jitter the offset over 0.10 to 0.30
+
+The offset is drawn **per sample** from a uniform range instead of being a constant. The range
+was swept before it was chosen:
+
+| Policy | Fullest band below 0.30 | Mass above 0.30 |
+|---|---|---|
+| constant 0.20 | 40.6 % | 27.4 % |
+| jitter 0.15 to 0.25 | 21.7 % | 27.5 % |
+| **jitter 0.10 to 0.30** | **19.5 %** | **27.6 %** |
+| jitter 0.05 to 0.35 | 19.5 % | 33.9 % |
+| center camera only | 58.6 % | 26.1 % |
+
+Two columns, and the second is what rules an option out.
+
+The **fullest band below 0.30** measures the artificial spike. At 0.10 to 0.30 it reaches 19.5
+percent, and that figure is the **exact-zero bucket**, not an augmentation artefact: the
+augmented mass has been flattened below the natural zero spike, so there is nothing left to
+gain by spreading it further.
+
+The **mass above 0.30** is genuine human high-steering data. Center camera only gives the
+honest baseline, 26.1 percent, since it contains no synthesised targets at all. A range wide
+enough to push augmented samples into that region inflates real data with invented values,
+which is a worse fault than the spike it set out to fix. That is exactly what 0.05 to 0.35
+does, taking the tail from 27.6 to 33.9 percent for no gain on the peak, so it is rejected.
+
+**Why this is defensible beyond the numbers.** The true correction for a laterally displaced
+camera is not a constant. It depends on how fast the car is moving and how sharply the road is
+curving, because it is really a question of how long the car has to return to the line. The
+dataset documents neither speed in physical units nor curvature, so the correct value cannot be
+computed. A range acknowledges that uncertainty instead of pretending a single number resolves
+it.
+
+**The range keeps a mean of exactly 0.20**, so it generalises the value DESIGN 6.1 already
+carried rather than replacing it with an unrelated one.
+
+**Drawn once at split time, from the seed, not re-drawn each epoch.** Re-drawing would be
+stronger augmentation, but it would make the training target distribution a different object on
+every epoch, and this feature has to be able to report what that distribution was. A fixed draw
+is inspectable and reproducible; a moving one is neither.
+
+- **Still true**: the offset policy is held identical across both balancing runs, so it never
+  becomes a confound between them.
+- **No longer acceptable**: treating the offset as a minor hyperparameter fixed in the
+  background. A constant that parks 40.6 percent of the training targets on two lattice points
+  needed a derivation, and none was available.
 - **Constraint that follows** (FR-007): augmented samples never enter validation. The offset is a
   synthesised target no human produced, so validating against it would be scoring the model on
   our own invention.
@@ -244,7 +316,7 @@ is a stronger and simpler check than the session-overlap test the previous plan 
 | R1 | Third environment `.venv-bc`, pinned in `requirements-bc.txt` | Forced by measurement: neither existing environment has the needed packages |
 | R2 | Contiguous block holdout, 10 blocks per track, 2 held out, 8 s guard | Forced: session-level holdout was measured to be unavailable (2 sessions, 0.5 s largest gap). The guard width is derived from steering autocorrelation |
 | R3 | Store continuous predictions; quantise at comparison time | Chosen, consistent with DESIGN section 7 |
-| R4 | Camera offset stays 0.2, recorded as a choice | Chosen and labelled as such, since no derivation exists |
+| R4 | Camera offset jittered per sample over 0.10 to 0.30, drawn once from the seed, mean still 0.20 | Forced by measurement: the constant parked 40.6 percent of training targets on two lattice points. The range was swept, and 0.05 to 0.35 rejected for inflating the genuine high-steering tail |
 | R5 | Reuse `stats.describe` and `relative_frequency_histogram` | Forced by Principle IX plus the risk of definition drift |
 | R6 | Per-track view from the path marker, one load | Forced by feature 002's pooling finding |
 | R7 | Measure loader throughput before building any cache | Chosen, to avoid optimising an unobserved bottleneck |

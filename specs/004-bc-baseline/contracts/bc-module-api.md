@@ -23,7 +23,7 @@ number appears anywhere else in the package.
 | `N_BLOCKS` | 10 | contiguous blocks per track (research R2) |
 | `N_HOLDOUT` | 2 | blocks per track assigned to validation, evenly spaced |
 | `GUARD_SECONDS` | 8.0 | **derived** from steering autocorrelation: shortest lag where both tracks fall below 0.1 (research R2) |
-| `CAMERA_OFFSET` | 0.2 | **chosen, not derived** (research R4) |
+| `CAMERA_OFFSET_RANGE` | (0.10, 0.30) | jittered per sample, mean 0.20. The constant 0.2 was measured to park 40.6 percent of targets on two lattice points (research R4) |
 | `INPUT_HEIGHT`, `INPUT_WIDTH` | 66, 200 | PilotNet standard, DESIGN 6.2 |
 | `STEERING_LATTICE_STEP` | 0.05 | measured in feature 002 |
 | `ZERO_STEERING_BAND` | to be decided in the design amendment | what counts as "near zero" for balancing |
@@ -113,8 +113,13 @@ verify_images_exist(samples) -> None       # raises, naming the first missing fi
   filename.
 - MUST fail: `build_samples` for a validation split never yields `is_augmented` true. Asserted
   over the real split, not over a hand-built example.
-- MUST pass: side-camera targets equal the recorded value plus or minus `CAMERA_OFFSET`, clipped
-  to [-1, 1], with the clipping exercised at both extremes.
+- MUST pass: side-camera targets equal the recorded value plus or minus an offset drawn from
+  `CAMERA_OFFSET_RANGE`, clipped to [-1, 1], with the clipping exercised at both extremes.
+- MUST pass: the drawn offsets are **reproducible from the seed** and are drawn once rather than
+  per epoch, so the training target distribution is a fixed object this feature can report.
+- MUST pass: no single steering value holds more than a stated share of the augmented training
+  targets. The constant offset put 40.6 percent on two lattice points, and this test is what
+  stops that silently returning (research R4).
 
 ---
 
