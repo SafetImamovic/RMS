@@ -20,6 +20,9 @@ number appears anywhere else in the package.
 |---|---|---|
 | `SEED` | 42 | matches `eda.config.SEED`, so the project has one seed convention |
 | `VAL_FRACTION_TARGET` | 0.2 | DESIGN 6.2's 80/20, as a target rather than a guarantee (research R2) |
+| `N_BLOCKS` | 10 | contiguous blocks per track (research R2) |
+| `N_HOLDOUT` | 2 | blocks per track assigned to validation, evenly spaced |
+| `GUARD_SECONDS` | 8.0 | **derived** from steering autocorrelation: shortest lag where both tracks fall below 0.1 (research R2) |
 | `CAMERA_OFFSET` | 0.2 | **chosen, not derived** (research R4) |
 | `INPUT_HEIGHT`, `INPUT_WIDTH` | 66, 200 | PilotNet standard, DESIGN 6.2 |
 | `STEERING_LATTICE_STEP` | 0.05 | measured in feature 002 |
@@ -50,22 +53,29 @@ verify_no_leak(plan) -> None            # raises, naming the offending pair
 
 **Contract**
 
-- Operates on whole sessions from `eda.integrity.split_sessions`. It never divides a session.
+- Cuts each track into `N_BLOCKS` contiguous blocks by row order and assigns `N_HOLDOUT` evenly
+  spaced blocks per track to validation.
+- Discards every frame within `GUARD_SECONDS` of a block boundary, **from both sides**.
+  Adjacency is symmetric, so guarding only the validation side leaves training frames sitting
+  against the boundary.
 - Deterministic in the seed, across runs and across processes.
-- `verify_no_leak` raises if any validation session's time range overlaps any training
-  session's, naming both sessions and the overlap.
-- `SplitPlan.val_fraction_actual` is derived and reported. The function does not adjust session
-  membership to hit the target.
+- `verify_no_leak` raises if the minimum time distance between any training frame and any
+  validation frame is less than `GUARD_SECONDS`, naming the offending pair of row indices and
+  the distance found.
+- `SplitPlan.val_fraction_actual` is derived and reported. The function does not move a boundary
+  to hit the target: that would be fitting the split to a number instead of to the data.
 
 **Evidence**
 
 - MUST pass: same seed, two calls, byte-identical `split.json` (SC-002).
-- MUST pass: `verify_no_leak` accepts a plan built from real sessions.
-- MUST fail: a hand-built plan that puts two halves of one session on opposite sides is rejected
-  by `verify_no_leak`, and the message names the session.
+- MUST pass: `verify_no_leak` accepts a plan built by `plan_split` on the real recording.
+- MUST fail: a hand-built plan with a training frame 1 s from a validation frame is rejected,
+  and the message names both row indices and the measured distance.
 - MUST fail: a plan with an empty validation side is rejected at construction.
-- MUST pass: `val_fraction_actual` may differ from the target, and the test asserts the gap is
-  reported rather than that it is zero.
+- MUST pass: guard frames appear in **neither** side. The sum of train, validation and discarded
+  equals the row count, so no frame is silently lost or double counted.
+- MUST pass: `val_fraction_actual` may differ from the target. The test asserts the gap is
+  reported, not that it is zero. On the current data the expected value is about 0.177.
 
 ---
 

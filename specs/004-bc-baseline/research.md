@@ -36,31 +36,93 @@ or recorded plainly as a choice.
 
 ## R2 - How the train/validation split avoids leakage
 
-- **Simply:** hold out whole recording sessions, not individual frames.
+- **Simply:** cut each recording into contiguous blocks, hold some out, and throw away a guard
+  band either side of every boundary.
 - **The hazard**: the recording is roughly 14 frames per second of continuous driving. Two
   frames 70 ms apart are nearly the same image with nearly the same steering value. A random
   frame-level split puts one in training and its neighbour in validation, and the reported
   validation error then measures interpolation between adjacent frames rather than
   generalisation. This is the single most common way this project's exact shape reports a good
   number that means nothing.
-- **Decision**: split at the level of the **recording session**, using the existing
-  `integrity.split_sessions`, which feature 002 built and tested. Sessions are contiguous
-  captures separated by real gaps in the timeline. A session is assigned wholly to training or
-  wholly to validation.
-- **Why this and not a time-window exclusion**: a window needs a width, the width is a parameter,
-  and any width is arguable. Session-level holdout has no parameter: the property FR-004 asks
-  for holds by construction, and `results/bc/split.json` records the assignment so a reader
-  checks it rather than trusting it.
-- **Risk this introduces, stated rather than hidden**: sessions are not equal in size, so an
-  80/20 split by session will not land on exactly 80/20 by frame. The achieved fraction is
-  reported, not forced. Forcing it would mean cutting a session, which reintroduces the leak.
-- **Second risk**: if the recording turns out to contain very few sessions, session-level
-  holdout may be too coarse to give a representative validation set. The task list therefore
-  begins by **counting the sessions and reporting the achievable splits** before any model
-  exists, so this is discovered at the start rather than after training.
-- **Alternative considered**: split by track, training on track1 and validating on track2. This
-  is leak-free and tempting, but it measures transfer between two different driving profiles
-  rather than generalisation within one, and would understate the model badly.
+
+### The session-level plan was tried first and is not available
+
+The first version of this document chose **session-level holdout**, on the grounds that it makes
+the leak-free property parameter-free. That plan is withdrawn. It was checked before any code
+was written, and the data does not support it.
+
+**Measured 2026-08-04 on the combined recording:**
+
+| Session | Rows | Time range | Largest gap |
+|---|---|---|---|
+| `track1data` | 10,615 | 19:25:33 to 19:38:12 | 0.5 s |
+| `track2data` | 21,828 | 18:05:37 to 18:31:04 | 0.3 s |
+
+`eda.integrity.split_sessions` yields exactly **two** sessions, one per track, because it
+segments on the track marker in the image path. And the timeline check shows why no finer
+segmentation is available either: the largest gap anywhere in either recording is **0.5 s**.
+These are two continuous takes. There are no natural breaks to cut on.
+
+Session-level holdout therefore degenerates into training on track1 and validating on track2,
+which this document had already rejected in its previous version: that measures transfer between
+two different driving profiles rather than generalisation within one, and would understate the
+model badly. Track1 is 79.3 percent zero steering and track2 is far more active; they are not
+two samples of the same thing.
+
+### What replaces it
+
+**Decision**: **contiguous block holdout with a measured guard band.** Each track is cut into
+`N_BLOCKS` contiguous blocks by row order. `N_HOLDOUT` evenly spaced blocks per track go to
+validation. Every frame within `GUARD_SECONDS` of a block boundary is **discarded from both
+sides**, so no training frame is temporally adjacent to any validation frame.
+
+This does reintroduce a parameter, which is exactly what the session plan was trying to avoid.
+Since no parameter-free option exists in this data, the honest response is to derive the
+parameter from a measurement rather than pick it and hope.
+
+**The guard width is derived from steering autocorrelation**, measured per track:
+
+| Lag | track1 | track2 |
+|---|---|---|
+| 0.07 s | +0.577 | +0.846 |
+| 1 s | +0.186 | +0.442 |
+| 3 s | +0.183 | +0.224 |
+| 5 s | +0.155 | +0.061 |
+| **8 s** | **+0.085** | **+0.011** |
+| 12 s | +0.031 | -0.069 |
+
+8 s is the shortest lag at which **both** tracks sit below 0.1. Track1's curve is noisy because
+79.3 percent of its steering values are zero, so the correlation there is dominated by the zero
+mass; track2's decays cleanly and is the one that sets the figure.
+
+**The cost was computed before the value was chosen**, across the options:
+
+| Guard | Blocks | Held out | Train | Val | Discarded | Discard % | Val % |
+|---|---|---|---|---|---|---|---|
+| 3 s | 10 | 2 | 25,957 | 6,150 | 336 | 1.0 | 19.2 |
+| 5 s | 10 | 2 | 25,957 | 5,926 | 560 | 1.7 | 18.6 |
+| **8 s** | **10** | **2** | **25,957** | **5,582** | **904** | **2.8** | **17.7** |
+| 8 s | 5 | 1 | 25,955 | 6,036 | 452 | 1.4 | 18.9 |
+| 8 s | 20 | 4 | 25,959 | 4,676 | 1,808 | 5.6 | 15.3 |
+
+**Chosen: guard 8 s, 10 blocks per track, 2 held out.** It costs 2.8 percent of the data, which
+is cheap for the guarantee, and it lands at 17.7 percent validation against a 20 percent target.
+
+- **Why 10 blocks and 2 held out, not 5 and 1**: two separated held-out blocks per track sample
+  two different parts of the lap. A single contiguous 20 percent stretch could be one corner
+  repeated, and the validation error would then describe that corner rather than the track.
+- **Why not 20 and 4**: it doubles the guard cost to 5.6 percent for a marginal gain in coverage.
+- **Why the guard is discarded from both sides**: dropping it only from the validation side
+  leaves training frames sitting right against the boundary, and adjacency is symmetric.
+
+**What is still reported rather than forced**: the achieved validation fraction. Blocks are
+integer-sized and the guard eats into them, so 17.7 percent is what the rule produces and the
+gap to the 20 percent target is recorded, not corrected. Correcting it would mean moving a
+boundary to hit a number, which is fitting the split to a target instead of to the data.
+
+**Verification remains machine-checkable.** `verify_no_leak` asserts that the minimum time
+distance between any training frame and any validation frame is at least `GUARD_SECONDS`. That
+is a stronger and simpler check than the session-overlap test the previous plan called for.
 
 ---
 
@@ -180,7 +242,7 @@ or recorded plainly as a choice.
 | ID | Decision | Forced or chosen |
 |---|---|---|
 | R1 | Third environment `.venv-bc`, pinned in `requirements-bc.txt` | Forced by measurement: neither existing environment has the needed packages |
-| R2 | Session-level train/validation split via existing `split_sessions` | Chosen, because it makes FR-004 parameter-free |
+| R2 | Contiguous block holdout, 10 blocks per track, 2 held out, 8 s guard | Forced: session-level holdout was measured to be unavailable (2 sessions, 0.5 s largest gap). The guard width is derived from steering autocorrelation |
 | R3 | Store continuous predictions; quantise at comparison time | Chosen, consistent with DESIGN section 7 |
 | R4 | Camera offset stays 0.2, recorded as a choice | Chosen and labelled as such, since no derivation exists |
 | R5 | Reuse `stats.describe` and `relative_frequency_histogram` | Forced by Principle IX plus the risk of definition drift |

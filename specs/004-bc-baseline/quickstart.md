@@ -65,20 +65,29 @@ The split is produced once and shared by both runs, so they are scored on the sa
 .\.venv-bc\Scripts\python.exe -m python.bc.split --seed 42 --val-fraction 0.2
 ```
 
-Writes `results/bc/split.json`. Expected properties, all checkable in the file:
+Writes `results/bc/split.json`. Ten contiguous blocks per track, two held out, everything within
+8 s of a boundary discarded from both sides. Expected properties, all checkable in the file:
 
 | Property | Expected |
 |---|---|
-| sessions assigned | every session appears exactly once |
-| overlap between sides | none, by construction |
-| `val_fraction_actual` | close to 0.20 but **not exactly** 0.20 |
+| `n_train_rows` | about 25,957 |
+| `n_val_rows` | about 5,582 |
+| `n_guard_rows` | about 904, roughly 2.8 percent |
+| `min_train_val_gap_s` | at least 8.0 |
+| `val_fraction_actual` | about 0.177, **not** 0.20 |
 
-The last row is the point worth understanding. Sessions are whole and unequal, so the achieved
-fraction lands near the target rather than on it. That gap is reported, never corrected, because
-correcting it would mean cutting a session and reintroducing the leak the split exists to
-prevent (research R2).
+The last two rows are the point worth understanding.
+
+`min_train_val_gap_s` is the number FR-004 turns on: no training frame is within 8 s of any
+validation frame. 8 s is not a round number someone liked. It is the shortest lag at which
+steering autocorrelation falls below 0.1 on both tracks (research R2).
+
+`val_fraction_actual` lands near the target rather than on it, because blocks are integer-sized
+and the guard eats into them. That gap is reported, never corrected: moving a boundary to hit
+0.20 would be fitting the split to a number instead of to the data.
 
 Re-run the same command and diff the file against itself. It must be byte-identical (SC-002).
+
 
 ---
 
@@ -98,7 +107,7 @@ Read the headline before going further:
 
 | Field | What it means |
 |---|---|
-| `val_error` | the model's error on held-out sessions |
+| `val_error` | the model's error on the held-out blocks |
 | `baseline_error` | the error of always predicting the training mean |
 | `beat_baseline` | false means the model learned nothing useful |
 

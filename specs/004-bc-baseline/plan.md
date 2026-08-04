@@ -12,9 +12,12 @@ property is structural rather than tuned.
 
 The three things that decide whether this feature is worth anything:
 
-1. **The split is by session, not by frame.** Feature 002 already built `split_sessions`, which
-   segments the combined recording into contiguous captures. Holding out whole sessions makes
-   FR-004 true by construction, with no time-window parameter to argue about.
+1. **The split is contiguous block holdout with an 8 s guard band.** The obvious plan, holding
+   out whole recording sessions, was checked against the data and withdrawn: the combined file
+   contains exactly **two** sessions, one per track, and the largest gap in either recording is
+   **0.5 s**. There is nothing to cut on. Ten blocks per track, two held out, every frame within
+   8 s of a boundary discarded from both sides. The guard width is derived from steering
+   autocorrelation and costs 2.8 percent of the data (research R2).
 2. **Feature 002 already owns the statistics.** `stats.describe` returns exactly the six figures
    Principle IX names, and `relative_frequency_histogram` returns the histogram. This feature
    calls them; it does not reimplement them.
@@ -98,7 +101,8 @@ python/
 ├── bc/                       # NEW, this feature
 │   ├── __init__.py
 │   ├── config.py             #   every named constant, one place, comments naming decisions
-│   ├── split.py              #   session-level train/validation split, seeded and recorded
+│   ├── split.py              #   block holdout with guard band, seeded and recorded
+│   ├── survey.py             #   the Phase 2 reconnaissance, kept reproducible
 │   ├── dataset.py            #   image loading, preprocessing, augmentation, balancing
 │   ├── model.py              #   the network
 │   ├── train.py              #   training loop, device handling, run record

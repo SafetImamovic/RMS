@@ -25,30 +25,35 @@ rather than editing `python/eda`, which is owned by features 001 and 002.
 
 ## `SplitPlan`
 
-The assignment of recording sessions to training or validation. Produced once from a seed,
-written to `results/bc/split.json`, and read by both training runs so they cannot disagree.
+The assignment of contiguous blocks to training or validation, plus the guard frames belonging
+to neither. Produced once from a seed, written to `results/bc/split.json`, and read by both
+training runs so they cannot disagree.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `seed` | int | the seed the assignment was drawn with |
-| `train_sessions` | list[int] | session indices assigned to training |
-| `val_sessions` | list[int] | session indices assigned to validation |
-| `n_train_rows` | int | rows in the training sessions |
-| `n_val_rows` | int | rows in the validation sessions |
+| `n_blocks`, `n_holdout`, `guard_seconds` | int, int, float | the rule, stored so the file explains itself |
+| `train_rows` | list[int] | row indices assigned to training |
+| `val_rows` | list[int] | row indices assigned to validation |
+| `guard_rows` | list[int] | rows discarded for being within the guard of a boundary |
+| `n_train_rows`, `n_val_rows`, `n_guard_rows` | int | derived counts |
 | `val_fraction_actual` | float | derived: `n_val_rows / (n_train_rows + n_val_rows)` |
 | `val_fraction_target` | float | what was asked for, kept so the gap is visible |
-| `session_bounds` | list of (index, first_time, last_time, n_rows, track) | enough to verify the leak-free property without re-deriving it |
+| `block_bounds` | list of (track, block index, first row, last row, first time, last time, assignment) | enough to verify the leak-free property without re-deriving it |
+| `min_train_val_gap_s` | float | derived: the smallest time distance between any training frame and any validation frame. The single number FR-004 turns on |
 
 **Validation rules**
 
-- `train_sessions` and `val_sessions` are disjoint and together cover every session. A session
-  is never split.
-- Both sides are non-empty.
-- `val_fraction_actual` is **reported, never forced**. Forcing it would require cutting a
-  session, which is the leak the split exists to prevent (research R2).
+- `train_rows`, `val_rows` and `guard_rows` are pairwise disjoint and together cover every row.
+  No frame is silently lost or double counted.
+- Both training and validation sides are non-empty.
+- `min_train_val_gap_s` is at least `guard_seconds`. This is the machine-checkable form of
+  FR-004 and is asserted in `test_bc_split.py`. On the current data it should be about 8.0.
+- `val_fraction_actual` is **reported, never forced**. Blocks are integer-sized and the guard
+  eats into them, so the achieved figure lands near 0.177 against a 0.20 target. Moving a
+  boundary to close that gap would be fitting the split to a number instead of to the data
+  (research R2).
 - Regenerating from the same seed produces a byte-identical file (SC-002).
-- Every validation session's time range is disjoint from every training session's time range.
-  This is the machine-checkable form of FR-004 and is asserted in `test_bc_split.py`.
 
 ---
 
@@ -64,7 +69,7 @@ refers to and what target that camera implies.
 | `steering` | float | the target after any camera offset |
 | `is_augmented` | bool | true for left and right, false for center |
 | `track` | str | track1 or track2, from the path marker (research R6) |
-| `session` | int | which recording session this row belongs to |
+| `block` | int | which contiguous block this row belongs to |
 
 **Validation rules**
 
@@ -205,14 +210,17 @@ The deliverable that the clarification decision exists to produce.
 ```text
 TrackDataset (eda)
     |
-    +-- split_sessions (eda) --> [RecordingSession]
+    +-- split_sessions (eda) --> 2 sessions, one per track (the unit blocks are cut within)
+    |                                  |
+    |                        cut into N_BLOCKS each, hold out N_HOLDOUT,
+    |                        discard anything within GUARD_SECONDS of a boundary
     |                                  |
     |                                  v
     |                             SplitPlan  ---- results/bc/split.json
-    |                              /      \
-    |               train sessions        val sessions
-    |                     |                     |
-    +--> [SampleSpec] ----+                     +--> [SampleSpec], is_augmented always false
+    |                            /     |     \
+    |               train blocks   guard rows   val blocks
+    |                     |        (neither)         |
+    +--> [SampleSpec] ----+                          +--> [SampleSpec], is_augmented always false
               |
               v
        BalancingPolicy (training samples only)
