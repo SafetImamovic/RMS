@@ -51,6 +51,11 @@ namespace SelfDrivingSim.Track
                  "so a car passing through one is recorded and not deflected.")]
         [SerializeField] private float checkpointHeightM = 3f;
 
+        [Tooltip("The ring that counts progress. Each gate is bound to it with its own index " +
+                 "as the gates are created. Optional: without one the track still builds and " +
+                 "drives, it simply counts nothing.")]
+        [SerializeField] private CheckpointRing ring;
+
         /// <summary>The track currently built, or null.</summary>
         public TrackFileRecord Current { get; private set; }
 
@@ -307,7 +312,18 @@ namespace SelfDrivingSim.Track
                 // passes THROUGH, not a volume it sits inside for several samples.
                 box.size = new Vector3(record.width_m, checkpointHeightM, 0.5f);
 
+                // The gate carries the file's own index, not its position in this loop. They
+                // agree today because the loader has already refused any file whose
+                // checkpoints are not monotonic in s, but binding to the loop counter would
+                // make that agreement a coincidence rather than a checked property.
+                gate.AddComponent<CheckpointTrigger>().Bind(ring, checkpoint.index);
+
                 _checkpoints.Add(gate.transform);
+            }
+
+            if (ring != null)
+            {
+                ring.Configure(_checkpoints);
             }
         }
 

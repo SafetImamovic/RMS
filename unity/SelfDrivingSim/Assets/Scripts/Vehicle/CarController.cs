@@ -651,6 +651,23 @@ namespace SelfDrivingSim.Vehicle
             Debug.Log($"[CarController] out of bounds ({(fell ? "fell" : "strayed")}), reset #{ResetCount}");
         }
 
+        /// <summary>
+        /// Move the car somewhere and treat that as its new spawn point.
+        ///
+        /// The spawn is captured in Awake, and both the out-of-bounds reset (FR-012) and
+        /// <see cref="ResetToSpawn"/> return the car to whatever was captured then. Teleporting
+        /// the car without telling it - which is what a randomised start does (T058) - leaves
+        /// those two pointing at the old position, so the first reset of the run drags the car
+        /// back to wherever the scene happened to place it, most likely off the track
+        /// entirely.
+        /// </summary>
+        public void SetSpawn(Vector3 position, Quaternion rotation)
+        {
+            _spawnPosition = position;
+            _spawnRotation = rotation;
+            ResetToSpawn();
+        }
+
         /// <summary>Put the car back at its spawn point, stopped and straight.</summary>
         public void ResetToSpawn()
         {
