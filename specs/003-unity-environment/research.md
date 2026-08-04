@@ -274,18 +274,36 @@ Nijedan prag nije "odabran jer izgleda dobro".
   |---|---|---|
   | track1 nasumične polovine (seed 0) | 0.0079 | čisti šum uzorkovanja |
   | track1 prva polovina vs druga | 0.0231 | isti čovjek, ista staza, uz vremenski drift |
-  | track1 vs uniformna na [0, 0.789] | 0.1047 | raspodjela **bez ikakve strukture** |
+  | track1 vs uniformna na [0, 0.789] | **0.1142** | raspodjela **bez ikakve strukture** |
   | track1 vs track2 | 0.2635 | drugi čovjek, drugi profil vožnje |
 
   (`n = 2193` nenultih na track1, `n = 11253` na track2.)
-- **Izvođenje**: prag mora biti **strogo ispod 0.1047**, inače bi i raspodjela bez strukture
-  prošla i test ne bi razlikovao ništa. Mora biti i **iznad 0.0231**, inače od generatora tražimo
-  da bude bliži track1 nego što je track1 sam sebi, što nijedan uzorak konačne veličine ne može
-  garantovati. Geometrijska sredina te dvije granice je `sqrt(0.0231 × 0.1047) = 0.0492`,
-  zaokruženo na **0.05**. To je 2.2 puta iznad poda i 2.1 puta ispod baseline-a bez strukture.
+
+  > **Ispravka vrijednosti bez strukture: 0.1047 → 0.1142 (2026-07-31, upisano ovdje
+  > 2026-08-04, T069).** Ovaj dokument je nosio 0.1047 dok `config.py` nosi 0.1142, pa su
+  > kod i istraživanje govorili različito. Ponovno računanje po definiciji koju C15 sam
+  > navodi daje **0.1142**, pod dvije nezavisne implementacije: kvantilno-integralni
+  > Wasserstein ovog projekta i `scipy.stats.wasserstein_distance`, koje se slažu na četiri
+  > decimale. Iste te implementacije reprodukuju druge dvije skale tačno (0.0231, i 0.2636
+  > naspram zapisanih 0.2635), pa mašinerija nije sporna, nego samo ova vrijednost. Nosač
+  > raspodjele je provjeren kao mogući uzrok i nije: uniformna na [0, 1] daje 0.2127, a
+  > bezuslovna referenca 0.3359, ni blizu 0.1047. Porijeklo broja 0.1047 nije utvrđeno.
+  >
+  > **Nijedna odluka se ne mijenja**, jer 0.05 leži ispod i stare i nove vrijednosti.
+  > Izvođenje ispod je zadržano u originalnom obliku, sa starim brojem, jer je to račun
+  > kojim je prag **stvarno** izveden; ponovno izvođenje sa 0.1142 dalo bi
+  > `sqrt(0.0231 × 0.1142) = 0.0514`, što se takođe zaokružuje na 0.05.
+
+- **Izvođenje**: prag mora biti **strogo ispod** vrijednosti bez strukture, inače bi i
+  raspodjela bez strukture prošla i test ne bi razlikovao ništa. Mora biti i **iznad 0.0231**,
+  inače od generatora tražimo da bude bliži track1 nego što je track1 sam sebi, što nijedan
+  uzorak konačne veličine ne može garantovati. Geometrijska sredina te dvije granice, kako je
+  prag izvorno izveden, je `sqrt(0.0231 × 0.1047) = 0.0492`, zaokruženo na **0.05**. Sa
+  ispravljenom vrijednošću `sqrt(0.0231 × 0.1142) = 0.0514`, opet **0.05**. Prag je 2.2 puta
+  iznad poda i 2.3 puta ispod baseline-a bez strukture.
 - **Ako batch ne dostigne 0.05**: to je **nalaz o harmonijskom obliku generatora**, ne dugme za
   podešavanje - isti tretman kao stopa prihvatanja u SC-011. Svako popuštanje praga mora ostati
-  strogo ispod 0.1047, jer iznad toga test prestaje da razlikuje staze od šuma.
+  strogo ispod 0.1142, jer iznad toga test prestaje da razlikuje staze od šuma.
 - **Uzgredna potvrda za C2**: odsijecanje na 0.789 samo po sebi košta `W1 = 0.0027`, dakle
   zanemarivo u odnosu na prag. Truncation nije ono što će oboriti poređenje.
 

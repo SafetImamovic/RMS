@@ -257,8 +257,33 @@ može pročitati u toku vožnje. T057 traži da se **svaka** observacija vidi u�
 protiv situacije čiji je tačan odgovor vidljiv (T062, kapija za M2), i to je lakše nad
 sopstvenim, jednostavnijim kodiranjem.
 
-> Izvor: research C11. Vrijednosti žive u `python/track/config.py` i prenose se u
-> `vehicle_profile.json` kao i sve ostalo.
+> Izvor: research C11. Vrijednosti žive u `python/track/config.py`. **Ispravka
+> (2026-08-04):** za razliku od parametara vozila, ove tri vrijednosti se **ne** prenose u
+> `vehicle_profile.json` - eksporter ne piše blok senzora, pa između `CarAgent.cs` i
+> `config.py` ne stoji mirror test. Promjena bilo koje od njih traži ručnu izmjenu na oba
+> mjesta. Dodavanje bloka bi podiglo schema verziju profila, a taj profil je ugrađen u svaki
+> već commitovan track fajl.
+
+**Izmjereno (T059, 2026-08-04, u editoru bez play moda).**
+
+| Provjera | Rezultat | Granica |
+|---|---|---|
+| Bočne zrake naspram pravih branika, seed 1, pomaci −1.5 do +1.5 m | **greška 0.00 %** | 5 % (SC-013) |
+| Svih 13 zraka u sintetičkom koridoru širine 6 m | **greška 0.00 %**, razmak 15.00° | 5 % |
+| Ništa u dometu | 13/13 zraka `no hit`, najniža normalizovana vrijednost **1.000** | mora biti 1.000 |
+| Branik na 0.10 m od senzora | čita 0.100 m, normalizovano **0.0050**, `hit=true` | ≈ 0.0 |
+
+Mjereno na uzorku 1017 centralne linije, tj. na najravnijem dijelu kruga (lokalni radijus
+29 827 m). Branik je poligonalni pomak zakrivljene linije, pa okomita zraka pogađa tačno na
+pola širine samo tamo gdje je zakrivljenost zanemariva; u oštroj krivini je prava
+udaljenost stvarno različita od 3 m, pa bi ispravna zraka izgledala pogrešno. Sintetički
+koridor postoji jer prava staza može provjeriti samo dvije zrake koje gledaju popreko:
+lepeza sa pogrešnim razmakom i dalje tačno čita na −90 i +90 ako su joj krajevi tačni.
+
+**Visina senzora je ispravljena tokom T059.** Podrazumijevani pomak je stavljao lepezu na
+y = 1.0 m na vozilu čiji je origin na 0.5 m, a branici su visoki 0.8 m - **svaka zraka je
+gledala preko svakog branika**. Sada je −0.1 lokalno, dakle lepeza na 0.4 m, na sredini
+branika, sa rezervom za propinjanje i poskakivanje karoserije.
 
 ### 4.4 Akcije (kontinualne, 2)
 - `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
@@ -335,6 +360,22 @@ napredak bi mjerila poziciju umjesto pređenog puta. Krug se broji kad se indeks
 prođenom markeru. Bodovanje pripada M3, a pravilo iz kojeg bi ono slijedilo pripada ovdje;
 razdvojeno je da prvo podešavanje rewarda ne mijenja fajlove koje je M2 proglasio
 provjerenim.
+
+**Izmjereno (T060 i T061, 2026-08-04).** Skriptirani prolaz kroz svih 2000 uzoraka seeda 1,
+sa ručno primijenjenom `OnTriggerEnter`/`OnTriggerExit` semantikom. Staza 202.3 m, 24
+markera, razmak 8.43 m.
+
+| Provjera | Rezultat | Granica |
+|---|---|---|
+| Jedan krug sa startova 0, 6 i 18 | **24/24 dodijeljeno, 1 krug, 0 preskočenih, bez pogrešnog smjera** - svaki put | SC-014 |
+| Okret na pola kruga, poslije 11 markera na s = 98.5 m | pogrešan smjer prijavljen nakon **3.43 m** vožnje unazad | 8.43 m, tj. jedan razmak (SC-015) |
+
+**Ovaj zadatak je našao stvarnu grešku.** Vozilo se postavlja **na** marker, dakle unutar
+njegovog trigger volumena, a Unity okida `OnTriggerEnter` za preklapanje nastalo
+teleportom jednako kao za ono u koje je vozilo dovezlo. Taj dodir pada na marker koji je
+`StartAt` upravo upisao kao prođen, pa bi **svaki randomizovani start prijavio pogrešan
+smjer prije nego se vozilo pomjeri**. Riješeno tako što prsten pamti marker u kojem vozilo
+stoji i ignoriše ga dok `OnTriggerExit` ne javi da ga je napustilo.
 
 **Start se randomizuje, i to nije kozmetika (research C12).** Epizoda počinje na
 **slučajnom markeru**, sa bočnim pomakom do 1.5 m i zakretom do 10 stepeni. Uvijek isti
@@ -480,6 +521,27 @@ Upotreba kamera u BC-u:
 > Isto vrijedi i za KL divergenciju iz tabele gore: KL između diskretne i kontinualne
 > raspodjele nije definisan bez zajedničke podrške, pa je zajednička rešetka preduslov, a
 > ne kozmetika.
+
+> **Druga napomena za M5 - generisane staze nemaju pravce**
+> *(potiče iz feature-a 003, research C9, 2026-08-04)*
+>
+> Zatvorena kriva sastavljena od harmonika **stalno skreće**: nigdje na krugu nema dionice
+> na kojoj je potreban steering nula. Čovjek je u datasetu vozio pravo **58.6 % vremena**.
+>
+> Posljedica je ista po obliku kao ona gore, ali iz drugog uzroka. Ako se u M5 direktno
+> uporede marginalni histogrami steeringa agenta i čovjeka, razlika će biti ogromna i biće
+> **posljedica topologije staze**, a ne razlike u vožnji. Naša staza fizički ne dozvoljava
+> vožnju pravo, pa agent ne može proizvesti pik na nuli koji čini skoro tri petine ljudskog
+> zapisa. Nijedan iznos treninga to ne mijenja.
+>
+> **Mjera prije poređenja:** težina ide na **metrike izvršenja** - glatkoća |Δsteering|,
+> prebačaj, učestalost korekcija, vrijeme kruga - a marginalni histogram ostaje kao
+> kontekst, ne kao glavni rezultat. Gdje se raspodjele ipak porede, poredi se **uslovna**
+> raspodjela (dato da je steering nenulti), što je isti izbor koji već stoji iza SC-010.
+>
+> Hibridni oblik staze (lukovi + pravci + klotoide) dao bi prave pravce, ali vraća problem
+> zatvaranja petlje koji polarni oblik rješava besplatno. Odbačeno za sada; ostaje kao
+> proširenje ako se nedostatak pravaca pokaže kao stvarna smetnja u M3.
 
 ### 7.1 Statistička obrada (naglasak predmeta)
 
