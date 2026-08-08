@@ -1,0 +1,115 @@
+{
+  "balancing": {
+    "n_after": 77871,
+    "n_before": 77871,
+    "n_removed": 0,
+    "policy": "none",
+    "runner_up_share_after": 0.06289889689358041,
+    "runner_up_value": -0.25,
+    "zero_share_after": 0.20347754619819958,
+    "zero_share_before": 0.20347754619819958
+  },
+  "baseline_error": 0.153622828786396,
+  "beat_baseline": true,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "duration_s": 337.17035070000566,
+  "epochs_completed": 13,
+  "history": [
+    {
+      "epoch": 1,
+      "train_error": 0.13229977205451002,
+      "val_error": 0.10991535616913006
+    },
+    {
+      "epoch": 2,
+      "train_error": 0.11326200478434788,
+      "val_error": 0.10173679901075842
+    },
+    {
+      "epoch": 3,
+      "train_error": 0.10424152696148428,
+      "val_error": 0.10057203529383907
+    },
+    {
+      "epoch": 4,
+      "train_error": 0.09923347475078002,
+      "val_error": 0.09864261358912227
+    },
+    {
+      "epoch": 5,
+      "train_error": 0.09625137908775122,
+      "val_error": 0.09172029653764524
+    },
+    {
+      "epoch": 6,
+      "train_error": 0.09385442843641839,
+      "val_error": 0.0916162277471643
+    },
+    {
+      "epoch": 7,
+      "train_error": 0.09212082043992227,
+      "val_error": 0.09092160114962367
+    },
+    {
+      "epoch": 8,
+      "train_error": 0.0906540047155326,
+      "val_error": 0.08666985167171726
+    },
+    {
+      "epoch": 9,
+      "train_error": 0.08939857771212445,
+      "val_error": 0.08999213990534909
+    },
+    {
+      "epoch": 10,
+      "train_error": 0.08844794054135685,
+      "val_error": 0.0913167730123446
+    },
+    {
+      "epoch": 11,
+      "train_error": 0.08711370474053345,
+      "val_error": 0.08995023940608354
+    },
+    {
+      "epoch": 12,
+      "train_error": 0.08618876470739852,
+      "val_error": 0.08822004834304924
+    },
+    {
+      "epoch": 13,
+      "train_error": 0.08499372433604806,
+      "val_error": 0.09039969782383746
+    }
+  ],
+  "hyperparameters": {
+    "activation": "relu",
+    "batch_size": 64,
+    "brightness_range": [
+      0.5,
+      1.15
+    ],
+    "camera_offset_range": [
+      0.1,
+      0.3
+    ],
+    "crop": [
+      60,
+      137
+    ],
+    "early_stopping_patience": 5,
+    "flip_probability": 0.5,
+    "learning_rate": 0.0001,
+    "loss": "mse",
+    "max_epochs": 50,
+    "optimiser": "adam"
+  },
+  "n_train_samples": 77871,
+  "n_val_samples": 5576,
+  "parameter_count": 252219,
+  "policy": "none",
+  "run_id": "bc_unbalanced_v01",
+  "seed": 42,
+  "split_digest": "f9151b481e7fcd51a5ca3bd3fcbf041da669eea97c2067e006add99ddbcfa75a",
+  "train_error": 0.08499372433604806,
+  "val_error": 0.08666985167171726
+}

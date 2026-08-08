@@ -1,0 +1,42 @@
+# M4 behavioural cloning environment (.venv-bc)
+#
+# A THIRD environment, and the reason is Principle VI rather than convenience:
+#
+#   .venv            numpy 1.26.4, pandas, scipy, matplotlib, NO torch   <- M1's committed numbers
+#   .venv-mlagents   numpy 1.23.5, torch 2.6.0+cu124, NO pandas          <- RL training, M3
+#   .venv-bc         this file                                           <- M4
+#
+# Neither existing environment can run M4: one has the dataframe stack and no torch, the other
+# has torch and no dataframe stack. Installing torch into .venv invites pip to move numpy off
+# 1.26.4, which would silently invalidate M1's reproducibility claim; installing pandas into
+# .venv-mlagents disturbs the numpy 1.23.5 pin that mlagents hard-depends on. See
+# specs/004-bc-baseline/research.md R1.
+#
+# Exact pins, not ranges. A range reconstructs a different environment next month, and
+# Principle VI requires a reader to reconstruct THIS one.
+#
+# Install:
+#   py -3.10 -m venv .venv-bc
+#   .\.venv-bc\Scripts\python.exe -m pip install -r requirements-bc.txt
+
+# Torch matching the version already verified end to end on this machine (ENVIRONMENT.md).
+# The CUDA 12.4 wheels live on PyTorch's own index, not on PyPI.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+
+# Image decoding for the camera frames.
+pillow==12.3.0
+
+# Matches .venv so the eda loader behaves identically here. M4 reuses python/eda rather than
+# reimplementing the headerless-CSV and path-rerooting logic (FR-001).
+numpy==1.26.4
+pandas==2.1.4
+
+# Figures for the prediction and residual distributions.
+matplotlib==3.8.4
+
+# Used by eda.stats for the goodness-of-fit machinery M4 reads through.
+scipy==1.13.1
+
+# Test runner, same as the rest of the project.
+pytest==8.4.2

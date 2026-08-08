@@ -60,7 +60,8 @@ Sources: `Library/PackageCache/com.unity.ml-agents@*/package.json`, `CHANGELOG.m
 
 ## Python environments
 
-Two separate venvs, deliberately.
+Three separate venvs, deliberately. Each exists because installing its packages into one of the
+others would move numbers already reported from that one.
 
 ### `.venv` - M1 EDA (frozen)
 
@@ -95,6 +96,32 @@ Known resolution result for `mlagents==1.1.0`: `numpy-1.23.5`, `protobuf-3.20.3`
 `grpcio-1.48.2`, `onnx-1.15.0`, `tensorboard-2.20.0`, plus `gym`/`PettingZoo`/`huggingface_hub`.
 If the `grpcio` wheel fails to build, install `grpcio==1.48.2` on its own first, then retry
 `mlagents`.
+
+### `.venv-bc` - M4 behavioural cloning (feature 004)
+
+A third environment rather than reusing `.venv-mlagents`, for the reason that split the first
+two: `mlagents` pins `numpy==1.23.5`, BC needs a newer numpy alongside torch 2.6, and resolving
+both in one place would have meant re-pinning the RL environment to suit BC.
+
+```
+py -3.10 -m venv .venv-bc
+.venv-bc\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r requirements-bc.txt
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+Verified on this machine: Python 3.10.11, `torch 2.6.0+cu124`, CUDA available, device
+**NVIDIA GeForce RTX 3050 6GB Laptop GPU**. That device string is what appears in every BC
+`run_record.json`, so a record naming a different device was produced elsewhere.
+
+`requirements-bc.txt` pins exact versions rather than ranges (Principle VI): a range
+reconstructs a different environment next month, which is the opposite of what the file is for.
+
+**Which venv runs what.** `python/bc/split.py` and `python/bc/dataset.py` import no torch on
+purpose, so every split-level and sample-level decision can still be checked under `.venv`. The
+test suite reflects that split: **141 passed** under `.venv-bc`, **87 passed and 3 skipped**
+under `.venv`, where the three torch-dependent test modules skip cleanly instead of erroring.
 
 ## Example environments (3DBall)
 
