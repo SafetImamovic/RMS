@@ -81,10 +81,35 @@ namespace SelfDrivingSim.Track
             // Start, not Awake. TrackBuilder builds in Awake and the markers do not exist
             // before it has, so placing the car any earlier would find an empty ring and
             // leave it wherever the scene put it.
+            //
+            // But not Start either, and this is the part that was wrong. A pose written before
+            // the first physics step is discarded: the body's authored transform is committed
+            // when physics initialises, which happens after every Start has run, so the car
+            // was put at the marker and then dragged straight back to wherever the scene left
+            // it. The same call from FixedUpdate sticks, which is why the out-of-bounds reset
+            // always worked and only the opening placement did not.
+            //
+            // The failure was close to invisible, because the scene parks the car on seed 1's
+            // first checkpoint. On seed 1 the car is dragged back onto its own road and looks
+            // correctly placed; on every other seed it is dragged outside that seed's track
+            // and falls through the world about a second later.
             if (placeOnStart)
             {
-                Place();
+                _placePending = true;
             }
+        }
+
+        private bool _placePending;
+
+        private void FixedUpdate()
+        {
+            if (!_placePending)
+            {
+                return;
+            }
+
+            _placePending = false;
+            Place();
         }
 
         /// <summary>Draw a start and put the car there.</summary>

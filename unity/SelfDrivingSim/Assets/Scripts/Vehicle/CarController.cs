@@ -669,11 +669,32 @@ namespace SelfDrivingSim.Vehicle
         }
 
         /// <summary>Put the car back at its spawn point, stopped and straight.</summary>
+        /// <remarks>
+        /// The pose goes onto the <b>Rigidbody</b>, not only the Transform. With
+        /// <see cref="RigidbodyInterpolation.Interpolate"/> set in Awake the body owns the pose
+        /// and drives the Transform between physics steps, so writing the Transform alone is
+        /// discarded on the next step and the car snaps back to wherever the body already was.
+        /// That failure is close to invisible: the scene positions the car on seed 1's first
+        /// checkpoint, so on seed 1 the snap-back lands on the road and everything looks right,
+        /// while every other seed puts the car down outside its own track and it falls through
+        /// the world about a second later.
+        ///
+        /// Interpolation is switched off across the move and restored after. A teleport with it
+        /// left on is smeared from the old pose to the new one, which reads as the car flying
+        /// across the map rather than being placed.
+        /// </remarks>
         public void ResetToSpawn()
         {
             _body.linearVelocity = Vector3.zero;
             _body.angularVelocity = Vector3.zero;
+
+            RigidbodyInterpolation previous = _body.interpolation;
+            _body.interpolation = RigidbodyInterpolation.None;
+            _body.position = _spawnPosition;
+            _body.rotation = _spawnRotation;
             transform.SetPositionAndRotation(_spawnPosition, _spawnRotation);
+            _body.interpolation = previous;
+
             SteerNorm = 0f;
             Throttle = 0f;
             Brake = 0f;
