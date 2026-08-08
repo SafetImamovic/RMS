@@ -453,6 +453,7 @@ GameObject:
   - component: {fileID: 679899602}
   - component: {fileID: 679899605}
   - component: {fileID: 679899604}
+  - component: {fileID: 679899606}
   m_Layer: 0
   m_Name: TrackBuilder
   m_TagString: Untagged
@@ -472,7 +473,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 504f1b85aebfa2442b7c2840e417c048, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.TrackBuilder
-  seed: 1
+  seed: 1004
   profile:
     wheelbaseM: 2.5
     steerMaxDeg: 25
@@ -519,7 +520,7 @@ MonoBehaviour:
   startLateralM: 1.5
   startYawDeg: 10
   rideHeightM: 0.5
-  randomSeed: -1
+  randomSeed: 0
   placeOnStart: 1
 --- !u!114 &679899605
 MonoBehaviour:
@@ -534,6 +535,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.CheckpointRing
   vehicle: {fileID: 2103184332}
+--- !u!114 &679899606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679899601}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46651e7fcf8ef25418cb2891bbaaf287, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.LapReport
+  ring: {fileID: 0}
+  car: {fileID: 0}
+  builder: {fileID: 0}
 --- !u!1 &684926419
 GameObject:
   m_ObjectHideFlags: 0
