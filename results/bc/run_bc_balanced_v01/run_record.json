@@ -1,0 +1,115 @@
+{
+  "balancing": {
+    "n_after": 66783,
+    "n_before": 77871,
+    "n_removed": 11088,
+    "policy": "downsample_zero",
+    "runner_up_share_after": 0.0733420181782789,
+    "runner_up_value": -0.25,
+    "zero_share_after": 0.07123070242426965,
+    "zero_share_before": 0.20347754619819958
+  },
+  "baseline_error": 0.15399154378136137,
+  "beat_baseline": true,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "duration_s": 291.3999305000034,
+  "epochs_completed": 13,
+  "history": [
+    {
+      "epoch": 1,
+      "train_error": 0.14940682707621258,
+      "val_error": 0.1080275642841926
+    },
+    {
+      "epoch": 2,
+      "train_error": 0.12994286501723395,
+      "val_error": 0.11529471734845997
+    },
+    {
+      "epoch": 3,
+      "train_error": 0.11935532008136712,
+      "val_error": 0.10375651208365835
+    },
+    {
+      "epoch": 4,
+      "train_error": 0.11308295603946357,
+      "val_error": 0.1001363761690973
+    },
+    {
+      "epoch": 5,
+      "train_error": 0.10890229715360775,
+      "val_error": 0.09756918824471565
+    },
+    {
+      "epoch": 6,
+      "train_error": 0.10584566779354912,
+      "val_error": 0.09660243642766302
+    },
+    {
+      "epoch": 7,
+      "train_error": 0.10334074932947375,
+      "val_error": 0.09385231261273881
+    },
+    {
+      "epoch": 8,
+      "train_error": 0.1016095498748262,
+      "val_error": 0.09089907784672345
+    },
+    {
+      "epoch": 9,
+      "train_error": 0.09985936621753945,
+      "val_error": 0.09584495137676789
+    },
+    {
+      "epoch": 10,
+      "train_error": 0.09851679154887395,
+      "val_error": 0.09096229337209266
+    },
+    {
+      "epoch": 11,
+      "train_error": 0.09768405813945424,
+      "val_error": 0.09364606153588725
+    },
+    {
+      "epoch": 12,
+      "train_error": 0.0965587027135418,
+      "val_error": 0.09874829113312397
+    },
+    {
+      "epoch": 13,
+      "train_error": 0.0953936077472624,
+      "val_error": 0.09463975132794428
+    }
+  ],
+  "hyperparameters": {
+    "activation": "relu",
+    "batch_size": 64,
+    "brightness_range": [
+      0.5,
+      1.15
+    ],
+    "camera_offset_range": [
+      0.1,
+      0.3
+    ],
+    "crop": [
+      60,
+      137
+    ],
+    "early_stopping_patience": 5,
+    "flip_probability": 0.5,
+    "learning_rate": 0.0001,
+    "loss": "mse",
+    "max_epochs": 50,
+    "optimiser": "adam"
+  },
+  "n_train_samples": 66783,
+  "n_val_samples": 5576,
+  "parameter_count": 252219,
+  "policy": "downsample_zero",
+  "run_id": "bc_balanced_v01",
+  "seed": 42,
+  "split_digest": "f9151b481e7fcd51a5ca3bd3fcbf041da669eea97c2067e006add99ddbcfa75a",
+  "train_error": 0.0953936077472624,
+  "val_error": 0.09089907784672345
+}

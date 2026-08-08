@@ -1,0 +1,18 @@
+  epoch   1  train 0.132479  val 0.108345
+  epoch   2  train 0.112970  val 0.098836
+  epoch   3  train 0.103456  val 0.098123
+  epoch   4  train 0.098855  val 0.100982
+  epoch   5  train 0.096022  val 0.091559
+  epoch   6  train 0.093713  val 0.090836
+  epoch   7  train 0.092017  val 0.090805
+  epoch   8  train 0.090804  val 0.086685
+  epoch   9  train 0.089522  val 0.090489
+  epoch  10  train 0.088484  val 0.091071
+  epoch  11  train 0.087172  val 0.091667
+  epoch  12  train 0.086126  val 0.092601
+  epoch  13  train 0.084943  val 0.092927
+  stopping early: 5 epochs without improvement
+
+[bc_repro_a_v01] none: val 0.086685 beat baseline 0.153623 after 13 epochs on NVIDIA GeForce RTX 3050 6GB Laptop GPU in 371 s
+  written to C:\Users\User\Development\RMS\results\bc\run_bc_repro_a_v01
+  Log it in results/EXPERIMENTS.md in this session (Principle VI).
