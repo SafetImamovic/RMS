@@ -334,6 +334,42 @@ Nijedan prag nije "odabran jer izgleda dobro".
 | `MATCH_DISTANCE_THRESHOLD` | 0.05 | C15, geometrijska sredina poda 0.0231 i baseline-a 0.1047 |
 | `TRAIN_SEEDS`, `EVAL_SEEDS` | 1..40, 1001..1010 | C13 |
 
+## C16 - Postavljanje auta u Start() se ne primjenjuje (nađeno pri T051, 2026-08-08)
+
+**Simptom.** Na seedu 37 auto se pojavi izvan staze i propadne kroz svijet nakon oko 1.4 s.
+`[StartPlacer] start at marker 17 of 24` se uredno ispiše, dakle marker je nađen i izbor je
+napravljen, ali auto tamo nije.
+
+**Šta je izmjereno.** Dva zapažanja zajedno lociraju grešku:
+
+- Na **seedu 1** auto završi na `(30.675788, 0)`, što je tačno checkpoint 0 tog seeda, na devet
+  cifara, a 53.8 m od markera 17 koji je log prijavio. Auto se nikad nije pomjerio sa pozicije
+  koju mu je scena dala.
+- Na **seedu 37**, poslije pada, **isti** `ResetToSpawn` ga korektno vrati na marker 17 uz
+  pomak od 0.95 m.
+
+Ista metoda, suprotan ishod. Razlika je **kada**: poza upisana prije prvog fizičkog koraka se
+odbaci, jer se autorska transformacija tijela commita kad se fizika inicijalizuje, a to je
+poslije svih `Start()` poziva. Isti upis iz `FixedUpdate` ostane. Zato je reset zbog izlaska van
+granica uvijek radio, a samo početno postavljanje nije.
+
+**Zašto je bilo skoro nevidljivo.** Scena parkira auto tačno na prvi checkpoint **seeda 1**, a to
+je i podrazumijevani seed u `TrackBuilder`. Na seedu 1 se auto vrati na svoj put i sve izgleda
+ispravno postavljeno. Svaki drugi seed ga vrati izvan **svoje** staze. Seed 37 ide po x samo do
+25.51, a auto stoji na 30.68, dakle oko 5 m iza kraja staze.
+
+**Popravka, dvije stvari.** `StartPlacer` postavlja auto u prvom `FixedUpdate` umjesto u
+`Start()`. `CarController.ResetToSpawn` upisuje pozu na **Rigidbody**, ne samo na Transform, uz
+privremeno gašenje interpolacije preko teleporta: uz `RigidbodyInterpolation.Interpolate` tijelo
+drži pozu i vodi Transform, pa je upis samo u Transform ionako bio pogrešan bez obzira na trenutak.
+
+**Posljedica koju vrijedi zapisati.** Ovo je bilo tiho oboriti cijeli M3. Trening počinje
+randomizovanim startom po lapu (C12), a svaki takav start bi vraćao auto na jedno te isto mjesto
+sa seeda 1. Agent bi učio jednu tačku staze, epizode bi počinjale identično, i mjera koja to
+otkriva ne postoji jer trening mjeri upravo one epizode iz kojih je memorizacija nastala.
+
+---
+
 ## Šta ovaj feature svjesno NE rješava
 
 - Nagrađivanje i trening. To je M3.

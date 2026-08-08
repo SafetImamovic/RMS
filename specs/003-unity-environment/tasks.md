@@ -154,7 +154,10 @@ else can start until it exists and is proven.
   - The bound checks **upper percentiles only** (`BOUND_PERCENTILES`, P50 and above) plus the maximum. A loop with no straights necessarily demands more than a human at the bottom of the distribution: a single seed measures 0.28 at P5 against a human 0.05. That is research C9's accepted premise, not a breach, and checking low percentiles would fail tracks for having the property the design intends
   - The maximum is checked separately rather than inferred from P99, because a distribution can sit under the human curve at every percentile and still contain one impossible corner, which is exactly what an agent would fail on
   - **Measured on the 40 train seeds: within bound, max demand 0.552 against a human 1.000, zero exceedance, percentile gaps -0.048 at P50 to -0.501 at P99.** `MatchReport` is retained and its 0.0930 pinned by a test, so a change in the generator surfaces rather than passing unnoticed
-- [ ] T045 [US2] Run `--batch train` and `--batch eval`, then commit the accepted `unity/SelfDrivingSim/Assets/Tracks/seed_*.json` files, the batch report and the split (FR-021)
+- [X] T045 [US2] Run `--batch train` and `--batch eval`, then commit the accepted `unity/SelfDrivingSim/Assets/Tracks/seed_*.json` files, the batch report and the split (FR-021)
+  - The outputs were already generated and committed; what was missing was the tick and the check that they reproduce. **44 accepted seeds**, eval 10 of 10 and train 34 of 40 at 85 percent, with the two sets disjoint. Rejections are all the radius floor: seeds 4, 12, 15, 22, 28 and 33 have a tightest corner between 5.19 m and 6.26 m against a 6.97 m floor, and none was retried with adjusted parameters
+  - **Re-ran `--batch all` into a temporary directory and compared. All 44 files reproduce exactly**, along with `seed_split.json`. `batch_report.md` differs in two lines, both generation timestamps, which `export.py` says up front is where reproducibility is not claimed
+  - **The naive comparison says all 44 differ, and it is wrong.** `.gitattributes` sets `* text=auto`, so git stores LF and checks out CRLF on Windows, while a freshly generated file is written LF. Comparing the working-tree copy against fresh output diffs every line of every file. Comparing against `git show HEAD:<path>` gives the real answer, which is zero differences. Worth recording because the false negative looks exactly like a reproducibility failure and would send the next person hunting a bug that is not there
 
 ### Unity track construction
 
@@ -169,7 +172,19 @@ else can start until it exists and is proven.
   - **Two winding bugs, neither of which any test could have caught.** `MeshCollider` ignores triangle winding, so the geometry was always correct and always drivable; the failure is purely visual. The surface one was the serious version: with the lateral normal for a tangent of +X being -Z, ordering the quad (a, c, b) gives a face normal of -Y, so the road faced the ground, was backface-culled from above, and was **invisible while remaining perfectly solid**. The second was the inner barrier, which is built by mirroring the offset, and mirroring the layout reverses the winding, so one barrier rendered as a lit wall and the other as a dark line
   - Both were found by rendering the scene and looking at it, which is the only way this class of defect surfaces. Recorded because the instinct on a geometry bug is to write another assertion, and no assertion over the file or the collider would have failed
   - The scene stores references only: four root objects, no baked geometry. `TrackBuilder.Build` runs in `Awake`, so committing the scene commits a seed number rather than 12000 vertices
-- [ ] T051 [US2] Drive a full keyboard lap on at least five different accepted seeds without leaving the drivable surface, and record which seeds (SC-012, FR-013 acceptance scenario 6)
+- [X] T051 [US2] Drive a full keyboard lap on at least five different accepted seeds without leaving the drivable surface, and record which seeds (SC-012, FR-013 acceptance scenario 6)
+  - Driven 2026-08-08. **Five seeds, five clean laps, 24 of 24 markers each, zero skipped, zero wrong-way, zero resets of either kind.** The seeds were not picked for convenience: they are the five tightest accepted tracks, so the hardest cases the generator produces all pass
+  - | Seed | Tightest corner | Lap time | Set |
+    |---|---|---|---|
+    | 37 | 6.97 m, on the floor | 34.3 s | train |
+    | 29 | 7.47 m | 22.0 s | train |
+    | 1003 | 7.49 m | 22.0 s | eval |
+    | 1 | 7.85 m | 22.2 s | train |
+    | 1004 | 7.90 m | 21.9 s | eval |
+  - **The lap times are a finding, not decoration.** Four of the five land within 0.3 s of each other while seed 37 takes **56 percent longer**, on a track the same length as the rest. Every accepted track is about 200 m, so the four sit near 9.1 m/s average while seed 37 averages 5.9 m/s. The radius floor is doing real work rather than being a formality: the one track sitting exactly on it demands a visibly slower lap, and the drop lands close to the 6.4 m/s the grip figures predict for a 6.97 m corner. That is an independent cross-check of `RFloorM` from the driver's seat
+  - Both eval seeds were included deliberately. Driving only train seeds would leave the possibility that the eval split happens to contain something undriveable, which is exactly the kind of thing that surfaces later at the worst time
+  - **T051 was blocked by a real defect and finding it is the more valuable half of this task.** See the note below; the task could not be attempted until it was fixed
+  - `LapReport.cs` was added to make the record trustworthy. The verdict depends on four numbers spread across two overlays, and the person who has to read them is the one driving. It emits one line per completed lap carrying the seed, time, markers, skipped, wrong-way and both reset counts, with a PASS or FAIL, formatted with `InvariantCulture` so a figure pasted into this file does not depend on the machine's locale. The rows above are those lines
 
 **Checkpoint**: seeds produce driveable, committed, reproducible tracks. Nothing senses anything yet.
 
