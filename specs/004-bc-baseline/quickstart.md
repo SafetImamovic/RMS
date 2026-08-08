@@ -13,7 +13,7 @@ Commands are PowerShell, matching the rest of the project.
 - The dataset present under `dataset/` (git-ignored, submitted separately). The combined
   recording lives at `dataset/dataset/dataset/`, with `driving_log.csv` and `IMG/`.
 - Python 3.10.11.
-- An NVIDIA GPU with CUDA 12.4 drivers, or the willingness to pass `-AllowCpu` and wait.
+- An NVIDIA GPU with CUDA 12.4 drivers, or the willingness to pass `--allow-cpu` and wait.
 
 Verify the dataset before anything else. This should print 32443 and 97329:
 
@@ -52,7 +52,7 @@ Expected on the development machine:
 ```
 
 If `cuda.is_available()` is False, stop and fix the driver. Training will refuse to run on CPU
-unless you pass `-AllowCpu` explicitly, which is deliberate: a silent CPU epoch on 97k images is
+unless you pass `--allow-cpu` explicitly, which is deliberate: a silent CPU epoch on 97k images is
 hours of wasted time that looks like progress.
 
 ---
@@ -111,9 +111,19 @@ Read the headline before going further:
 | `baseline_error` | the error of always predicting the training mean |
 | `beat_baseline` | false means the model learned nothing useful |
 
-`beat_baseline` false is a legitimate result and is reported as one (SC-003). It is most likely
-on the unbalanced run, where near-zero steering dominates and predicting zero is a strong
-strategy. That outcome is exactly what the two-run design exists to expose.
+`beat_baseline` false is a legitimate result and is reported as one (SC-003).
+
+**Measured, both runs beat the baseline**, so the negative path this section warned about did not
+occur. Expect roughly 5 to 6 minutes per run on an RTX 3050, 13 epochs with the best at epoch 8:
+
+| Run | `val_error` | `baseline_error` | `beat_baseline` |
+|---|---|---|---|
+| `bc_unbalanced_v01` | 0.086670 | 0.153623 | true |
+| `bc_balanced_v01` | 0.090899 | 0.153992 | true |
+
+The warning is kept rather than deleted, because the reason it was written still holds: near-zero
+steering dominates this recording, predicting the mean is a strong strategy, and a run losing to
+it would be reported rather than retried. It simply is not what happened.
 
 Log both runs in `results/EXPERIMENTS.md` in the same session. Principle VI: an unlogged run did
 not happen.
@@ -143,16 +153,36 @@ The comparison reports two deltas and does not collapse them into a winner:
 | accuracy | which run predicts the human targets more closely |
 | distribution | which run's prediction distribution sits closer to the human one |
 
-A run winning one and losing the other is the expected result. That trade is the finding, and
-resolving it into a single verdict would throw away the reason both runs were trained.
+A run winning one and losing the other was the expected result. **It is not what happened.**
+Measured, both deltas point the same way: balanced loses on accuracy by +0.004229 and on
+distribution by +0.063091, so unbalanced wins both.
+
+The reason matters before you interpret your own numbers. Neither model reproduces the human zero
+spike at all: the human validation column is 57.2 percent exact zeros and both models sit under 5
+percent. The distance from the human distribution is dominated by that gap, and balancing pushes
+the model further from zero. What actually moved the prediction distribution was the three-camera
+augmentation, not the balancing policy, and that was never framed as a distributional choice.
+Research R12 carries the argument.
+
+The two deltas are still reported side by side and still not collapsed into a winner. That rule
+governs how the comparison is presented and does not depend on which way the numbers came out.
 
 ---
 
 ## 5. Tests
 
 ```powershell
-.\.venv-bc\Scripts\python.exe -m pytest python/tests -q -p no:warnings
+.\.venv-bc\Scripts\python.exe -m pytest python/tests -p no:warnings
 ```
+
+Expect **141 passed**. Do not add `-q`: `pytest.ini` already sets `addopts = -q`, so a second one
+makes it `-qq` and suppresses the pass count, leaving dots and an exit code. This quickstart
+carried that mistake until it was walked end to end.
+
+The same suite under `.venv` gives **87 passed, 3 skipped**, the three skips being the test
+modules that need torch. That is intentional and worth preserving: `bc.split` and `bc.dataset`
+import no torch, so every split-level and sample-level decision stays checkable in the M1
+environment.
 
 The three tests Principle VIII names by hand:
 
@@ -162,20 +192,47 @@ The three tests Principle VIII names by hand:
 
 The M1 and feature 002 tests also live in `python/tests` and run here too. `requirements-bc.txt`
 pins numpy to 1.26.4, the same version `.venv` carries, specifically so those tests are not
-being asked to reproduce M1's numbers under a different build. If any of them ever fails only
-under `.venv-bc`, that is a finding about environment sensitivity and belongs in the research
-document rather than being papered over.
+being asked to reproduce M1's numbers under a different build. **Verified on 2026-08-08: both
+environments report numpy 1.26.4 and pandas 2.1.4**, so the pin is doing what it claims and no
+M1 number is being reproduced under a different build. If any of them ever fails only under
+`.venv-bc`, that is a finding about environment sensitivity and belongs in the research document
+rather than being papered over.
 
 ---
 
 ## 6. Reproduction expectations
 
-| Step | Claim |
-|---|---|
-| Split | byte-identical from the same seed, on any machine |
-| Evaluation from a checkpoint | exact, since no randomness is involved |
-| Training from the same seed | within a stated tolerance, on the same hardware |
+| Step | Claim | Verified |
+|---|---|---|
+| Split | byte-identical from the same seed | yes, across two processes on one machine |
+| Evaluation from a checkpoint | exact, since no randomness is involved | yes, byte-identical outputs including figures |
+| Training from the same seed | within **0.0005** absolute on `val_error` | yes, measured over three runs |
 
-Training is not claimed to be bit-exact. cuDNN picks kernels non-deterministically, and forcing
-determinism costs speed without covering every operation. The tolerance is measured by running
-one seed twice and reporting the observed spread, rather than asserted in advance (research R8).
+**Split.** An earlier version of this table claimed byte-identity "on any machine". Only one
+machine was tested, so that is not claimed here. What can be said is stronger in a different
+direction: the split contains no randomness at all, since the held-out blocks are chosen by even
+spacing rather than drawn, and re-running with a different seed changes only the recorded `seed`
+field. Its reproducibility therefore does not depend on numpy's RNG behaving identically across
+versions, which is the usual way a seeded split stops reproducing.
+
+**Evaluation.** Re-running from a saved checkpoint reproduced `distributions.json` and
+`comparison.md` byte for byte, and the three PNG figures as well. Figures are not free here:
+matplotlib can stamp generation metadata and make an otherwise deterministic plot differ on every
+save. It does not, so regenerating figures during a review produces no spurious diff.
+
+**Training.** Not bit-exact, and not claimed to be. cuDNN picks kernels non-deterministically,
+and forcing determinism costs speed without covering every operation. The tolerance was measured
+rather than asserted: three runs of `--policy none --seed 42` gave 0.086670, 0.086685 and
+0.086411, a range of 0.000273 and a standard deviation of 0.000154. The stated tolerance of
+**0.0005** sits above the observed range, because three runs bound the spread rather than
+estimate it (research R13).
+
+Two things that measurement also settled. Divergence appears at epoch 1, so it is kernel
+selection rather than a seed applied too late; and everything before the GPU is bit-for-bit
+identical, with `baseline_error` matching to the last digit across all three runs. Note also that
+the reported figure is the **minimum** over the epochs, which is tighter than the per-epoch
+spread: at epoch 4 the three runs differ by 0.005325, roughly twenty times the spread at the
+best epoch. The tolerance applies to the reported best-epoch value and to nothing else.
+
+All three claims were verified on one machine, one GPU and one torch build. Nothing here measures
+agreement across devices.

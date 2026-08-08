@@ -320,6 +320,256 @@ is inspectable and reproducible; a moving one is neither.
 
 ---
 
+## R9 - The crop is measured, not inherited
+
+**Question.** DESIGN 6.2 says "crop neba/haube" and gives no rows. The Udacity convention is to
+remove 60 rows from the top and 25 from the bottom of the 320x160 frame. That convention was
+written for a different recording, so it is a starting hypothesis rather than an answer.
+
+**The bottom line, the hood.** The obvious test is temporal: the car's own hood is the same
+shape in every frame, so it should have near-zero standard deviation across frames. Run over
+800 frames of the whole recording, that test finds **no static pixels anywhere**, minimum 8.82.
+Two reasons, both worth recording because both would have produced a wrong crop:
+
+- The hood is reflective. It shows the road and the sky, so its pixels change as the car moves.
+- track2 is lit very differently from track1, and pooling the two puts a large lighting variance
+  into every pixel in the frame.
+
+Restricting the measurement to one track at a time and to the centre columns, where the hood
+arc reaches highest, gives a clean answer:
+
+| Row | track1 centre std | track2 centre std | track1 edge std |
+|---|---|---|---|
+| 130 | 37.07 | 35.83 | 36.70 |
+| 136 | 36.30 | 36.16 | 35.90 |
+| **138** | **23.80** | **20.50** | 37.56 |
+| 146 | 14.32 | 12.90 | 38.21 |
+
+The drop lands between row 136 and row 138 on **both tracks independently**, while the edge
+columns carry straight on. `CROP_BOTTOM = 137`. The convention's 25 rows would have cut two rows
+of road as well.
+
+**The top line, the sky.** There is no equivalent physical landmark, so the criterion is which
+rows carry steering signal at all. For each image row, correlate that row's horizontal intensity
+centroid against the steering target over 1,500 frames. A row showing road ahead swings sideways
+with the steering command; sky and distant scenery do not.
+
+| Row | sky pixel fraction | correlation with steering |
+|---|---|---|
+| 40 | 0.21 | 0.106 |
+| 50 | 0.10 | 0.115 |
+| 60 | 0.01 | 0.157 |
+| 70 | 0.03 | 0.234 |
+| 80 | 0.03 | **0.327** |
+| 95 | 0.05 | 0.205 |
+| 110 | 0.07 | 0.091 |
+
+Signal rises past 0.2 at row 66, peaks near row 80, and is back under 0.2 by row 96. Sweeping the
+top line over the retained band 60 to 136:
+
+| CROP_TOP | rows kept | mean correlation per kept row |
+|---|---|---|
+| 50 | 87 | 0.156 |
+| 55 | 82 | 0.158 |
+| **60** | **77** | **0.159** |
+| 65 | 72 | 0.158 |
+| 70 | 67 | 0.154 |
+
+The curve is flat, which is itself the finding: this choice does not matter much, and any value
+between 50 and 65 is defensible. 60 is taken because it maximises the mean and is where sky
+falls to 1 percent of the row. Note what the flatness rules out: a claim that the crop was tuned
+for accuracy. It was not, and a later run that improves after moving this line by five rows is
+reporting noise.
+
+**Decision.** `CROP_TOP = 60`, `CROP_BOTTOM = 137`, keeping 77 of 160 rows at full width. The
+full width is kept deliberately: the road leaves the frame sideways on the sharp corners, which
+is exactly where the steering signal is largest.
+
+**Rejected.** The Udacity 60/25 pair, on the hood measurement. Cropping the width to centre the
+road, because it would discard the corner evidence. Aspect-preserving resize, because DESIGN 6.2
+fixes the input at 66x200 and every frame is stretched identically, so the distortion is a
+constant the first convolution can absorb.
+
+---
+
+## R10 - The brightness range comes from the recording, not from the convention
+
+**Question.** DESIGN 6.2 asks for "random brightness" without a range. The usual choice is a
+multiplier drawn from 0.5 to 1.5.
+
+**Measured.** Mean luminance of the cropped frame, 1,200 frames per track:
+
+| Track | p5 | p50 | p95 | std |
+|---|---|---|---|---|
+| track1 | 129.5 | 142.6 | 156.8 | 9.0 |
+| track2 | 51.4 | 126.6 | 150.6 | 27.5 |
+
+The two tracks are not the same problem. track1 is uniformly lit and sits in a narrow band;
+track2 has deep shadowed sections and spans a factor of three. Pooled, p5 to p95 is 0.51 to 1.13
+of the median.
+
+**Decision.** `BRIGHTNESS_RANGE = (0.50, 1.15)`, covering the observed spread and stopping there.
+
+**Rejected: 0.5 to 1.5.** Nothing in this recording is brighter than 1.17 times the median, so
+the top third of that range trains the model on a lighting condition the simulator cannot
+produce. The model is evaluated on this simulator, so robustness to conditions outside it buys
+nothing measurable and dilutes the batch.
+
+**The flip probability is 0.5 and is doing real work.** Training targets run 43.4 percent left
+against 37.1 percent right, mean -0.0296. Both tracks are loops driven in one direction, so the
+recording is genuinely left-biased. 0.5 is chosen over a tuned value because at exactly 0.5 the
+flip's effect on the target distribution is symmetrisation, which can be stated analytically
+rather than sampled. That matters because this feature has to report the training target
+distribution, and the flip is drawn per epoch.
+
+---
+
+## R11 - The balancing fraction, once both sides are counted the same way
+
+**Finding.** `BALANCE_KEEP_FRACTION` was 0.30, derived from the rule "reduce the zero spike until
+it is no larger than the next most common lattice value". Recomputed on the training split, 0.30
+**breaks that rule**: it leaves zeros at 7.75 percent against a runner-up at 7.28.
+
+**Cause, and it is not the row set.** Moving from all 32,443 rows to the 25,957 training rows
+shifts the figures slightly (zeros 20.38 to 20.35 percent, runner-up -0.25 at 6.17 to 6.29).
+The real error is that the two sides of the comparison were counted on different bases: the zero
+share raw, the runner-up on the 0.05 lattice. A side-camera target of 0.017 is not an exact zero,
+so it never entered the zero count, but it does land in the +0.00 lattice bin. The spike was
+therefore compared against a number computed a different way, and looked smaller than it is.
+
+**Which basis is right.** The lattice, because that is where M5 compares the distributions. On
+raw values the runner-up is -1.00 at 3.41 percent, which is a fact about the offset clipping and
+not about the driving: side-camera targets carry a continuous jitter and collide nowhere except
+at the clip limits.
+
+**Decision.** `BALANCE_KEEP_FRACTION = 0.27`, the largest fraction satisfying the rule.
+
+| Keep | Samples | Zero share | Runner-up | Rule holds |
+|---|---|---|---|---|
+| 0.25 | 66,479 | 6.70 | 7.37 | yes |
+| **0.27** | **66,783** | **7.12** | **7.33** | **yes** |
+| 0.28 | 66,935 | 7.33 | 7.32 | no |
+| 0.30 | 67,239 | 7.75 | 7.28 | no |
+
+Unlike the crop sweep in R9, this crossing is sharp rather than flat, so the second decimal is
+carrying real information here rather than false precision.
+
+**Removal still targets exactly zero** (`ZERO_STEERING_BAND` 0.0) while the shares are reported
+on the lattice. The two are deliberately different: the neighbouring lattice levels are genuine
+human decisions and are not candidates for removal, but they do count toward the spike the rule
+measures.
+
+---
+
+## R12 - Balancing lost on both axes, and the reason is the camera augmentation
+
+**What was predicted.** DESIGN 6.2 justified training two runs on a trade: balancing produces
+the better predictor while deliberately moving the prediction distribution away from the human
+one, and that distribution is what M5 compares. One run wins accuracy, the other wins
+distributional closeness, and the trade is the finding.
+
+**What happened.** Balanced lost both.
+
+| Axis | Unbalanced | Balanced | Delta |
+|---|---|---|---|
+| Validation MSE | 0.086670 | 0.090899 | +0.004229 |
+| KL from human, on the lattice | 1.143888 | 1.206980 | +0.063091 |
+
+**Why, and this is the more useful result.** Neither model reproduces the human's zero spike at
+all:
+
+| | Exact-zero share |
+|---|---|
+| Human validation rows | **57.2 percent** |
+| Training targets after three-camera augmentation | 20.35 percent |
+| Training targets after balancing | 7.12 percent |
+| Unbalanced model's predictions | 4.8 percent |
+| Balanced model's predictions | 4.6 percent |
+
+The distance from the human distribution is dominated by that missing spike, not by anything
+balancing does. Balancing pushes the model further from zero, so it widens the dominant gap
+rather than closing it, and loses on the axis it was supposed to win.
+
+**The first-order effect was never framed as a distributional choice.** The three-camera
+augmentation cut the zero share from 57 percent of rows to 20 percent of samples before
+balancing touched anything. It exists to teach recovery from lateral displacement, which is a
+control argument, and its side effect on the prediction distribution is roughly eight times
+larger than the effect of the policy that was explicitly chosen for distributional reasons.
+
+**What this does not license.** It does not mean the augmentation should be removed to win the
+KL comparison. A model that predicts zero 57 percent of the time would score well on that metric
+and drive badly, since the spike is an artefact of a human holding a keyboard steady rather than
+a steering strategy worth imitating. The finding is that **the distributional axis was being
+driven by a decision nobody was watching**, and M5 needs to know that before it reads anything
+into a KL figure.
+
+**Kept as measured.** Both runs stand, the comparison reports both deltas, and the report states
+plainly that the predicted trade did not appear. `_read_the_outcome` in `bc.evaluate` branches on
+which of the four outcomes occurred rather than asserting the expected one, because a report that
+hardcodes the hypothesis cannot contradict it.
+
+---
+
+## R13 - The reproduction tolerance, measured rather than chosen
+
+**Question.** R8 decided that training reproduces to a tolerance and that the tolerance would be
+derived by running the same seed twice rather than picked in advance. This is that measurement.
+
+**What was run.** `bc_repro_a_v01` and `bc_repro_b_v01`, both `--policy none --seed 42`, on the
+same machine and the same split digest as `bc_unbalanced_v01`. That gives **three** runs of one
+configuration rather than two, since the original reference run is the same configuration and
+belongs in the sample.
+
+| Run | Reported val MSE | Best epoch | Duration |
+|---|---|---|---|
+| `bc_unbalanced_v01` | 0.08666985 | 8 | 337 s |
+| `bc_repro_a_v01` | 0.08668462 | 8 | 371 s |
+| `bc_repro_b_v01` | 0.08641127 | 8 | 328 s |
+
+Mean 0.0865886, sample standard deviation 0.00015373, **range 0.00027334**, which is 0.32 percent
+of the mean.
+
+**Where the non-determinism enters, and where it does not.** The `baseline_error` is
+0.153622828786396 in all three runs, identical to the last digit, and `n_train_samples`,
+`n_val_samples`, `parameter_count` and the split digest all match exactly. Everything before the
+GPU is bit-for-bit reproducible: the split, the sample build, the per-sample camera offsets, the
+balancing. The spread is confined to training itself, which is what R8 predicted and is worth
+having confirmed rather than assumed, because a seeding bug in the data pipeline would look like
+GPU noise in the final number and be much more serious.
+
+It enters immediately rather than accumulating from a fixed start. Epoch 1 training error is
+0.1322998, 0.1324786 and 0.1321905 across the three, so the runs have already diverged after one
+pass. That is the signature of cuDNN selecting different kernels, not of a seed being applied
+late.
+
+**The reported figure is a minimum, and its spread is not the per-epoch spread.** All three runs
+independently selected **epoch 8** as their best, and at epoch 8 the three-run spread is 0.000273.
+At epoch 4 it is 0.005325 and at epoch 12 it is 0.004381, roughly twenty times larger. Early
+stopping reports the minimum over 13 noisy epochs, so the quantity being reproduced is a selected
+statistic that is tighter than the process generating it. **The tolerance below applies to the
+reported best-epoch validation error and to nothing else.** Quoting it for an intermediate epoch,
+or for a run that stopped at a different epoch, would understate the real variation by an order
+of magnitude.
+
+**Decision: the reproduction tolerance is 0.0005 absolute on the reported validation MSE**, a
+little under twice the observed range. It is set above the measurement rather than at it because
+three runs cannot estimate a tail: the range of a sample of three is a lower bound on the spread
+of the process, not an estimate of it. A tolerance set exactly at 0.000273 would be met by the
+runs that produced it and fail on the fourth.
+
+**What this licenses and what it does not.** Reported validation errors agree to about the third
+decimal place, so the fourth is noise and `comparison.md` quoting six decimals states more
+precision than the process has. The consequence that matters is for the headline comparison: the
+accuracy delta between the balanced and unbalanced runs is 0.004229, **15 times the observed
+run-to-run range** and 8 times the tolerance, and the distribution delta of 0.063091 is larger
+still. Both findings in R12 survive the noise comfortably, which is the question this measurement
+exists to answer. A future difference smaller than 0.0005 would not.
+
+The tolerance is for one machine, one GPU and one torch build. Nothing here measures agreement
+across devices, and T039 records the same limit for evaluation.
+
+---
+
 ## Summary of decisions
 
 | ID | Decision | Forced or chosen |
@@ -332,3 +582,8 @@ is inspectable and reproducible; a moving one is neither.
 | R6 | Per-track view from the path marker, one load | Forced by feature 002's pooling finding |
 | R7 | Measure loader throughput before building any cache | Chosen, to avoid optimising an unobserved bottleneck |
 | R8 | Exact reproduction for evaluation, tolerance for training | Forced by GPU non-determinism |
+| R9 | Crop rows 60 to 137, full width | The bottom line is forced by measurement, the same row on both tracks. The top line is chosen from a flat sweep, and the flatness is recorded so no later run can claim the crop was tuned |
+| R10 | Brightness 0.50 to 1.15, flip at 0.5 | Forced by measurement: the range covers the observed p5 to p95 luminance spread. The usual 0.5 to 1.5 was rejected for synthesising light the simulator never produces |
+| R11 | `BALANCE_KEEP_FRACTION` 0.30 to 0.27 | Forced: at 0.30 the constant broke the rule it was derived from, because the zero share was counted raw against a runner-up counted on the lattice |
+| R12 | Both runs kept; the predicted trade did not appear | Measured. Balanced lost accuracy and distributional closeness. The distributional axis is dominated by the three-camera augmentation, whose effect is about eight times larger than the policy chosen for distributional reasons |
+| R13 | Reproduction tolerance 0.0005 absolute on reported val MSE | Measured over three same-seed runs: range 0.000273, stdev 0.000154. Set above the observed range because three runs bound the spread rather than estimate it. Everything before the GPU reproduces exactly |
