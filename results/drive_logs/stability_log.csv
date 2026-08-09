@@ -13,3 +13,5 @@ run,timestamp,condition,at_second,detail
 46,2026-08-08_13-26-11,FellThrough,1.44,"car dropped below the world, fall reset #1"
 47,2026-08-08_13-27-40,IdleDrift,0.16,"drifted 0,110 m in 0,1 s with no input"
 47,2026-08-08_13-27-41,FellThrough,1.44,"car dropped below the world, fall reset #1"
+74,2026-08-09_17-52-05,FellThrough,1.44,"car dropped below the world, fall reset #1"
+74,2026-08-09_17-52-05,IdleDrift,1.58,"drifted 0.110 m in 0.1 s with no input"

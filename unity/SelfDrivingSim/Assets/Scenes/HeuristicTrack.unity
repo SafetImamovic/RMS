@@ -473,7 +473,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 504f1b85aebfa2442b7c2840e417c048, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.TrackBuilder
-  seed: 1004
+  seed: 1
   profile:
     wheelbaseM: 2.5
     steerMaxDeg: 25
@@ -1265,6 +1265,7 @@ GameObject:
   - component: {fileID: 2103184339}
   - component: {fileID: 2103184341}
   - component: {fileID: 2103184342}
+  - component: {fileID: 2103184343}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -1541,6 +1542,22 @@ MonoBehaviour:
   commandSmoothingS: 0
   criticalDistanceNorm: 0.35
   writeTrace: 1
+--- !u!114 &2103184343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103184329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a62bef67caf84e448128769346638be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Agent.HeuristicTuner
+  driver: {fileID: 2103184342}
+  visible: 1
+  fontSize: 12
+  panelWidth: 340
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
