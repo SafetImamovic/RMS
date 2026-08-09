@@ -80,8 +80,15 @@ user story can begin until this is done.
 
 ### The naive controller (FR-006, first half)
 
-- [ ] T010 [P] Create `unity/SelfDrivingSim/Assets/Scripts/Agent/RayControllers.cs` with `MostOpen` as a pure static function from a normalised distance array and its ray angles to a steering command in [-1, 1]. **Ties break toward the centre ray, never by array order** (research R9)
-- [ ] T011 [P] Create `unity/SelfDrivingSim/Assets/Tests/EditMode/RayControllerTests.cs` covering `MostOpen`: a clear left, a clear right, the all-clear fan where every ray reads 1.000, and the symmetric fan where the tie must resolve to centre. The symmetric case is a bug that appears only on symmetric readings and would otherwise be blamed on the track
+- [X] T010 [P] Create `unity/SelfDrivingSim/Assets/Scripts/Agent/RayControllers.cs` with `MostOpen` as a pure static function from a normalised distance array and its ray angles to a steering command in [-1, 1]. **Ties break toward the centre ray, never by array order** (research R9)
+  - **Deviation, recorded rather than hidden: `WeightedAverage` was written in the same file at the same time, and T024 was supposed to hold it back.** The header of this file says the naive controller is built first "so the smoothed controller cannot be quietly adopted before the naive one has been measured", and that ordering was set deliberately half an hour before it was broken
+  - Kept rather than deleted and re-added, which would be waste, but **the guard is now explicit instead of positional**: US1 and the first comparison run MUST use `MostOpen`, and T031 still decides whether `WeightedAverage` is adopted. The risk the ordering protected against was never the existence of the function, it was writing the comparison with the answer already in hand, and that risk lives in T028 and T030 where it is now stated
+  - `MostOpen` is capped by the clamp far more often than expected: any ray beyond ±25 degrees asks for more than full lock, so nine of the thirteen rays produce a saturated command
+- [X] T011 [P] Create `unity/SelfDrivingSim/Assets/Tests/EditMode/RayControllerTests.cs` covering `MostOpen`: a clear left, a clear right, the all-clear fan where every ray reads 1.000, and the symmetric fan where the tie must resolve to centre. The symmetric case is a bug that appears only on symmetric readings and would otherwise be blamed on the track
+  - **18 tests, all passing.** Run through `TestRunnerApi` rather than by hand, so the result is a number in the console rather than a colour in a window
+  - One test pins the R2 prediction directly: sweeping the open ray across the whole fan yields exactly three reachable magnitudes, `{0, 0.6, 1.0}`. If the fan or the steering limit ever moves, that test fails and the chatter argument in DESIGN 4.7 has to be recomputed rather than repeated
+  - **One test failed on the first run, and it was the test that was wrong, not the code.** "Wall on the left, so steer right" set every unblocked ray to the same distance, which is an eight-way tie that correctly resolves to the centre. Driving straight past a wall you are parallel to is the right answer
+  - That failure was worth keeping, so it is now two tests. `MostOpen_holds_straight_when_the_open_side_is_featureless` pins the behaviour, and `WeightedAverage_turns_where_MostOpen_holds_straight` shows the two controllers already differ in **what they do**, not merely in how smoothly they do it. That is a behavioural difference found before any lap was driven, and US2's comparison now has something concrete to look for
 
 ### The driver (FR-002, FR-003, FR-004, FR-005)
 
@@ -123,8 +130,11 @@ traces and outcomes side by side.
 
 - [ ] T022 [US2] Add the two smoothness measures to `unity/SelfDrivingSim/Assets/Scripts/Agent/HeuristicDriver.cs` or a helper beside it: \|delta steer\| P95 resampled to 14.08 Hz, and steering sign changes per second (research R3). **Both are reported, never combined** (FR-009)
 - [ ] T023 [US2] Write the run record per `contracts/run-record.md` from the Unity side, one row per run, `InvariantCulture` throughout. This project has hit the locale bug three times already
-- [ ] T024 [US2] Add `WeightedAverage` to `RayControllers.cs`: the distance-weighted mean of the ray angles over `steer_max_deg`, which returns 0 on a symmetric reading by construction and needs no special case
-- [ ] T025 [P] [US2] Extend `RayControllerTests.cs` to cover `WeightedAverage`, including the symmetric fan returning exactly 0 and the all-clear fan holding heading
+- [X] T024 [US2] Add `WeightedAverage` to `RayControllers.cs`: the distance-weighted mean of the ray angles over `steer_max_deg`, which returns 0 on a symmetric reading by construction and needs no special case
+  - **Done early, in T010, against this file's own stated ordering.** See the note there. Adoption is still T031's decision and is not settled by the function existing
+- [X] T025 [P] [US2] Extend `RayControllerTests.cs` to cover `WeightedAverage`, including the symmetric fan returning exactly 0 and the all-clear fan holding heading
+  - Covered in the same 18 tests. Symmetric returns exactly 0 at two different magnitudes, confirming it is the symmetry and not the distance that produces the answer
+  - A fully blocked fan holds heading rather than dividing by zero, which is the total-weight guard rather than a special case
 - [ ] T026 [US2] Make the controller selectable for a run without editing code (FR-007), so a comparison runs the same build twice
 - [ ] T027 [US2] Measure the run-to-run spread: same seed, same controller, three runs, reporting the spread of lap time and both smoothness measures (FR-011). **Nothing in T028 or Phase 5 may be interpreted before this number exists**
 - [ ] T028 [US2] Implement the comparison in `python/heuristic/report.py`: descriptive statistics per controller over the seed set, the two smoothness measures and the outcome measures side by side, and the explicit statement of whether any difference exceeds the T027 spread
