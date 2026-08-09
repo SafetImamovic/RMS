@@ -184,6 +184,44 @@ namespace SelfDrivingSim.Agent
         /// <summary>The strategy's own output, before reaction delay or smoothing.</summary>
         public float RawSteer { get; private set; }
 
+        // --- Live knobs, driven by the in-sim panel as well as the Inspector -------------------
+        //
+        // Exposed as properties rather than left as private serialised fields so the on-screen
+        // panel can move them mid-run. Tuning a control loop from the Inspector means looking
+        // away from the car at the moment the change takes effect, which is the one moment worth
+        // watching.
+
+        /// <summary>Which reaction mechanism is active. Exactly one at a time.</summary>
+        public ReactionMode Mode
+        {
+            get => reactionMode;
+            set => reactionMode = value;
+        }
+
+        /// <summary>Delay between sensing and steering, seconds. Delayed mode.</summary>
+        public float ReactionTimeS
+        {
+            get => reactionTimeS;
+            set => reactionTimeS = Mathf.Clamp(value, 0f, 0.5f);
+        }
+
+        /// <summary>Low-pass time constant on the command, seconds. Delayed mode.</summary>
+        public float CommandSmoothingS
+        {
+            get => commandSmoothingS;
+            set => commandSmoothingS = Mathf.Clamp(value, 0f, 1f);
+        }
+
+        /// <summary>Forward clearance below which steering is allowed. CriticalDistance mode.</summary>
+        public float CriticalDistanceNorm
+        {
+            get => criticalDistanceNorm;
+            set => criticalDistanceNorm = Mathf.Clamp01(value);
+        }
+
+        /// <summary>Ray range in metres, so the panel can show the threshold in real units.</summary>
+        public float RayLengthM => agent != null ? agent.RayLengthM : 20f;
+
         /// <summary>
         /// Delay and smooth the command, both live-tunable while playing.
         ///
