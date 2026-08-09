@@ -51,22 +51,56 @@ first two, which is the exact failure this block exists to remove.
 ## Who reads and writes it
 
 - **Written by** `python.track.vehicle.export_profile`, from the constants in `config.py`. Python
-  is the single source.
-- **Read by** `CarAgent`, on `Awake`, the same way `CarController` already loads `profile`.
-- **Mirror-tested by** `python/tests/test_sensing_mirror.py`, in the shape of the existing
-  `test_vehicle.py`: the exported file must match the constants it was generated from.
+  is the single source of the intended values.
+- **Mirror-tested by** `python/tests/test_sensing_mirror.py`: the exported file must match the
+  constants it was generated from.
+- **Drift-checked at startup** against the ray fields serialised on `CarAgent` in the scene, in the
+  shape of `DriveTelemetry.WarnIfProfileDrifted`.
 
-## What the loader must do when the block is missing or wrong
+**Corrected 2026-08-09, during implementation.** This section originally said `CarAgent` would load
+the block on `Awake`, "the same way `CarController` already loads `profile`". `CarController` does
+no such thing: `VehicleProfile` holds a compiled copy so the car does not depend on a file at
+runtime, and `DriveTelemetry` is what reads the file, in order to **check** the scene rather than to
+feed it.
 
-- **Missing block**: refuse and say so. Falling back to hardcoded defaults would reintroduce the
-  second copy this contract deletes, and it would do it silently, which is worse than the situation
-  today where at least the duplication is visible in the source.
-- **Unreadable file**: refuse. `CarAgent` without a sensing configuration has no defensible
-  behaviour, and a car that senses with guessed constants produces measurements nobody can trust.
-- **`schema_version` unrecognised**: refuse, naming the version found and the version expected.
+## The two gaps, and why one mechanism cannot close both
 
-Refusing loudly at `Awake` costs one obvious error in the console. Guessing costs a sweep whose
-numbers look plausible and are not.
+| Gap | Closed by | Why the other cannot |
+|---|---|---|
+| `config.py` disagrees with the exported file | `pytest` mirror test | It never opens the Unity scene |
+| The exported file disagrees with the scene | Startup drift check | It runs in the editor, not in CI |
+
+The second gap is not hypothetical. `DriveTelemetry`'s comment records the incident that produced
+that check: retuning the steering rate from 2.0 to 3.7 left the scene on 2.0, and **the only
+symptom would have been a drive that mysteriously failed to improve.** `CarAgent`'s ray fields are
+serialised the same way and can go stale the same way.
+
+## What the drift check must do
+
+- **Fields disagree**: `Debug.LogError` naming the field, the scene's value and the exported value,
+  and stating that this run is sensing with the wrong fan. Match the wording style of
+  `DriveTelemetry.CheckField`, which tells the reader where to fix it rather than only that
+  something is wrong.
+- **Missing block**: error, naming the regeneration command. A file predating this contract has no
+  `sensing` key, and silence would leave the reader assuming it had been checked.
+- **`schema_version` unrecognised**: error, naming the version found and the version expected.
+- **File missing entirely**: warn rather than error, matching `DriveTelemetry`. A clone that has not
+  run the exporter yet is a setup state, not a corrupted one.
+
+**The check never overwrites the scene.** It reports. A check that silently corrected the fan would
+mean the values in the Inspector no longer describe the run, which is the same class of problem it
+exists to catch.
+
+## Varying the fan for a sweep
+
+The sweep sets `ray_count` and `ray_fov_deg` on `CarAgent` programmatically at runtime, not by
+rewriting this file. Rewriting per configuration would need a reload between configurations, which
+SC-004's five minute budget cannot afford.
+
+**The drift check is suppressed while a sweep is running**, because during a sweep the scene
+deliberately disagrees with the exported file and one error per seed would bury the run. Every run
+record carries its own `ray_count`, `ray_fov_deg` and `ray_length_m`, so the configuration a figure
+came from is recoverable from the results rather than from this file.
 
 ## What this contract does not do
 

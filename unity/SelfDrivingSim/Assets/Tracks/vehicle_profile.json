@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "source": "python/track/config.py via python.track.vehicle.export_profile",
   "profile": {
     "wheelbase_m": 2.5,
@@ -23,5 +23,10 @@
     "speed_max": 21.9494,
     "speed_max_over_p99": 1.2552197409430133,
     "compare_hz": 14.08
+  },
+  "sensing": {
+    "ray_count": 13,
+    "ray_fov_deg": 180.0,
+    "ray_length_m": 20.0
   }
 }

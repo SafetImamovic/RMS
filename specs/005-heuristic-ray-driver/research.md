@@ -175,11 +175,35 @@ nothing stands between those two copies. `CarAgent`'s own comment says as much: 
 constant means changing it in both places by hand.
 
 - **Decision:** export a `sensing` block into `vehicle_profile.json` alongside the existing
-  `profile` and `envelope` blocks, have `CarAgent` load it the way `CarController` already loads
-  the vehicle profile, and add a mirror test in the shape of the existing profile test.
-- **Rationale:** this satisfies FR-016 by construction rather than by a check that can be
-  forgotten, and it satisfies FR-013 at the same time, because a sweep configuration then becomes a
-  file the runner writes rather than a scene edit. Two requirements, one change.
+  `profile` and `envelope` blocks, add a `pytest` mirror test in the shape of the existing profile
+  test, and add a **startup drift check** that compares the scene's ray fields against the exported
+  block, in the shape of `DriveTelemetry.WarnIfProfileDrifted`.
+
+**Corrected 2026-08-09, during implementation.** This entry originally said `CarAgent` should load
+the block "the way `CarController` already loads the vehicle profile". That was wrong on two
+counts, and the code says so plainly:
+
+- **`CarController` does not load the profile.** `VehicleProfile` holds a compiled copy, described
+  in its own comment as being there "so the car does not depend on a file at runtime".
+- **`DriveTelemetry` is what reads the file**, and what it does with the profile block is not load
+  it but **check it**, field by field, against the serialised copy in the scene.
+
+That check exists because of an incident recorded in its comment: retuning the steering rate from
+2.0 to 3.7 in T023 left the scene on 2.0, and the only symptom would have been a drive that
+mysteriously failed to improve. **The comment also states why a mirror test alone is not enough:
+it compares the compiled default against the JSON and never opens the scene.**
+
+`CarAgent`'s ray fields are serialised in exactly the same way and can go stale in exactly the same
+way, so they get the same treatment rather than a new one.
+
+- **Two gaps, two mechanisms.** The `pytest` mirror test closes config against the exported file.
+  The startup drift check closes the exported file against the scene. Either alone leaves a way for
+  the fan the car actually senses with to differ from the fan every document describes.
+- **FR-013 is satisfied differently than planned.** The sweep sets the fan on `CarAgent`
+  programmatically at runtime rather than by rewriting a file, which is simpler, needs no reload
+  between configurations, and is what SC-004's budget wants anyway. The drift check is suppressed
+  for the duration of a sweep, because during a sweep the scene deliberately disagrees with the
+  exported file, and an error per seed would bury the run.
 - **The values do not change.** 13, 180 and 20 stay exactly as they are; only where they are read
   from moves. Nothing measured in feature 003 is invalidated by this, and FR-018 is not triggered,
   because no new arrangement is adopted here.

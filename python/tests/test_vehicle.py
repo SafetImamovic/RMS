@@ -265,7 +265,10 @@ def test_export_profile_writes_every_derived_value(tmp_path, profile):
     written = export_profile(tmp_path / "vehicle_profile.json")
     payload = json.loads(written.read_text(encoding="utf-8"))
 
-    assert payload["schema_version"] == 2
+    # 3 since feature 005 added the sensing block. The version is asserted rather than ignored
+    # because Unity refuses a file whose version it does not recognise, so a bump that nothing
+    # checks would surface as a car that will not start rather than as a failing test.
+    assert payload["schema_version"] == 3
     exported = payload["profile"]
     for field in (
         "wheelbase_m",

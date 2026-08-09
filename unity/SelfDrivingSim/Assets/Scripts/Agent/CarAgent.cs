@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using SelfDrivingSim.Track;
 using SelfDrivingSim.Vehicle;
@@ -45,12 +46,16 @@ namespace SelfDrivingSim.Agent
         //
         // These mirror RAY_COUNT, RAY_FOV_DEG and RAY_LENGTH_M in python/track/config.py.
         //
-        // Note that, unlike the vehicle limits, they are NOT carried in
-        // Assets/Tracks/vehicle_profile.json: the exporter does not write a sensing block, so
-        // there is no mirror test standing between these fields and config.py. Changing a ray
-        // constant means changing it in both places by hand. They are serialised rather than
-        // const so that T059 can sweep the range while measuring, and so a scene that has gone
-        // stale is visible in the Inspector rather than hidden in a compiled default.
+        // Since feature 005 they are ALSO carried in Assets/Tracks/vehicle_profile.json, in a
+        // sensing block, and this component checks itself against that block at startup. Two
+        // gaps, two mechanisms: a pytest mirror test closes config.py against the exported
+        // file, and CheckSensingDrift closes the exported file against this scene. Neither
+        // alone is enough, because the mirror test never opens the scene and the drift check
+        // never runs in CI.
+        //
+        // They stay serialised rather than becoming const for two reasons: a sweep sets them at
+        // runtime (feature 005, FR-013), and a scene that has gone stale is then visible in the
+        // Inspector rather than hidden behind a compiled default.
         // -----------------------------------------------------------------------------------
 
         [Header("Rays (mirrors python/track/config.py)")]
@@ -257,6 +262,129 @@ namespace SelfDrivingSim.Agent
             }
 
             Allocate();
+            CheckSensingDrift();
+        }
+
+        /// <summary>
+        /// Whether a sweep is driving the fan, which suppresses the drift check.
+        ///
+        /// During a sweep the scene deliberately disagrees with the exported block, and one
+        /// error per seed would bury the run it was meant to protect. Every run record carries
+        /// its own fan, so the configuration behind a figure stays recoverable from the results.
+        /// </summary>
+        public bool FanOverridden { get; private set; }
+
+        /// <summary>
+        /// Set the fan at runtime, for the sensing sweep (feature 005, FR-013).
+        ///
+        /// Rewriting the exported file per configuration would need a domain reload between
+        /// configurations, and SC-004's five minute budget cannot afford one per configuration
+        /// let alone per seed.
+        ///
+        /// <paramref name="lengthM"/> is left alone by default because it is derived from the
+        /// stopping distance (research C11) rather than chosen, so sweeping it would be sweeping
+        /// a consequence rather than a parameter.
+        /// </summary>
+        public void ConfigureFan(int count, float fovDeg, float lengthM = -1f)
+        {
+            rayCount = Mathf.Max(1, count);
+            rayFovDeg = Mathf.Clamp(fovDeg, 0f, 360f);
+
+            if (lengthM > 0f)
+            {
+                rayLengthM = lengthM;
+            }
+
+            FanOverridden = true;
+            Allocate();
+        }
+
+        /// <summary>
+        /// Check the serialised fan against the exported sensing block, and shout if they differ.
+        ///
+        /// This is the same check <see cref="SelfDrivingSim.Logging.DriveTelemetry"/> already runs
+        /// over the vehicle profile, for the same reason and against the same failure. The scene
+        /// holds its own copy of every serialised value, and retuning a constant in config.py does
+        /// not touch it. That happened once already, with the steering rate in T023: the scene kept
+        /// 2.0 while everything else moved to 3.7, and the only symptom would have been a drive
+        /// that mysteriously failed to improve.
+        ///
+        /// The Python mirror test cannot catch this. It compares the constants against the JSON
+        /// and never opens the scene.
+        ///
+        /// **It reports and never corrects.** Quietly rewriting the fan would mean the values in
+        /// the Inspector no longer describe the run, which is the same class of problem this
+        /// exists to catch.
+        /// </summary>
+        private void CheckSensingDrift()
+        {
+            if (FanOverridden)
+            {
+                return;
+            }
+
+            string path = Path.Combine(Application.dataPath, "Tracks", "vehicle_profile.json");
+            if (!File.Exists(path))
+            {
+                // A clone that has not run the exporter yet is a setup state, not a corrupted
+                // one. DriveTelemetry warns rather than errors here too.
+                Debug.LogWarning($"[CarAgent] {path} not found, so the ray fan is unchecked. " +
+                                 "Run: python -m python.track.vehicle", this);
+                return;
+            }
+
+            VehicleProfileFile file;
+            try
+            {
+                file = JsonUtility.FromJson<VehicleProfileFile>(File.ReadAllText(path));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[CarAgent] could not read {path}: {e.Message}", this);
+                return;
+            }
+
+            if (file == null)
+            {
+                Debug.LogError($"[CarAgent] {path} did not parse as a vehicle profile.", this);
+                return;
+            }
+
+            if (file.schema_version != VehicleProfileFile.ExpectedSchemaVersion)
+            {
+                Debug.LogError(
+                    $"[CarAgent] vehicle_profile.json is schema_version {file.schema_version}, " +
+                    $"expected {VehicleProfileFile.ExpectedSchemaVersion}. Regenerate it with " +
+                    "python -m python.track.vehicle.", this);
+                return;
+            }
+
+            if (file.sensing == null)
+            {
+                Debug.LogError(
+                    "[CarAgent] vehicle_profile.json carries no sensing block, so the ray fan " +
+                    "is unchecked. Regenerate it with python -m python.track.vehicle.", this);
+                return;
+            }
+
+            CheckField("ray_count", file.sensing.ray_count, rayCount);
+            CheckField("ray_fov_deg", file.sensing.ray_fov_deg, rayFovDeg);
+            CheckField("ray_length_m", file.sensing.ray_length_m, rayLengthM);
+        }
+
+        private void CheckField(string name, float exported, float inScene)
+        {
+            const float tol = 1e-4f;
+            if (Mathf.Abs(exported - inScene) <= tol)
+            {
+                return;
+            }
+
+            Debug.LogError(
+                $"[CarAgent] {name}: the scene is sensing with {inScene} but " +
+                $"vehicle_profile.json says {exported}. The serialised copy on this component " +
+                "has gone stale. Fix it in the Inspector, then run again: this run senses with " +
+                "a different fan from the one every document describes.", this);
         }
 
         private void OnValidate()

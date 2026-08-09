@@ -173,7 +173,7 @@ def export_profile(out_path: Path | None = None) -> Path:
 
     profile = build_profile()
     payload = {
-        "schema_version": 2,
+        "schema_version": 3,
         "source": "python/track/config.py via python.track.vehicle.export_profile",
         "profile": profile.to_dict(),
         # The M1 measurements a keyboard drive is judged against (FR-009). Exported so the
@@ -191,6 +191,23 @@ def export_profile(out_path: Path | None = None) -> Path:
             # documented unit (FR-004, research C3).
             "speed_max_over_p99": config.DATASET_SPEED_MAX / config.DATASET_SPEED_P99,
             "compare_hz": config.COMPARE_HZ,
+        },
+        # The ray fan, exported so there is one source rather than two (feature 005, FR-016).
+        #
+        # These three numbers used to live here AND as serialised fields on CarAgent, with
+        # nothing standing between the two copies: CarAgent's own comment said that changing a
+        # ray constant meant changing it in both places by hand. Feature 005 varies them across
+        # a sweep, which would have made that drift worse rather than better.
+        #
+        # Ray spacing is deliberately NOT exported. It is ray_fov_deg / (ray_count - 1), derived
+        # at both ends. Storing it would create a third copy able to disagree with the two it
+        # came from, which is the exact failure this block removes.
+        #
+        # Contract: specs/005-heuristic-ray-driver/contracts/sensing-block.md
+        "sensing": {
+            "ray_count": config.RAY_COUNT,
+            "ray_fov_deg": config.RAY_FOV_DEG,
+            "ray_length_m": config.RAY_LENGTH_M,
         },
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
