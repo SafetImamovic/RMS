@@ -162,7 +162,7 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # loader, fingerprint, statistika, staze, bc
+pytest python/tests                  # 280 prolazi, 3 preskočena (bc moduli traže torch)
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
 
 # M2 - generisanje staza iz seed-ova (vidi sekciju gore)
