@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -272,7 +273,8 @@ namespace SelfDrivingSim.Vehicle
             if (tiltDeg > tiltThresholdDeg && _allGroundedPrevStep)
             {
                 Fire(StabilityCondition.BodyFlip,
-                    $"tilt {tiltDeg:F1} deg with all four wheels grounded the previous step");
+                    FormattableString.Invariant(
+                        $"tilt {tiltDeg:F1} deg with all four wheels grounded the previous step"));
             }
         }
 
@@ -306,7 +308,8 @@ namespace SelfDrivingSim.Vehicle
             if (drift > idleDriftM)
             {
                 Fire(StabilityCondition.IdleDrift,
-                    $"drifted {drift:F3} m in {_idleElapsed:F1} s with no input");
+                    FormattableString.Invariant(
+                        $"drifted {drift:F3} m in {_idleElapsed:F1} s with no input"));
                 _isIdle = false;
                 return;
             }
@@ -338,7 +341,8 @@ namespace SelfDrivingSim.Vehicle
             if (_upsideDownElapsed >= stuckSecondsS)
             {
                 Fire(StabilityCondition.Unrecoverable,
-                    $"overturned at {tiltDeg:F0} deg and stationary for {_upsideDownElapsed:F1} s");
+                    FormattableString.Invariant(
+                        $"overturned at {tiltDeg:F0} deg and stationary for {_upsideDownElapsed:F1} s"));
                 _upsideDownElapsed = 0f;
             }
         }
