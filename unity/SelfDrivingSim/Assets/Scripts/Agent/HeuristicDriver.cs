@@ -91,7 +91,31 @@ namespace SelfDrivingSim.Agent
                  "has already failed.")]
         [SerializeField] private bool endOnWallContact = true;
 
+        /// <summary>
+        /// How the raw strategy command is turned into the command actually sent.
+        ///
+        /// **Exactly one mechanism at a time.** Two of these interact in ways that would be
+        /// impossible to attribute afterwards: a delayed command that is also gated fails for two
+        /// reasons at once, and the sweep would measure their product. The spec's own rule about
+        /// not collapsing measures into one verdict applies here too.
+        /// </summary>
+        public enum ReactionMode
+        {
+            /// <summary>Send the strategy's command untouched. The baseline.</summary>
+            Immediate = 0,
+
+            /// <summary>Delay it, then optionally low-pass it.</summary>
+            Delayed,
+
+            /// <summary>Hold straight until something ahead gets close, then steer.</summary>
+            CriticalDistance,
+        }
+
         [Header("Reaction (live, tune while playing)")]
+        [Tooltip("Which mechanism shapes the command. Exactly one, never two: a command that is " +
+                 "both delayed and gated fails for two reasons at once and the measurement " +
+                 "cannot attribute either.")]
+        [SerializeField] private ReactionMode reactionMode = ReactionMode.Immediate;
         [Tooltip("Seconds between the rays being read and that decision reaching the wheel.\n\n" +
                  "Zero is the current behaviour. Raising it delays the command through a ring " +
                  "buffer, which models a slower reaction.\n\n" +
@@ -112,6 +136,18 @@ namespace SelfDrivingSim.Agent
                  "is a measurement to record, not a default to adopt quietly.")]
         [Range(0f, 1f)]
         [SerializeField] private float commandSmoothingS;
+
+        [Tooltip("CriticalDistance mode. Hold straight while the forward cone is clearer than " +
+                 "this, and steer only once it closes in. Normalised, so 0.35 means 7 m at the " +
+                 "current 20 m ray length.\n\n" +
+                 "This attacks the saturation directly. Measured on seed 1004, the argmax command " +
+                 "sits at full lock for 67 percent of steps, much of it while the track ahead is " +
+                 "wide open, and the wheel needs 0.54 s to cross between locks. Not steering " +
+                 "until there is something to steer about should cut that.\n\n" +
+                 "Set it too high and the car steers constantly, which is where it is now. Too " +
+                 "low and it commits to a wall before reacting. The sweet spot is a measurement.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float criticalDistanceNorm = 0.35f;
 
         [Header("Diagnostics")]
         [Tooltip("Write one row per physics step to results/heuristic/trace_<time>.csv.\n\n" +
@@ -161,6 +197,30 @@ namespace SelfDrivingSim.Agent
         /// </summary>
         private float ApplyReaction(float steer)
         {
+            if (reactionMode == ReactionMode.CriticalDistance)
+            {
+                ForwardClearance = ForwardCone();
+                _gateOpen = ForwardClearance <= criticalDistanceNorm;
+
+                // Hold the wheel straight while there is nothing to steer about. Straight is the
+                // right neutral here rather than "hold the last command": a car that keeps its
+                // last turn while the road opens up spirals, and the whole point of the gate is
+                // to stop commanding a turn that the situation does not call for.
+                _smoothed = 0f;
+                _delay = null;
+                return _gateOpen ? Mathf.Clamp(steer, -1f, 1f) : 0f;
+            }
+
+            ForwardClearance = ForwardCone();
+            _gateOpen = true;
+
+            if (reactionMode != ReactionMode.Delayed)
+            {
+                _delay = null;
+                _smoothed = steer;
+                return Mathf.Clamp(steer, -1f, 1f);
+            }
+
             if (reactionTimeS > 1e-4f)
             {
                 int wanted = Mathf.Max(1, Mathf.RoundToInt(reactionTimeS / Time.fixedDeltaTime));
@@ -203,6 +263,44 @@ namespace SelfDrivingSim.Agent
         private float[] _delay;
         private int _delayAt;
         private float _smoothed;
+        private bool _gateOpen = true;
+
+        /// <summary>
+        /// How far the car can see through the forward cone, normalised. The gate's input.
+        /// </summary>
+        public float ForwardClearance { get; private set; }
+
+        /// <summary>Whether the critical-distance gate is currently letting steering through.</summary>
+        public bool GateOpen => _gateOpen;
+
+        /// <summary>
+        /// The narrowest reading in the cone that carries the cornering decision.
+        ///
+        /// The cone is the rays within one ray-spacing of dead ahead, which is three rays at the
+        /// current thirteen-over-180 fan and stays three if the fan is swept. That width is not
+        /// arbitrary: feature 003's T059 found that seven of the thirteen rays report essentially
+        /// the same lateral distance in a 6 m corridor while the forward cone carries every
+        /// cornering decision, and this gate should trigger on that cone rather than on a
+        /// side ray that reads 3 m all lap.
+        ///
+        /// The minimum rather than the centre ray alone, because a corner arrives off-centre
+        /// first, and a gate watching only dead ahead opens later than it should.
+        /// </summary>
+        private float ForwardCone()
+        {
+            float spacing = Mathf.Max(agent.RaySpacingDeg, 0.01f);
+            float narrowest = 1f;
+
+            for (int i = 0; i < agent.RayCount; i++)
+            {
+                if (Mathf.Abs(agent.RayAngleDeg(i)) <= spacing + 0.01f)
+                {
+                    narrowest = Mathf.Min(narrowest, agent.RayDistancesNorm[i]);
+                }
+            }
+
+            return narrowest;
+        }
 
         private float _lastProgressS;
         private int _lastAwarded;
@@ -377,8 +475,10 @@ namespace SelfDrivingSim.Agent
             // How many rendered frames happened since the previous physics step. Zero means the
             // steering rate limiter did not advance at all between these two rows, which is the
             // shape of the problem when physics outruns rendering.
-            _row.AppendFormat(CultureInfo.InvariantCulture, ",{0},{1:F4},{2:F4},{3:F4}",
-                              _framesSinceStep, RawSteer, reactionTimeS, commandSmoothingS);
+            _row.AppendFormat(CultureInfo.InvariantCulture, ",{0},{1:F4},{2:F4},{3:F4},{4},{5:F4},{6},{7:F4}",
+                              _framesSinceStep, RawSteer, reactionTimeS, commandSmoothingS,
+                              reactionMode, ForwardClearance, _gateOpen ? 1 : 0,
+                              criticalDistanceNorm);
             _framesSinceStep = 0;
 
             for (int i = 0; i < agent.RayCount; i++)
@@ -411,7 +511,8 @@ namespace SelfDrivingSim.Agent
                 var header = new StringBuilder(
                     "t,argmax_index,argmax_angle_deg,argmax_steer,command_steer,applied_steer," +
                     "command_throttle,speed_ms,target_speed_ms,argmax_norm,frame_delta_time," +
-                    "fixed_delta_time,frames_since_step,raw_steer,reaction_s,smoothing_s");
+                    "fixed_delta_time,frames_since_step,raw_steer,reaction_s,smoothing_s," +
+                    "mode,forward_clearance,gate_open,critical_distance");
                 for (int i = 0; i < agent.RayCount; i++)
                 {
                     header.AppendFormat(CultureInfo.InvariantCulture, ",ray{0:D2}", i);
