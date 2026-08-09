@@ -70,6 +70,7 @@ results/drive_logs/*.csv
 # Izvještaji SE PRATE: oni nose brojeve koji se citiraju u research.md i u DESIGN §4.7,
 # a broj koji se citira mora biti provjerljiv iz repozitorija.
 results/heuristic/runs_*.csv
+results/heuristic/trace_*.csv
 !results/heuristic/*.md
 
 # ── OS ──

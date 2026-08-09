@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.IO;
+using System.Text;
 using UnityEngine;
+using SelfDrivingSim.Logging;
 using SelfDrivingSim.Track;
 using SelfDrivingSim.Vehicle;
 
@@ -19,11 +22,21 @@ namespace SelfDrivingSim.Agent
     /// they decide when a RUN STOPS, never how the car steers. Stopping is the harness's business.
     /// Nothing the ring reports reaches <see cref="Decide"/>.
     ///
-    /// **Everything happens in FixedUpdate**, the same clock <see cref="CarAgent"/> senses on and
-    /// <see cref="CarController"/> applies forces on. A control loop in Update runs at the
-    /// rendering rate, so a frame-rate hiccup changes how long an input is held and the trajectory
-    /// diverges. FR-011 asks for runs that reproduce, and this is the whole of how that is
-    /// achieved (research R6).
+    /// **The decision happens in FixedUpdate**, the same clock <see cref="CarAgent"/> senses on
+    /// and <see cref="CarController"/> applies forces on, so the control loop itself does not
+    /// depend on frame rate.
+    ///
+    /// **That is not sufficient for FR-011, and research R6 originally claimed it was.**
+    /// <see cref="CarController"/> reads the command and integrates the steering rate limit in
+    /// <c>Update</c>, against <c>Time.deltaTime</c>. The wheel therefore advances on the frame
+    /// clock no matter which clock issued the command, so two runs of the same seed on machines
+    /// with different frame rates will not follow the same path. It also explains a measurement
+    /// that looked wrong: per-sample steering changes of 0.2865 against a rate limit of 0.0740
+    /// per physics step, which is a long frame taking a bigger step.
+    ///
+    /// Moving that integration is a change to the vehicle, which this feature's declared scope
+    /// forbids, so it is measured and recorded here rather than fixed quietly. The trace records
+    /// both clocks per row so the effect can be quantified instead of argued about.
     /// </summary>
     [RequireComponent(typeof(CarController))]
     public class HeuristicDriver : MonoBehaviour
@@ -78,6 +91,37 @@ namespace SelfDrivingSim.Agent
                  "has already failed.")]
         [SerializeField] private bool endOnWallContact = true;
 
+        [Header("Reaction (live, tune while playing)")]
+        [Tooltip("Seconds between the rays being read and that decision reaching the wheel.\n\n" +
+                 "Zero is the current behaviour. Raising it delays the command through a ring " +
+                 "buffer, which models a slower reaction.\n\n" +
+                 "MEASURED WARNING: the chain already carries about 0.54 s of lag, because the " +
+                 "command saturates at full lock 67 percent of the time and the wheel needs " +
+                 "0.54 s to cross from one lock to the other at 3.7 per second. Adding delay on " +
+                 "top of that is expected to make it worse. The slider exists so that can be " +
+                 "measured rather than argued about.")]
+        [Range(0f, 0.5f)]
+        [SerializeField] private float reactionTimeS;
+
+        [Tooltip("Low-pass the command before it is sent, in seconds. This is the opposite lever " +
+                 "to reaction time: instead of delaying a bang-bang command it turns it into a " +
+                 "continuous one, which is what the saturation measurement suggests is actually " +
+                 "needed.\n\n" +
+                 "Zero disables it and leaves the raw command untouched. Note this makes the " +
+                 "controller a tuned system rather than a pure baseline, so a value found here " +
+                 "is a measurement to record, not a default to adopt quietly.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float commandSmoothingS;
+
+        [Header("Diagnostics")]
+        [Tooltip("Write one row per physics step to results/heuristic/trace_<time>.csv.\n\n" +
+                 "This exists to prove the chain rays -> argmax -> command -> applied steering, " +
+                 "one link at a time. The first run of this driver looked like it was not " +
+                 "steering, and the drive log could not settle whether the controller chose a " +
+                 "bad command or a good command failed to reach the wheels, because it records " +
+                 "the vehicle's actual angle and not the command.")]
+        [SerializeField] private bool writeTrace;
+
         // --- Outcome, read by the sweep runner and the run record ------------------------------
 
         /// <summary>Whether the driver currently holds the wheel.</summary>
@@ -101,12 +145,92 @@ namespace SelfDrivingSim.Agent
         /// <summary>The speed the longitudinal rule is currently asking for, in m/s.</summary>
         public float TargetSpeedMs { get; private set; }
 
+        /// <summary>The strategy's own output, before reaction delay or smoothing.</summary>
+        public float RawSteer { get; private set; }
+
+        /// <summary>
+        /// Delay and smooth the command, both live-tunable while playing.
+        ///
+        /// Both default to zero, which is a straight pass-through, so the baseline stays the
+        /// baseline unless someone deliberately moves a slider. Anything found by moving them is
+        /// a measurement to write down, not a default to adopt: a tuned heuristic stops being a
+        /// baseline and the M5 comparison becomes two tuned systems measured against each other.
+        ///
+        /// The delay is a ring buffer sized from the current physics step, so changing the slider
+        /// mid-run takes effect on the next step rather than needing a restart.
+        /// </summary>
+        private float ApplyReaction(float steer)
+        {
+            if (reactionTimeS > 1e-4f)
+            {
+                int wanted = Mathf.Max(1, Mathf.RoundToInt(reactionTimeS / Time.fixedDeltaTime));
+                if (_delay == null || _delay.Length != wanted)
+                {
+                    // Resized live. The buffer is primed with the current command rather than
+                    // zero, so moving the slider does not inject a phantom straight-ahead.
+                    var resized = new float[wanted];
+                    for (int i = 0; i < wanted; i++) { resized[i] = steer; }
+                    _delay = resized;
+                    _delayAt = 0;
+                }
+
+                float delayed = _delay[_delayAt];
+                _delay[_delayAt] = steer;
+                _delayAt = (_delayAt + 1) % _delay.Length;
+                steer = delayed;
+            }
+            else
+            {
+                _delay = null;
+            }
+
+            if (commandSmoothingS > 1e-4f)
+            {
+                // First-order lag. alpha is derived from the step and the time constant, so the
+                // filter behaves the same at any physics rate.
+                float alpha = 1f - Mathf.Exp(-Time.fixedDeltaTime / commandSmoothingS);
+                _smoothed = Mathf.Lerp(_smoothed, steer, alpha);
+                steer = _smoothed;
+            }
+            else
+            {
+                _smoothed = steer;
+            }
+
+            return Mathf.Clamp(steer, -1f, 1f);
+        }
+
+        private float[] _delay;
+        private int _delayAt;
+        private float _smoothed;
+
         private float _lastProgressS;
         private int _lastAwarded;
         private int _lapsAtStart;
         private int _fallResetsAtStart;
         private bool _wasEngaged;
         private float[] _angles = new float[0];
+        private StreamWriter _trace;
+        private readonly StringBuilder _row = new StringBuilder(256);
+
+        /// <summary>
+        /// The real frame delta, captured where it exists.
+        ///
+        /// <c>Time.deltaTime</c> read inside <c>FixedUpdate</c> returns <c>fixedDeltaTime</c>, not
+        /// the frame duration. The first version of this trace logged it from there and produced
+        /// a column of constant 0.0200, which looked like a perfectly steady frame rate and was
+        /// really just the physics step wearing a disguise. Since <see cref="CarController"/>
+        /// integrates the steering rate limit against the frame clock, that column was exactly
+        /// the one needed and exactly the one wrong.
+        /// </summary>
+        private float _frameDeltaTime;
+        private int _framesSinceStep;
+
+        private void Update()
+        {
+            _frameDeltaTime = Time.deltaTime;
+            _framesSinceStep++;
+        }
 
         private void Awake()
         {
@@ -179,9 +303,145 @@ namespace SelfDrivingSim.Agent
 
             ElapsedS += Time.fixedDeltaTime;
 
-            car.ScriptedMove = Decide();
+            Vector2 move = Decide();
+            car.ScriptedMove = move;
+
+            TraceStep(move);
 
             CheckEndConditions();
+        }
+
+        /// <summary>
+        /// One row per physics step, carrying every link in the chain from rays to wheels.
+        ///
+        /// **Why the drive log is not enough.** `DriveLogger` records `CarController.SteerNorm`,
+        /// which is the vehicle's actual rate-limited angle after the fact. That cannot separate
+        /// "the controller chose badly" from "the controller chose well and the command did not
+        /// arrive", and those need completely different fixes. This records the argmax the
+        /// controller saw, the command it issued, and the angle the car ended up at, in the same
+        /// row, so each link can be checked independently.
+        ///
+        /// It also records the two clocks. `CarController` integrates steering in `Update` using
+        /// `Time.deltaTime`, while this driver commands in `FixedUpdate`, so the rate limiter
+        /// advances on the frame clock and a long frame moves the wheel further. That is worth
+        /// measuring rather than arguing about.
+        /// </summary>
+        private void TraceStep(Vector2 move)
+        {
+            if (!writeTrace)
+            {
+                return;
+            }
+
+            if (_trace == null)
+            {
+                OpenTrace();
+                if (_trace == null)
+                {
+                    return;
+                }
+            }
+
+            // What argmax actually picked, recomputed here rather than trusted, so the row can
+            // contradict the command if they ever disagree.
+            int argmax = -1;
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < agent.RayCount; i++)
+            {
+                if (agent.RayDistancesNorm[i] > best)
+                {
+                    best = agent.RayDistancesNorm[i];
+                    argmax = i;
+                }
+            }
+
+            float argmaxAngle = argmax >= 0 ? agent.RayAngleDeg(argmax) : 0f;
+            float argmaxSteer = Mathf.Clamp(argmaxAngle / car.Profile.steerMaxDeg, -1f, 1f);
+
+            _row.Clear();
+            _row.AppendFormat(CultureInfo.InvariantCulture,
+                "{0:F4},{1},{2:F1},{3:F4},{4:F4},{5:F4},{6:F4},{7:F3},{8:F3},{9:F3},{10:F5},{11:F5}",
+                ElapsedS,          // t
+                argmax,            // which ray was longest
+                argmaxAngle,       // its angle
+                argmaxSteer,       // what argmax alone implies
+                move.x,            // what the strategy commanded
+                car.SteerNorm,     // what the car is actually at, before this step's Update
+                move.y,            // throttle command
+                car.SpeedMs,       // forward speed
+                TargetSpeedMs,     // what the speed rule asked for
+                best,              // the longest normalised distance
+                _frameDeltaTime,   // the clock CarController integrates steering on, measured
+                Time.fixedDeltaTime);
+
+            // How many rendered frames happened since the previous physics step. Zero means the
+            // steering rate limiter did not advance at all between these two rows, which is the
+            // shape of the problem when physics outruns rendering.
+            _row.AppendFormat(CultureInfo.InvariantCulture, ",{0},{1:F4},{2:F4},{3:F4}",
+                              _framesSinceStep, RawSteer, reactionTimeS, commandSmoothingS);
+            _framesSinceStep = 0;
+
+            for (int i = 0; i < agent.RayCount; i++)
+            {
+                _row.AppendFormat(CultureInfo.InvariantCulture, ",{0:F4}",
+                                  agent.RayDistancesNorm[i]);
+            }
+
+            _trace.WriteLine(_row.ToString());
+        }
+
+        private void OpenTrace()
+        {
+            try
+            {
+                string dir = RepoPaths.EnsureDir(
+                    Path.Combine(RepoPaths.Root, "results", "heuristic"));
+                string path = Path.Combine(
+                    dir, $"trace_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss}.csv");
+
+                // Buffered on purpose. The first version flushed every physics step, which is
+                // fifty disk writes a second, and the frame rate it cost fed straight back into
+                // the steering rate limiter that this trace exists to measure. An instrument that
+                // changes its subject is not an instrument.
+                _trace = new StreamWriter(path, false, new UTF8Encoding(false), 1 << 16)
+                {
+                    AutoFlush = false,
+                };
+
+                var header = new StringBuilder(
+                    "t,argmax_index,argmax_angle_deg,argmax_steer,command_steer,applied_steer," +
+                    "command_throttle,speed_ms,target_speed_ms,argmax_norm,frame_delta_time," +
+                    "fixed_delta_time,frames_since_step,raw_steer,reaction_s,smoothing_s");
+                for (int i = 0; i < agent.RayCount; i++)
+                {
+                    header.AppendFormat(CultureInfo.InvariantCulture, ",ray{0:D2}", i);
+                }
+
+                _trace.WriteLine(header.ToString());
+                Debug.Log($"[HeuristicDriver] tracing to {path}", this);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[HeuristicDriver] could not open the trace: {e.Message}", this);
+                writeTrace = false;
+            }
+        }
+
+        private void CloseTrace()
+        {
+            if (_trace == null)
+            {
+                return;
+            }
+
+            _trace.Flush();
+            _trace.Dispose();
+            _trace = null;
+        }
+
+        private void OnDisable()
+        {
+            CloseTrace();
         }
 
         /// <summary>
@@ -197,6 +457,9 @@ namespace SelfDrivingSim.Agent
 
             float steer = RayControllers.Steer(
                 strategy, agent.RayDistancesNorm, _angles, car.Profile.steerMaxDeg);
+
+            RawSteer = steer;
+            steer = ApplyReaction(steer);
 
             LastSteer = steer;
             TargetSpeedMs = TargetSpeedFor(steer, car.Profile);
