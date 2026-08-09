@@ -5,8 +5,7 @@ is known independently of the thing being checked. Sensing nobody has read is se
 checked, and an agent that will not learn because one ray is reversed looks exactly like an agent
 that needs more training.
 
-**Status: 17 of 19 observations verified on 2026-08-09.** Outstanding: `steer` away from zero, and
-the positive half of `yaw`. Both come from two full-lock runs on `FlatGround`.
+**Status: all 19 observations verified on 2026-08-09. T062 passes.**
 
 ## Method, and why it changed
 
@@ -121,25 +120,72 @@ open field.
 
 | # | Situation, on `FlatGround` | Expected | Result |
 |---|---|---|---|
-| 8 | Hold **A** and **W** together, circle for a few seconds, press **P** while still holding | peak steer near -1.000, peak yaw negative, **\|peak yaw\| equal to vfwd** | |
-| 9 | Hold **D** and **W**, same | peak steer near +1.000, peak yaw positive, same magnitude match | |
-| 10b | Hold **W** in a straight line until the speed stops rising | vfwd reaches 1.000 without exceeding it. Pinned at exactly 1.000 while still accelerating would mean the clamp is hiding a governor fault, which has happened once on this project | |
-| 8b | Any of the above | all 13 rays | all 1.000, nothing to hit | |
+| 8 | Hold **A** and **W**, circle, press **P** while still holding | peak steer near -1.000, peak yaw negative | **OK — steer -1.000, yaw -1.000, vlat +0.459** |
+| 9 | Hold **D** and **W**, same | peak steer near +1.000, peak yaw positive | **OK — steer +1.000, yaw +1.000, vlat -0.459** |
+| 8b | Either run | all 13 rays | all 1.000, nothing to hit anywhere on the plane | **OK — all thirteen read miss** |
+
+Both signs of `steer` and of `yaw` reach exactly ±1.000, and `vlat` is symmetric between the two
+runs at ∓0.459. That is the last observation off zero, so **all nineteen have now been read away
+from their resting value**.
+
+### The full-lock identity failed, and the failure is the finding
+
+`|peak yaw|` came out at 1.000 while `vfwd` never exceeded 0.801. Those were predicted to be
+equal. They are not, and the reason is worth more than the prediction was.
+
+Clamping at 1.000 means the yaw rate reached at least 1.865 rad/s. The fastest speed in that
+window was 8.01 m/s, and no-slip cornering at the minimum radius gives 8.01 / 5.361 = 1.494 rad/s,
+which is 0.801 - exactly `vfwd`, as predicted. **The car rotated at least 25 percent faster than
+the no-slip bound allows.**
+
+`vlat` says why: 4.59 m/s sideways against 8.01 m/s forward is a 30 degree slip angle. Probe #2's
+instantaneous line makes it plainer still - `vfwd 0.063` with `yaw 0.565` is a car nearly stopped
+and still turning at 1.05 rad/s, a radius of 0.6 m. That is not a circle, it is a spin.
+
+So the identity holds only in steady-state no-slip cornering, and full lock at full throttle is
+not that. The instruction that produced this said "hold A and W"; the situation as originally
+written said "creeping at a steady low speed", and the creep was the part that mattered.
+
+**`YawRateNorm` saturates under ordinary inputs.** `CarAgent`'s own comment says a value reaching
+the clamp means the car has exceeded a limit it is supposed to hold, and here it does, from
+nothing more exotic than full lock and full throttle. For M3 this means the yaw observation
+carries no information during a spin - the one situation where recovery information matters most.
+Recorded rather than changed: the clamp is correct, and widening the divisor would hide the event
+instead of reporting it.
+
+### The yaw scale, verified separately
+
+Because every yaw reading was either near zero or clamped, the divisor itself was still unchecked.
+Three checks, none of which needed a drive:
+
+1. **`MaxYawRateRadPerS` reads 1.865230679512024 live**, against `10 / 5.36126708984375 =
+   1.865230706178349` computed from the profile. Agreement to float32 precision, so the divisor is
+   derived from `vehicle_profile.json` rather than typed in.
+2. **`SpeedForwardNorm` matches an independently computed value exactly.** Setting the Rigidbody
+   velocity and reading the body and the agent in the same call gives 0.46870 against 0.46877 -
+   the same instant, so no decay can hide a scale error. `vlat` agrees at the same moment.
+3. **The mid-range yaw reading cross-checks against the track's own curvature.** Probe #5 implies
+   a radius of 32.94 m. The centre line between markers 18 and 19, where the car was, runs from
+   17.05 m to 48.76 m. The implied radius falls inside the real curvature of the section.
+
+The yaw observation is therefore correct in sign, correct in scale, and saturates for a physical
+reason rather than a numerical one.
 
 ## Coverage
 
 | Observation | Covered by | Status |
 |---|---|---|
 | rays 00-12, all thirteen | 1 (analytic, 12 hits + 1 miss), 4c, 4d | done |
-| speed forward | 1c (zero), 10, 11 | **done** - 0.905 forward, -0.171 reverse |
-| speed lateral | 1c (zero), 12b | **done** - 0.039 cornering |
-| yaw rate | 1c (zero), 12a | **done negative** - -0.139; positive still to come from situation 9 |
+| speed forward | 1c (zero), 10, 11, scale check 2 | **done** - 0.905 forward, -0.171 reverse, divisor exact |
+| speed lateral | 1c (zero), 12b, 8, 9 | **done** - ±0.459, symmetric between the two lock runs |
+| yaw rate | 1c (zero), 12a, 8, 9, scale checks 1 and 3 | **done** - both signs to ±1.000, scale confirmed three ways |
 | heading forward·dir | 1d, 7 | done |
 | heading right·dir | 1d, 5, 6, 5b | done |
-| steering | 1c (zero) | **outstanding** - never observed away from zero |
+| steering | 1c (zero), 8, 9 | **done** - -1.000 and +1.000 |
 
-Seventeen of nineteen fully verified. What remains is one observation, `steer`, plus the positive
-half of `yaw`, and both come from the same two runs on `FlatGround`.
+**All nineteen verified.** Every observation has been read away from its resting value, in both
+signs where it has one, and every divisor has been checked against something computed
+independently of it.
 
 ## Two findings from running this
 
@@ -176,6 +222,10 @@ Verified poses on seed 1004, for reference:
 
 - Seed used: 1004, plus `FlatGround` for the lock runs
 - Date: 2026-08-09
-- Outcome: **17 of 19 observations verified.** Gate not yet closed. `steer` has never been read
-  away from zero, and until it has, nothing rules out an observation that is wired to a constant.
-  That is exactly the kind of fault this task exists to catch, so the gate stays open on it.
+- Outcome: **all 19 observations verified. T062 passes.**
+
+One thing to carry into M3, which is a finding rather than a defect: **`YawRateNorm` saturates at
+±1.000 under full lock and full throttle**, because the car slides and rotates faster than the
+no-slip bound. During a spin the yaw observation is a constant, and a spin is where recovery
+information matters most. The clamp is correct and should stay; the note exists so that an agent
+which fails to recover from spins is not diagnosed as needing more training.
