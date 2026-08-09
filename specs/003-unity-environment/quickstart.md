@@ -23,9 +23,27 @@ Then check the drive against the dataset:
 python -m python.track.compare_drive results\drive_logs\<latest>.csv
 ```
 
+Pick the log deliberately rather than taking the newest file. Once section 3 has been run there
+are track drives in the same folder, and `<latest>` will be one of those. Five of the six checks
+read the same either way, but the speed check does not.
+
 Expected report: reachable steering spans the full range in both directions, the 95th-percentile
 steering change is within a factor of two of the recorded human figure once resampled to 14.08 Hz,
-and normalised top speed agrees with the dataset within 10 percent.
+and the two speed-change figures inside their bands.
+
+**`speed max/P99` fails, on every drive, and is expected to.** It measures how far peak speed
+rises above typical speed. Measured 2026-08-08: 1.038 on the flat plane and **1.0001 to 1.0074
+across six track laps**, against a required band of [1.130, 1.381].
+
+T023 predicted this failure was caused by the absence of a track and would clear once tracks
+existed. Tracks now exist, laps have been driven on them, and the ratio moved the wrong way. The
+cause is the one already recorded as C9: **these tracks contain no straights.** A closed curve
+built from radial harmonics curves everywhere, so the car is corner-limited for the whole lap and
+its speed hovers instead of peaking. The flat plane at least had an acceleration transient from
+rest, which is why it scored marginally higher. The human recording was made on a course with
+straights, so its speed distribution has a tail this environment cannot produce.
+
+Treat it as a known and explained mismatch rather than a run to repeat. See research C17.
 
 ## 2. Generate tracks (User Story 2)
 
@@ -56,14 +74,31 @@ if ((Get-FileHash unity\SelfDrivingSim\Assets\Tracks\seed_7.json).Hash -eq (Get-
 ## 3. Drive a generated track (User Stories 2 and 3)
 
 Open `unity/SelfDrivingSim/Assets/Scenes/Track.unity`, set the seed on the track builder, press
-Play. The observation panel shows every value the future agent will see.
+Play. The seed must be set before entering play mode: the builder runs in `Awake`.
+
+Both overlays are **on by default**. `O` toggles the observation panel, which shows every value
+the future agent will see plus the marker, lap and skipped counts. `H` toggles the vehicle HUD,
+which carries the reset counts. Pressing either key on a fresh run turns that panel off.
+
+Each completed lap prints one line carrying everything a lap is judged on, so nothing has to be
+read while driving:
+
+```text
+[LapReport] seed 37 | lap 1 | 34.3s | markers 24/24 | skipped 0 | wrongway 0 | stray 0 | fell 0 | PASS
+```
+
+`PASS` means every marker was taken in order and the car never left the surface. The counts are
+per lap rather than cumulative, so a scrappy first lap does not condemn the next one.
 
 ## 4. Tests
 
 ```powershell
-pytest python/tests -q          # M1, feature 002 and the new generator tests
+pytest python/tests          # M1, feature 002 and the new generator tests
 # Unity: Window > General > Test Runner > EditMode > Run All
 ```
+
+Do not add `-q`: `pytest.ini` already sets `addopts = -q`, so a second one makes it `-qq` and
+suppresses the pass count, leaving dots and an exit code.
 
 ## Outputs to expect
 
@@ -75,6 +110,7 @@ pytest python/tests -q          # M1, feature 002 and the new generator tests
 | `results/drive_logs/*.csv` | keyboard drives, in the dataset's own columns |
 | `results/plots/track_seed_*.png` | centre line with the tightest corner marked |
 | `results/plots/track_match.png` | required-steering distribution against the human reference |
+| `results/plots/track_contact_sheet.png` | every accepted track on one sheet |
 
 ## What the results should say
 

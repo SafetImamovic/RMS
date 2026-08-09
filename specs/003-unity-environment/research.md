@@ -370,6 +370,45 @@ otkriva ne postoji jer trening mjeri upravo one epizode iz kojih je memorizacija
 
 ---
 
+## C17 - `speed max/P99` ne prolazi ni sa stazom, i predviđanje iz T023 je oboreno
+
+**Šta je T023 tvrdio.** Provjera `speed max/P99` je pala na ravnoj ploči, 1.038 naspram trazenog
+opsega [1.130, 1.381], i to je zapisano kao posljedica **nepostojanja staze**: na praznoj ploči
+nema razloga da se skine gas, auto stoji prikovan za svoj limit od 10 m/s, pa je maksimum jednak
+P99. Zaključak je bio da provjera "ne može proći dok US2 ne napravi stazu".
+
+**Šta je izmjereno kad je staza napravljena.** Šest pravih lapova po generisanim stazama,
+2026-08-08, iz T051 sesije:
+
+| Vožnja | rows | `speed max/P99` |
+|---|---|---|
+| 15-36-32 | 1.266 | 1.0005 |
+| 15-35-25 | 1.289 | 1.0005 |
+| 15-34-26 | 1.276 | 1.0017 |
+| 15-33-10 | 1.288 | 1.0001 |
+| 15-31-03 | 2.144 | 1.0074 |
+| 13-49-42 | 1.502 | 1.0006 |
+
+Sve ispod donje granice od 1.130, i sve **lošije od ravne ploče**. Predviđanje nije samo
+promašeno nego je promašeno u suprotnom smjeru.
+
+**Uzrok je već zapisan, kao C9: ove staze nemaju pravce.** Zatvorena kriva iz radijalnih harmonika
+krivi svuda, pa je auto cijeli lap ograničen krivinom i brzina mu lebdi umjesto da ima vrh. Ravna
+ploča je bar imala prelazni režim ubrzavanja iz mirovanja, i zato je tamo odnos bio neznatno viši.
+Ljudski snimak je nastao na trasi sa pravcima, pa njegova raspodjela brzine ima rep koji ovo
+okruženje ne može proizvesti.
+
+**Šta iz ovoga slijedi.** Provjera je ispravna, mjeri tačno ono što tvrdi, i **ne treba je gasiti
+ni podešavati**. Treba je čitati kao mjeru razlike između trase iz dataseta i trase koju ovaj
+generator pravi, a ta razlika je već poznata i zapisana. Za M5 ovo pojačava ono što DESIGN §7 već
+kaže: oslanjati se na metrike izvođenja, prije svega na glatkoću upravljanja, a ne na sirove
+marginalne histograme brzine.
+
+Napomena o poštenju mjerenja: ovih šest lapova je vožen da bude čist, ne da bude brz. Agresivnija
+vožnja bi digla odnos, ali ne za 13 procenata koliko nedostaje, jer bez pravca nema gdje.
+
+---
+
 ## Šta ovaj feature svjesno NE rješava
 
 - Nagrađivanje i trening. To je M3.
