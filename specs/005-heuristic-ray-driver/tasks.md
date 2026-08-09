@@ -35,10 +35,16 @@ assumed.
 **Purpose**: The things that must exist before any code, including the one the constitution puts
 before implementation.
 
-- [ ] T001 Write the heuristic driver section into `DESIGN.md`: what the driver is, why it exists as a non-learned baseline, the two controllers, and the derived-speed rule from research R1. **Principle V requires this before implementation, in its own `docs:` commit**, and this task blocks every code task that follows
-- [ ] T002 [P] Create `results/heuristic/` and add `.gitignore` rules for it, keeping run CSVs out of git while committing the generated reports, matching how `results/tracks/` is already handled
-- [ ] T003 [P] Create the Python package skeleton `python/heuristic/__init__.py` and `python/heuristic/report.py` with module docstrings only, no logic
-- [ ] T004 [P] Record the pre-feature test baseline in this file: `280 passed, 3 skipped` under `.venv` and `334 passed` under `.venv-bc`, measured 2026-08-09, so a later regression is attributable
+- [X] T001 Write the heuristic driver section into `DESIGN.md`: what the driver is, why it exists as a non-learned baseline, the two controllers, and the derived-speed rule from research R1. **Principle V requires this before implementation, in its own `docs:` commit**, and this task blocks every code task that follows
+  - Written as **DESIGN 4.7**, not as a new top-level section. Section numbers are referenced from the specs (`DESIGN 4.3`, `DESIGN section 7`) and renumbering would break those references silently, which is a worse outcome than a slightly deep heading
+  - Section 7's comparison table gained a fourth column. That table previously had three, and the missing one was the only column that learns nothing
+  - The R2 prediction is recorded there in full, before it can be measured: three reachable steering magnitudes, 0, 0.6 and 1.0, and an oscillation near 3 Hz
+- [X] T002 [P] Create `results/heuristic/` and add `.gitignore` rules for it, keeping run CSVs out of git while committing the generated reports, matching how `results/tracks/` is already handled
+  - `results/heuristic/runs_*.csv` ignored, `!results/heuristic/*.md` tracked. The asymmetry is the point: a sweep writes one row per seed, controller and configuration, so the raw files grow fast and none of them is worth keeping, while the reports carry the numbers that get cited in `research.md` and DESIGN 4.7. **A cited number has to be checkable from the repository**
+- [X] T003 [P] Create the Python package skeleton `python/heuristic/__init__.py` and `python/heuristic/report.py` with module docstrings only, no logic
+  - The docstrings carry the two rules the tests will enforce, so they are written down before the code that can get them wrong: an empty `lap_time_s` is excluded rather than averaged as zero, and results are reported over the seed set rather than per seed
+- [X] T004 [P] Record the pre-feature test baseline in this file: `280 passed, 3 skipped` under `.venv` and `334 passed` under `.venv-bc`, measured 2026-08-09, so a later regression is attributable
+  - Both figures measured on the merged branch after feature 003 landed. They were 87 and 141 before that merge, on a branch where the track generator's tests did not exist
 
 **Checkpoint**: the design is written down and the folders exist.
 

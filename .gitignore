@@ -64,6 +64,14 @@ results/bc/run_bc_repro_*/checkpoint.pt
 results/drive_logs/*.csv
 !results/drive_logs/stability_log.csv
 
+# ── Heuristički vozač (M2, feature 005) ──
+# Jedan sweep piše po jedan red za svaku kombinaciju seeda, regulatora i konfiguracije
+# senzora, pa sirovi CSV-ovi rastu brzo i nema razloga da ijedan uđe u historiju.
+# Izvještaji SE PRATE: oni nose brojeve koji se citiraju u research.md i u DESIGN §4.7,
+# a broj koji se citira mora biti provjerljiv iz repozitorija.
+results/heuristic/runs_*.csv
+!results/heuristic/*.md
+
 # ── OS ──
 Thumbs.db
 Desktop.ini
