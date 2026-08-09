@@ -409,6 +409,71 @@ vožnja bi digla odnos, ali ne za 13 procenata koliko nedostaje, jer bez pravca 
 
 ---
 
+## C18 - "Ništa ga ne referencira" ne znači da se ne koristi (nađeno pri T065, 2026-08-09)
+
+T065 je uklonio `com.unity.ai.assistant` iz manifesta. Provjera prije uklanjanja je bila uredna:
+nijedna skripta pod `Assets/` ga ne spominje i nijedan asmdef ga ne navodi. Zaključak je bio da
+projekat ne zavisi od njega.
+
+**Zaključak je bio pogrešan, i to na način koji se lako ponavlja.** Taj paket nosi editor stranu
+Unity MCP mosta. Binarni `~/.unity/relay/relay_win.exe` je samo stdio posrednik ispred njega. Kad
+je paket otišao, u istom satu je nestalo svih 54 Unity alata.
+
+Uzrok nije bio očigledan iz tri razloga, i svaki je vrijedan zapisa:
+
+1. **Relay proces je ostao živ.** Nije se srušio, nije ispisao grešku. Držao je nula socketa, ali
+   `tasklist` ga i dalje prikazuje.
+2. **MCP klijent je prijavljivao `Connected`.** `claude mcp list` je pokazivao kvačicu. Server se
+   rukovao ispravno i objavio praznu listu alata, jer iza njega nije bilo ničega.
+3. **Restart Unityja i restart klijenta nisu pomogli**, pa je izgledalo kao problem transporta.
+   Oba su se povezivala na nešto što više ne postoji.
+
+**Šta iz ovoga slijedi.** Grep za referencama isključuje zavisnost u vrijeme kompajliranja i ništa
+više. Editor servis nema `using` liniju: učitava se zato što stoji u manifestu, a koristi se kroz
+editor, ne kroz kod. Ista logika bi uklonila bilo koji editor-only paket.
+
+Rizik iz originalnog argumenta ostaje i sada je zapisan umjesto da se po njemu postupa:
+`2.17.0-pre.1` je pre-release oznaka i može biti povučena ili ponovo objavljena pod istim brojem,
+što bi oborilo čist klon. To jeste u sukobu sa Ustavom VI. Pošteno rješenje je da se kaže naglas:
+**ako čist klon ne uspije razriješiti ovaj paket, projekat se i dalje builda i pokreće, gubi se
+samo MCP alat.** Nijedna skripta, scena ni test ne zavise od njega, i upravo to je originalna
+provjera i utvrdila.
+
+---
+
+## C19 - Zraci provjereni protiv nezavisne implementacije (T062, 2026-08-09)
+
+T062 je pisan tako da čovjek vozi, čita panel i procjenjuje svaku vrijednost prema onome što vidi
+kroz prozor. Sedam od dvanaest situacija je statično: auto stoji negdje, a tačan odgovor slijedi
+iz geometrije staze, ne iz pogleda.
+
+Za tih sedam je urađena jača provjera. Očekivano očitanje je **izračunato u Pythonu iz `seed_1004.json`
+i upoređeno s onim što je Unity izmjerio**. Dvije nezavisne implementacije: analitički presjek
+zrake i poligona nad izvornom centralnom linijom, i Unityjev `Physics.RaycastNonAlloc` nad mreškom
+koju je `TrackBuilder` napravio iz te iste linije.
+
+**Najveće neslaganje na trinaest zraka: 0.000 m.** Dvanaest pogodaka se poklapa na tri decimale, a
+zraka 03 promašuje u obje implementacije.
+
+Zašto je ovo jače od gledanja kroz prozor: čovjek koji gleda kako barijera prolazi ne može uhvatiti
+grešku od pola stepena u razmaku zraka, ni konvenciju znaka koja je tačna na 90 stepeni a pogrešna
+na 15. Ogledalno okrenuta lepeza ne bi reprodukovala dvanaest analitičkih rastojanja, nego nijedno.
+
+Tri usputna nalaza iz istog mjerenja:
+
+- `zraka 00 + zraka 12 = 6.033 m` naspram deklarisane širine staze od 6.000. Dvije okomite zrake
+  premoštavaju put, pa je širina mjerljiva iznutra.
+- Uz barijeru na 0.586 m, očitanja prate `d / cos(a)` na milimetar do ±45°, a razilaze se prema
+  vani na ±60 i ±75 stepeni. To je zid koji zakrivljuje, tačno onako kako zatvorena kriva mora.
+- **Barijera na braniku čita 0.029, čist horizont čita 1.000, u istom frameu.** FR-025 stoji na
+  tome da su te dvije stvari na suprotnim krajevima opsega.
+
+Ono što ovako ne može: pet situacija zavisi od kretanja, punog zaokreta ili proklizavanja. Za
+dinamiku vozila ne postoji druga implementacija protiv koje bi se poredilo, pa te ostaju ljudska
+vožnja.
+
+---
+
 ## Šta ovaj feature svjesno NE rješava
 
 - Nagrađivanje i trening. To je M3.
