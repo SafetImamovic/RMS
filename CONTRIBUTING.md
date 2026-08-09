@@ -79,6 +79,22 @@ Agent oscillated on straights in ppo_car_v03; human data shows
 near-zero steering variance on straight segments.
 ```
 
+## Bez atribucije agenta
+
+Poruka commita ne nosi `Co-Authored-By`, link na sesiju alata, niti bilo kakav drugi
+trailer koji imenuje agenta. Isto vrijedi za opise pull requestova, tagove i unose u
+`results/EXPERIMENTS.md`. Vlasnik repozitorija koji pokreće commit je jedini autor u
+zapisu (Ustav, princip III).
+
+Agent koji predlaže commit mora izostaviti taj trailer i onda kada mu vlastiti alat
+nalaže da ga doda. Provjera nad cijelom istorijom:
+
+```
+git log --all --format='%h %s' --grep='Co-Authored-By'
+```
+
+Prazan izlaz je jedini prihvatljiv rezultat.
+
 ## Checklist prije commita
 
 1. `git status` - samo očekivani fajlovi? Nema `Library/`, `data/`, `.venv/`?
@@ -86,6 +102,7 @@ near-zero steering variance on straight segments.
 3. Projekat konzistentan (Unity Console bez grešaka / testovi prolaze)?
 4. Poruka po formatu, jedna logička promjena?
 5. Binarni fajlovi otišli u LFS? (`git lfs ls-files` ih izlistava)
+6. Poruka bez atribucije agenta - nema `Co-Authored-By` ni linka na sesiju?
 
 ## Ko commita
 

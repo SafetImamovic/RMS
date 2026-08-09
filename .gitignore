@@ -46,6 +46,14 @@ dataset/
 results/tensorboard/
 results/*/events.out.tfevents.*
 results/*/checkpoint*.pt
+# Napomena: pravilo iznad je jedan nivo duboko i pisano za RL raspored
+# (results/<run>/checkpoint.pt). BC pise dva nivoa duboko, results/bc/run_<id>/,
+# pa ga ovo pravilo NE hvata. To je namjerno ostavljeno: checkpoint dva
+# prijavljena BC runa se committa preko LFS (992 KB) da bi se M4 gate mogao
+# pokazati bez ponovnog treninga.
+# Izuzetak su reprodukcijski runovi iz T040: oni nisu kandidat-modeli, dokaz
+# koji nose je u run_record.json, a ne u tezinama. Fajlovi ostaju lokalno.
+results/bc/run_bc_repro_*/checkpoint.pt
 
 # ── Drive logovi (M2) ──
 # Svaki pritisak na Play pravi novi CSV, pa bi ih commitovanje sve redom zatrpalo.
