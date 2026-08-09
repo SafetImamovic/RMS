@@ -133,14 +133,157 @@ RMS/
 - Alternativa ako fizika pravi probleme: pojednostavljen kinematski model
   (transform-based) - odluka u M2, fizika je primarna.
 
-### 4.3 Observacije (ukupno ~19 vrijednosti + raycast)
+**Profil vozila (fiksirano u M2, feature 003).** Jedno mjesto drži svako ograničenje auta.
+Izvor svake vrijednosti je mjerenje iz M1 ili navedena geometrijska pretpostavka; nijedna
+nije odabrana jer izgleda dobro. Izvedene veličine se **računaju**, nikad ne čuvaju pored
+osnovnih, pa profil ne može doći u stanje da mu poluprečnik ne odgovara međuosovinskom
+rastojanju.
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `wheelbase_m` | 2.5 m | jedina slobodno izabrana dimenzija; svi poluprečnici skaliraju linearno s njom |
+| `steer_max_deg` | 25° | DESIGN 4.4, potvrđeno M1 analizom punog opsega |
+| `radius_margin` | 1.3 | **jednako rezervi volana**, vidi ispod |
+| `r_min_m` | **5.361 m** | izvedeno, `L / tan(25°)`, bicikl model pri maloj brzini |
+| `r_floor_m` | **6.970 m** | izvedeno, `r_min × 1.3`. Najoštrija krivina koju staza smije imati |
+| `max_required_steer` | **0.789** | izvedeno; najviše volana koje staza ikad traži |
+| `steering_reserve` | **21.1 %** | `1 - max_required_steer` |
+| `v_max_ms` | 10 m/s | **izbor za igrivost, nije tvrdnja o datasetu** |
+
+**Zašto je margina 1.3 važnija nego što izgleda.** Ona nije proizvoljan faktor sigurnosti
+nego direktno određuje koliko volana agentu ostaje u najoštrijoj krivini. Pri margini 1.0
+najoštrija krivina traži **puni** zaokret i agent nema ničim da koriguje kad ga izbaci ka
+vanjskoj ivici; to nije staza nego zamka. Pri 1.3 krivina traži 0.789 i 21.1 % ostaje
+slobodno. Veličina `max_required_steer` je **nezavisna od međuosovinskog rastojanja** (L se
+skrati), pa je margina jedini parametar koji je pomjera, što je čini poštenom ručkom za
+podešavanje.
+
+**Cijena, i navodi se otvoreno.** Nijedna generisana staza ne može tražiti steering iznad
+0.789, dok ljudski podaci idu do 1.0. Izmjereno: 2.60 % nenultih uzoraka track1 je iznad te
+granice, dakle pokrivamo ljudsku raspodjelu do 97.40. percentila i dalje ne.
+
+**Brzina se ne pretvara, nego normalizuje.** Kolona `speed` u datasetu nema dokumentovanu
+jedinicu (nalaz feature-a 002). Zato `v_max_ms` **nikad ne ulazi u poređenje**: obje strane
+se dijele svojim vlastitim P99 i porede se bezdimenzionalno. Tvrdnja tipa "top speed je
+17.49 m/s" tražila bi pretpostavku koju niko ne može provjeriti, a lažna preciznost bi se
+provukla kroz svaki prag u M3 i M5.
+
+**Brzina okretanja volana** (`steer_rate_norm_per_s`) i **ubrzanje/kočenje** se fiksiraju
+mjerenjem stvarne vožnje tastaturom (M2 zadaci T023 i T024), jer su to jedine vrijednosti
+koje se ne mogu odlučiti unaprijed. Snimljeni skokovi volana punog opsega u jednom kadru su
+dokaz o **ulaznom uređaju** (tastatura ili miš), ne specifikacija vozila; auto koji ih
+reprodukuje bio bi neupravljiv.
+
+**Izmjerene vrijednosti (T022 do T025, zatvoreno 31.07.2026.).** Ovo su jedine brojke u
+projektu koje dolaze iz mjerenja a ne iz odluke:
+
+| Veličina | Vrijednost | Mjerenje | Odstupanje |
+|---|---|---|---|
+| `steer_rate_norm_per_s` | **3.7** | P95 \|dsteer\| = 0.2949 na 14.08 Hz, vožnja 67.2 s | 1.7 % od cilja 0.30 |
+| `accel_ms2` | **5.0** | izmjereno +4.79 m/s² | -4.2 % |
+| `brake_ms2` | **5.85** | izmjereno -5.65 m/s² | -3.4 % |
+| poluprečnik punog zaokreta | **5.787 m** | vs `r_min_m` 5.361 m | +7.9 % |
+
+`accel_ms2` i `brake_ms2` su **potvrđeni, nisu podešavani**. Zadatak T024 je dozvoljavao
+izmjenu ako mjerenje promaši 10 %, ali nije promašilo, pa vrijednosti ostaju kakve su bile.
+
+Poluprečnik je +7.9 % širi od bicikl modela zato što **oba prednja točka dobijaju isti ugao
+zakretanja**, bez Ackermann razlike između unutrašnjeg i vanjskog. Unutrašnja guma zato
+struže i gura auto prema vani. To je svojstvo modela, ne greška, i ostaje unutar tolerancije
+od 10 %.
+
+**Brzina je dio ovog mjerenja, ne uzgredna okolnost.** Prvi pokušaj poluprečnika držao je
+fiksni gas umjesto brzine, dosegao 6.54 m/s, dakle 0.72 g bočnog opterećenja, i prijavio
+6.065 m (+13.1 %, pad). Ponovljen pri držanih 2.02 m/s, dakle 0.07 g, daje 5.787 m i prolazi.
+Poluprečnik je geometrija i mjerljiv je samo tamo gdje su uglovi klizanja zanemarivi.
+
+**Ništa izmjereno prije popravke fizike točka nije vrijedilo.** Ranije vožnje su za isti
+profil prijavljivale ubrzanje između +0.03 i +2.53 m/s². Razlika nikad nisu bili parametri
+vozila nego solver trenja koji je oscilovao: jedan impuls trenja mijenja obodnu brzinu točka
+za `2*F*dt/(m_točka*r)`, što je 8.4 m/s sa fabričkom krivom, dakle više nego greška koju
+ispravlja. Točak je prelijetao i vraćao se svaki korak, i to sa **nula** pogonskog momenta.
+Rješenje je `ConfigureVehicleSubsteps(5, 30, 30)`, koje dijeli korak samo za solver točka i
+spušta korekciju na 0.67 m/s po podkoraku. Da su `accel_ms2` i `brake_ms2` podešavani prema
+starim brojkama, artefakt solvera bi trajno ušao u konfiguraciju.
+
+**Poznato odstupanje: `speed max/P99` = 1.038 naspram trake [1.13, 1.38].** Ovo nije
+nedostatak vozila. Odnos mjeri koliko vršna brzina prelazi tipičnu, a auto na ravnoj ploči
+bez krivina nema razloga da ikad uspori, pa stoji prikovan za ograničenje od 10 m/s i P99 se
+izjednači s maksimumom. Vozač u datasetu je bio na stazi koja ga je tjerala da koči i ponovo
+ubrzava. Mjeri se, dakle, **odsustvo staze**, i provjera može proći tek kad US2 generiše
+stazu.
+
+> Vožnje T022, T024 i T025 izvodi `ScriptedDriver` fiksnim ulazima, pa su ponovljive i mogu
+> se premjeriti poslije svake izmjene (Princip VI). T023 je namjerno **ljudska** vožnja: on
+> poredi ljudski steering s ljudskim datasetom, pa bi skripta mjerila samu sebe.
+
+> Izvor: `specs/003-unity-environment/research.md` C1 do C4 i C15. Vrijednosti žive u
+> `python/track/config.py`, izvoze se u `unity/.../Assets/Tracks/vehicle_profile.json`, a
+> C# kopija se poredi s njim u `VehicleProfileMirrorTests`. Razilaženje pada kao test, ne
+> kao tiho pogrešna geometrija.
+
+### 4.3 Observacije (ukupno 19 vrijednosti)
 | Observacija | Dim | Napomena |
 |-------------|-----|----------|
-| RayPerceptionSensor3D | 13 zraka × (hit + udaljenost) | 180° naprijed, detektuje `Wall`; ugrađena ML-Agents komponenta |
+| Raycast udaljenosti | 13 | 180° naprijed, domet 20 m, normalizovano na [0, 1] |
 | Brzina (lokalna, normalizovana) | 2 | naprijed + bočna komponenta |
 | Ugaona brzina (yaw) | 1 | |
-| Smjer ka sljedećem checkpointu (dot product) | 2 | forward·dir, right·dir |
+| Smjer ka sljedećem markeru (dot product) | 2 | forward·dir, right·dir |
 | Trenutni steering | 1 | omogućava glatkoću |
+
+**Odlučene vrijednosti senzora (fiksirano u M2, prije bilo kakvog koda faze 5).**
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `RAY_COUNT` | **13** | neparan broj, pa jedna zraka gleda tačno naprijed; 15° razmak |
+| `RAY_FOV_DEG` | **180** | polukrug ispred; iza vozila nema šta da se izbjegne na jednosmjernoj petlji |
+| `RAY_LENGTH_M` | **20** | **izvedeno, nije izabrano**, vidi ispod |
+
+**Domet od 20 m je izveden iz kočenja, ne odabran.** Pri `v_max_ms` 10 m/s i `brake_ms2`
+5.85 m/s^2 put zaustavljanja je `v^2 / (2a)` = 8.55 m. Domet od 20 m je nešto više od
+dvostrukog tog puta, pa agent prepreku vidi sa **vremenom da reaguje**, a ne tek sa vremenom
+da stane. Domet jednak putu zaustavljanja bio bi formalno dovoljan i praktično beskoristan:
+zid bi ušao u vidno polje tačno u trenutku kad je puna kočnica jedini preostali potez.
+
+**Nepogodak mora biti razlučiv od pogotka na nuli (FR-025).** Zraka koja ništa ne pogodi i
+zraka koja pogodi zid tik uz branik su suprotne situacije, a naivno kodiranje ih obje svede
+na jedan broj blizu ekstrema. Nepogodak se zato kodira kao **1.0** (puna, slobodna
+udaljenost), a pogodak kao `udaljenost / RAY_LENGTH_M`, pa pogodak na nuli daje 0.0. Dva
+kraja opsega, dvije suprotne stvari.
+
+Ne koristi se ugrađeni `RayPerceptionSensor3D`. Njegovo kodiranje je one-hot po tagu plus
+udaljenost, što je više vrijednosti nego što ovdje treba, a broj koji ulazi u mrežu se ne
+može pročitati u toku vožnje. T057 traži da se **svaka** observacija vidi uživo i provjeri
+protiv situacije čiji je tačan odgovor vidljiv (T062, kapija za M2), i to je lakše nad
+sopstvenim, jednostavnijim kodiranjem.
+
+> Izvor: research C11. Vrijednosti žive u `python/track/config.py`. **Ispravka
+> (2026-08-04):** za razliku od parametara vozila, ove tri vrijednosti se **ne** prenose u
+> `vehicle_profile.json` - eksporter ne piše blok senzora, pa između `CarAgent.cs` i
+> `config.py` ne stoji mirror test. Promjena bilo koje od njih traži ručnu izmjenu na oba
+> mjesta. Dodavanje bloka bi podiglo schema verziju profila, a taj profil je ugrađen u svaki
+> već commitovan track fajl.
+
+**Izmjereno (T059, 2026-08-04, u editoru bez play moda).**
+
+| Provjera | Rezultat | Granica |
+|---|---|---|
+| Bočne zrake naspram pravih branika, seed 1, pomaci −1.5 do +1.5 m | **greška 0.00 %** | 5 % (SC-013) |
+| Svih 13 zraka u sintetičkom koridoru širine 6 m | **greška 0.00 %**, razmak 15.00° | 5 % |
+| Ništa u dometu | 13/13 zraka `no hit`, najniža normalizovana vrijednost **1.000** | mora biti 1.000 |
+| Branik na 0.10 m od senzora | čita 0.100 m, normalizovano **0.0050**, `hit=true` | ≈ 0.0 |
+
+Mjereno na uzorku 1017 centralne linije, tj. na najravnijem dijelu kruga (lokalni radijus
+29 827 m). Branik je poligonalni pomak zakrivljene linije, pa okomita zraka pogađa tačno na
+pola širine samo tamo gdje je zakrivljenost zanemariva; u oštroj krivini je prava
+udaljenost stvarno različita od 3 m, pa bi ispravna zraka izgledala pogrešno. Sintetički
+koridor postoji jer prava staza može provjeriti samo dvije zrake koje gledaju popreko:
+lepeza sa pogrešnim razmakom i dalje tačno čita na −90 i +90 ako su joj krajevi tačni.
+
+**Visina senzora je ispravljena tokom T059.** Podrazumijevani pomak je stavljao lepezu na
+y = 1.0 m na vozilu čiji je origin na 0.5 m, a branici su visoki 0.8 m - **svaka zraka je
+gledala preko svakog branika**. Sada je −0.1 lokalno, dakle lepeza na 0.4 m, na sredini
+branika, sa rezervom za propinjanje i poskakivanje karoserije.
 
 ### 4.4 Akcije (kontinualne, 2)
 - `steering` ∈ [-1, 1] → mapiran na ±25°. **Potvrđeno M1 analizom:** ljudski steering koristi
@@ -170,6 +313,23 @@ RMS/
 > Kalibracija izvedena u M1: `results/eda/m1_stats.json` (reproducibilno iz
 > `python -m python.eda.report`). Tipične brzine iz dataseta: 0–17.5 (P99), sredina ~10.2.
 
+**Geometrijska posljedica mapiranja ±25° (fiksirano u M2).** Iz `steering ∈ [-1, 1] → ±25°`
+i međuosovinskog rastojanja 2.5 m slijedi cijela tabela poluprečnika. Ovo je veza između
+akcije agenta i oblika staze, pa stoji ovdje a ne samo u research dokumentu:
+
+| \|steering\| | odakle dolazi | δ | poluprečnik |
+|---|---|---|---|
+| 0.25 | track1 median nenultih | 6.25° | 22.83 m |
+| 0.40 | track1 P75 | 10.00° | 14.18 m |
+| 0.50 | track2 median | 12.50° | 11.28 m |
+| 0.65 | track1 P95 | 16.25° | 8.58 m |
+| **0.79** | **granica koju staza smije tražiti** | 19.73° | **6.97 m** |
+| 0.90 | track1 P99 | 22.50° | 6.04 m |
+| 1.00 | puni zaokret | 25.00° | 5.36 m |
+
+Tabela se provjerava red po red u `python/tests/test_vehicle.py` i u
+`VehicleProfileMirrorTests`, pa ne može tiho odlutati od koda.
+
 ### 4.5 Reward funkcija
 | Događaj | Reward | Svrha |
 |---------|--------|-------|
@@ -182,6 +342,47 @@ RMS/
 
 Težine su početne - tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).
+
+**Odlučene vrijednosti markera i starta (fiksirano u M2, prije bilo kakvog koda faze 5).**
+
+| Veličina | Vrijednost | Odakle |
+|---|---|---|
+| `N_CHECKPOINTS` | **24** | oko 8 m razmaka na stazi od ~200 m, dakle nekoliko markera po krivini |
+| `START_LATERAL_M` | **1.5** | pola razmaka do ivice pri širini staze 6 m |
+| `START_YAW_DEG` | **10** | dovoljno da start ne bude savršen, premalo da bude nemoguć |
+
+**Marker se dodjeljuje samo ako je onaj koji je na redu.** Prsten markera pamti
+`next_index`; dodir bilo kojeg drugog ne daje ništa. Bez tog pravila agent koji preskoči
+polovinu kruga i uđe na markeru dalje niz stazu bio bi nagrađen za prečicu, a nagrada za
+napredak bi mjerila poziciju umjesto pređenog puta. Krug se broji kad se indeks obrne.
+
+**Pogrešan smjer se prijavljuje, ne boduje** (FR-028). Postavlja se kad vozilo priđe već
+prođenom markeru. Bodovanje pripada M3, a pravilo iz kojeg bi ono slijedilo pripada ovdje;
+razdvojeno je da prvo podešavanje rewarda ne mijenja fajlove koje je M2 proglasio
+provjerenim.
+
+**Izmjereno (T060 i T061, 2026-08-04).** Skriptirani prolaz kroz svih 2000 uzoraka seeda 1,
+sa ručno primijenjenom `OnTriggerEnter`/`OnTriggerExit` semantikom. Staza 202.3 m, 24
+markera, razmak 8.43 m.
+
+| Provjera | Rezultat | Granica |
+|---|---|---|
+| Jedan krug sa startova 0, 6 i 18 | **24/24 dodijeljeno, 1 krug, 0 preskočenih, bez pogrešnog smjera** - svaki put | SC-014 |
+| Okret na pola kruga, poslije 11 markera na s = 98.5 m | pogrešan smjer prijavljen nakon **3.43 m** vožnje unazad | 8.43 m, tj. jedan razmak (SC-015) |
+
+**Ovaj zadatak je našao stvarnu grešku.** Vozilo se postavlja **na** marker, dakle unutar
+njegovog trigger volumena, a Unity okida `OnTriggerEnter` za preklapanje nastalo
+teleportom jednako kao za ono u koje je vozilo dovezlo. Taj dodir pada na marker koji je
+`StartAt` upravo upisao kao prođen, pa bi **svaki randomizovani start prijavio pogrešan
+smjer prije nego se vozilo pomjeri**. Riješeno tako što prsten pamti marker u kojem vozilo
+stoji i ignoriše ga dok `OnTriggerExit` ne javi da ga je napustilo.
+
+**Start se randomizuje, i to nije kozmetika (research C12).** Epizoda počinje na
+**slučajnom markeru**, sa bočnim pomakom do 1.5 m i zakretom do 10 stepeni. Uvijek isti
+start znači da agent vidi prvu krivinu staze desetine hiljada puta, a zadnju rijetko, pa
+nauči redoslijed umjesto vožnje. Isti razlog stoji iza podjele na train i eval skup seedova:
+politika koja je naučila jednu stazu napamet pada na drugoj, a to se vidi samo ako druga
+staza postoji.
 
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili
@@ -557,6 +758,27 @@ Upotreba kamera u BC-u:
 > Isto vrijedi i za KL divergenciju iz tabele gore: KL između diskretne i kontinualne
 > raspodjele nije definisan bez zajedničke podrške, pa je zajednička rešetka preduslov, a
 > ne kozmetika.
+
+> **Druga napomena za M5 - generisane staze nemaju pravce**
+> *(potiče iz feature-a 003, research C9, 2026-08-04)*
+>
+> Zatvorena kriva sastavljena od harmonika **stalno skreće**: nigdje na krugu nema dionice
+> na kojoj je potreban steering nula. Čovjek je u datasetu vozio pravo **58.6 % vremena**.
+>
+> Posljedica je ista po obliku kao ona gore, ali iz drugog uzroka. Ako se u M5 direktno
+> uporede marginalni histogrami steeringa agenta i čovjeka, razlika će biti ogromna i biće
+> **posljedica topologije staze**, a ne razlike u vožnji. Naša staza fizički ne dozvoljava
+> vožnju pravo, pa agent ne može proizvesti pik na nuli koji čini skoro tri petine ljudskog
+> zapisa. Nijedan iznos treninga to ne mijenja.
+>
+> **Mjera prije poređenja:** težina ide na **metrike izvršenja** - glatkoća |Δsteering|,
+> prebačaj, učestalost korekcija, vrijeme kruga - a marginalni histogram ostaje kao
+> kontekst, ne kao glavni rezultat. Gdje se raspodjele ipak porede, poredi se **uslovna**
+> raspodjela (dato da je steering nenulti), što je isti izbor koji već stoji iza SC-010.
+>
+> Hibridni oblik staze (lukovi + pravci + klotoide) dao bi prave pravce, ali vraća problem
+> zatvaranja petlje koji polarni oblik rješava besplatno. Odbačeno za sada; ostaje kao
+> proširenje ako se nedostatak pravaca pokaže kao stvarna smetnja u M3.
 
 ### 7.1 Statistička obrada (naglasak predmeta)
 

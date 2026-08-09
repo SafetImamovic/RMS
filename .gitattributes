@@ -13,10 +13,18 @@
 # (git lfs install obavezno prije prvog commita ovih tipova)
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
-*.jpeg filter=lfs diff=lfs merge=lfs -text
-# *.gif dodan 2026-08-08 (feature 004): playback animacija je 8.9 MB, a bez ovog
-# pravila bi ušla u historiju kao običan blob, što se poslije vadi samo rewriteom.
+# GIF snimci vožnje su desetine megabajta po fajlu, a playback animacija iz
+# feature 004 je 8.9 MB. Bez ovog pravila ulaze u historiju kao obični blobovi i
+# tamo ostaju zauvijek; poslije se vade samo rewriteom.
+#
+# Pravilo su feature 003 i feature 004 dodali nezavisno jedan od drugog, pa se
+# pri mergeu pojavilo dva puta. Ostavljen je jedan red.
+#
+# UPOZORENJE: docs/images/human-driving.gif (63 MB) i docs/images/track.gif
+# (15 MB) su commitovani PRIJE nego je ovo pravilo postojalo, pa su u historiji
+# kao sirovi blobovi. Pravilo ih ne vadi unazad.
 *.gif filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
 *.psd filter=lfs diff=lfs merge=lfs -text
 *.fbx filter=lfs diff=lfs merge=lfs -text
 *.blend filter=lfs diff=lfs merge=lfs -text

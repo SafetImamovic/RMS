@@ -175,12 +175,16 @@ governs how the comparison is presented and does not depend on which way the num
 .\.venv-bc\Scripts\python.exe -m pytest python/tests -p no:warnings
 ```
 
-Expect **141 passed**. Do not add `-q`: `pytest.ini` already sets `addopts = -q`, so a second one
+Expect **334 passed**. Do not add `-q`: `pytest.ini` already sets `addopts = -q`, so a second one
 makes it `-qq` and suppresses the pass count, leaving dots and an exit code. This quickstart
 carried that mistake until it was walked end to end.
 
-The same suite under `.venv` gives **87 passed, 3 skipped**, the three skips being the test
-modules that need torch. That is intentional and worth preserving: `bc.split` and `bc.dataset`
+The same suite under `.venv` gives **280 passed, 3 skipped**, the three skips being the test
+modules that need torch.
+
+Both figures were 141 and 87 while this feature stood on its own branch. They changed on
+2026-08-09, when feature 003 merged and brought the track generator's tests into the same suite.
+Nothing about the BC tests changed; the suite they run in got bigger. That is intentional and worth preserving: `bc.split` and `bc.dataset`
 import no torch, so every split-level and sample-level decision stays checkable in the M1
 environment.
 

@@ -120,8 +120,11 @@ reconstructs a different environment next month, which is the opposite of what t
 
 **Which venv runs what.** `python/bc/split.py` and `python/bc/dataset.py` import no torch on
 purpose, so every split-level and sample-level decision can still be checked under `.venv`. The
-test suite reflects that split: **141 passed** under `.venv-bc`, **87 passed and 3 skipped**
+test suite reflects that split: **334 passed** under `.venv-bc`, **280 passed and 3 skipped**
 under `.venv`, where the three torch-dependent test modules skip cleanly instead of erroring.
+
+Both figures are from the merged suite, measured 2026-08-09. They were 141 and 87 while feature
+004 stood on its own branch, before the track generator's tests joined them.
 
 ## Example environments (3DBall)
 
