@@ -40,6 +40,19 @@ namespace SelfDrivingSim.Agent
         private int _probeCount;
         private readonly StringBuilder _sb = new StringBuilder(512);
 
+        // Extremes since the last probe.
+        //
+        // The instantaneous reading is not enough for the four values that only exist while a
+        // key is held. Steering recentres at steerRateNormPerS, which is 3.7, so letting go of
+        // A or D to reach P drains a real 0.17 to zero in under fifty milliseconds - under
+        // three frames. The first five probes taken on seed 1004 all read steer 0.000, one of
+        // them while the car was demonstrably cornering at a yaw rate of -0.139, which is a
+        // measurement the driver cannot take rather than a car that does not steer.
+        //
+        // Signed extremes, not magnitudes: the sign is half of what situations 8 and 9 check.
+        private float _peakSteer, _peakYaw, _peakLateral, _maxForward, _minForward;
+        private int _peakFrames;
+
         private void Awake()
         {
             if (agent == null) agent = GetComponentInParent<CarAgent>();
@@ -55,6 +68,45 @@ namespace SelfDrivingSim.Agent
             {
                 Probe();
             }
+        }
+
+        /// <summary>
+        /// Track the extremes on the physics clock, the same clock CarAgent senses on.
+        /// Sampling per rendered frame would miss a peak on a slow frame and double-count on a
+        /// fast one, which is the reason CarAgent itself senses in FixedUpdate.
+        /// </summary>
+        private void FixedUpdate()
+        {
+            if (agent == null)
+            {
+                return;
+            }
+
+            _peakFrames++;
+            Keep(ref _peakSteer, agent.SteerNorm);
+            Keep(ref _peakYaw, agent.YawRateNorm);
+            Keep(ref _peakLateral, agent.SpeedLateralNorm);
+            _maxForward = Mathf.Max(_maxForward, agent.SpeedForwardNorm);
+            _minForward = Mathf.Min(_minForward, agent.SpeedForwardNorm);
+        }
+
+        /// <summary>Keep whichever of the two is further from zero, sign intact.</summary>
+        private static void Keep(ref float extreme, float value)
+        {
+            if (Mathf.Abs(value) > Mathf.Abs(extreme))
+            {
+                extreme = value;
+            }
+        }
+
+        private void ResetPeaks()
+        {
+            _peakSteer = 0f;
+            _peakYaw = 0f;
+            _peakLateral = 0f;
+            _maxForward = 0f;
+            _minForward = 0f;
+            _peakFrames = 0;
         }
 
         /// <summary>Take one reading and print it. Public so a test can call it directly.</summary>
@@ -118,6 +170,14 @@ namespace SelfDrivingSim.Agent
                 agent.SpeedForwardNorm, agent.SpeedLateralNorm, agent.YawRateNorm,
                 agent.HeadingForwardDot, agent.HeadingRightDot, agent.SteerNorm);
 
+            // The line situations 8 to 12 are actually read off. At full lock the yaw peak and
+            // the forward speed should be the same number, because yaw rate is v / r_min and
+            // its divisor is v_max / r_min, so the radius cancels.
+            _sb.AppendFormat(CultureInfo.InvariantCulture,
+                "\n  peak since last probe ({0} steps): steer {1,6:F3} | yaw {2,6:F3} | " +
+                "vlat {3,6:F3} | vfwd {4,6:F3} .. {5:F3}",
+                _peakFrames, _peakSteer, _peakYaw, _peakLateral, _minForward, _maxForward);
+
             if (ring != null && ring.Count > 0)
             {
                 _sb.AppendFormat(CultureInfo.InvariantCulture,
@@ -127,6 +187,7 @@ namespace SelfDrivingSim.Agent
             }
 
             Debug.Log(_sb.ToString(), this);
+            ResetPeaks();
         }
     }
 }

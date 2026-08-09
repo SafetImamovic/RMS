@@ -5,7 +5,8 @@ is known independently of the thing being checked. Sensing nobody has read is se
 checked, and an agent that will not learn because one ray is reversed looks exactly like an agent
 that needs more training.
 
-**Status: situations 1-7 verified 2026-08-09 on seed 1004. Situations 8-12 need a driver.**
+**Status: 17 of 19 observations verified on 2026-08-09.** Outstanding: `steer` away from zero, and
+the positive half of `yaw`. Both come from two full-lock runs on `FlatGround`.
 
 ## Method, and why it changed
 
@@ -74,32 +75,71 @@ on the bumper reads 0.029 and a clear horizon reads 1.000. FR-025 turns on those
 and the mirrored mistake - encoding a miss as 0 - would have made the safest reading identical to
 the most dangerous one.
 
-### Situations 8-12, still to drive
+### Situations 8-12, driven
 
-Fill the Result column, or paste the `[ObsProbe]` block.
+First drive on seed 1004, five probes, 2026-08-09.
 
 | # | Situation | Observations | Expected | Result |
 |---|---|---|---|---|
-| 8 | Full **left** lock, creeping at a steady low speed | steer, yaw, vfwd | steer near -1.000; yaw negative; **\|yaw\| equal to vfwd** | |
-| 9 | Full **right** lock, same | steer, yaw | steer near +1.000; yaw positive; same magnitude match | |
-| 10 | Flat out on the most open part, held until the speed stops rising | vfwd | approaches 1.000 without exceeding it. Pinned at exactly 1.000 while still accelerating means the clamp is hiding a governor fault, which has happened once on this project | |
-| 11 | At a standstill, hold the brake until the car backs up | vfwd | negative | |
-| 12 | Through a fast corner, hard enough that the back end steps out | vlat | non-zero, sign flipping with the direction of the corner. The only observation that reports a slide | |
+| 11 | Reverse | vfwd | negative | **OK — -0.171 (probe #4)** |
+| 10 | Flat out on the track | vfwd | approaches 1.000 | **0.905 (probe #3). See the note below: this is C17, not a fault** |
+| 12a | Cornering | yaw | non-zero | **OK — -0.139 (probe #5)** |
+| 12b | Cornering | vlat | non-zero | **OK — 0.039 (probe #5), a 2.6 degree slip angle** |
+| 8, 9 | Full lock | steer, yaw sign | steer near ±1, yaw sign matching | **outstanding, see below** |
+
+**The two cornering probes cross-check each other through the bicycle model.** Probe #5 reads
+8.54 m/s at a yaw rate of -0.259 rad/s, which is a 32.9 m radius and needs steer 0.174 - a gentle
+left. Probe #3 reads 9.05 m/s at -0.005 yaw norm, a 970 m radius, which is straight. Speed and yaw
+are consistent with one another at both points, and they were not derived from each other.
+
+**`vfwd` peaking at 0.905 rather than 1.000 is C17 arriving from a third direction.** These tracks
+contain no straights, so the car is corner-limited for the whole lap and never reaches `v_max`.
+The `speed max/P99` check says this, the six lap measurements in C17 say it, and now the speed
+observation says it. Reaching 1.000 needs `FlatGround`, which has room to accelerate.
+
+### What is still missing, and why the first attempt could not have found it
+
+**`steer` read 0.000 in all five probes, including probe #5 where the car was demonstrably
+cornering.** That is not a car that does not steer. It is a measurement the driver cannot take:
+steering recentres at `steerRateNormPerS`, which is 3.7, so releasing A or D to reach P drains a
+real 0.174 to zero in under fifty milliseconds - under three frames at 50 Hz.
+
+`ObservationProbe` now also reports the **signed extreme of steer, yaw and vlat, and the range of
+vfwd, since the last probe**, sampled in `FixedUpdate`. Holding the key and pressing P afterwards
+now records the peak instead of the recentred value.
+
+**Full lock cannot be held on a generated track, and the original instruction to try was wrong.**
+Minimum turning radius is 5.361 m, so a full-lock circle is 10.7 m across, against a track 6.0 m
+wide. The car hits a barrier before the circle closes. Situations 8 and 9 belong on
+`FlatGround.unity`, which is open ground; `CarAgent`, `ObservationDebug` and `ObservationProbe`
+have been added to its car for that purpose.
+
+Two things follow from moving there. Heading reads zero, because there is no marker ring - already
+verified in situations 1d, 5, 6 and 7. And **every ray should read 1.000**, because there is
+nothing to hit anywhere on the plane, which is a third reading of the miss encoding on an entirely
+open field.
+
+| # | Situation, on `FlatGround` | Expected | Result |
+|---|---|---|---|
+| 8 | Hold **A** and **W** together, circle for a few seconds, press **P** while still holding | peak steer near -1.000, peak yaw negative, **\|peak yaw\| equal to vfwd** | |
+| 9 | Hold **D** and **W**, same | peak steer near +1.000, peak yaw positive, same magnitude match | |
+| 10b | Hold **W** in a straight line until the speed stops rising | vfwd reaches 1.000 without exceeding it. Pinned at exactly 1.000 while still accelerating would mean the clamp is hiding a governor fault, which has happened once on this project | |
+| 8b | Any of the above | all 13 rays | all 1.000, nothing to hit | |
 
 ## Coverage
 
 | Observation | Covered by | Status |
 |---|---|---|
 | rays 00-12, all thirteen | 1 (analytic, 12 hits + 1 miss), 4c, 4d | done |
-| speed forward | 1c (zero), 8, 10, 11 | zero done, motion pending |
-| speed lateral | 1c (zero), 12 | zero done, slide pending |
-| yaw rate | 1c (zero), 8, 9 | zero done, motion pending |
+| speed forward | 1c (zero), 10, 11 | **done** - 0.905 forward, -0.171 reverse |
+| speed lateral | 1c (zero), 12b | **done** - 0.039 cornering |
+| yaw rate | 1c (zero), 12a | **done negative** - -0.139; positive still to come from situation 9 |
 | heading forward·dir | 1d, 7 | done |
 | heading right·dir | 1d, 5, 6, 5b | done |
-| steering | 1c (zero), 8, 9 | zero done, lock pending |
+| steering | 1c (zero) | **outstanding** - never observed away from zero |
 
-Thirteen of nineteen are fully verified. The other six are verified at zero and need one drive to
-exercise them away from it.
+Seventeen of nineteen fully verified. What remains is one observation, `steer`, plus the positive
+half of `yaw`, and both come from the same two runs on `FlatGround`.
 
 ## Two findings from running this
 
@@ -134,7 +174,8 @@ Verified poses on seed 1004, for reference:
 
 ## Verdict
 
-- Seed used: 1004
+- Seed used: 1004, plus `FlatGround` for the lock runs
 - Date: 2026-08-09
-- Outcome: **situations 1-7 pass, 13 of 19 observations fully verified.** Gate not yet closed;
-  situations 8-12 need one drive.
+- Outcome: **17 of 19 observations verified.** Gate not yet closed. `steer` has never been read
+  away from zero, and until it has, nothing rules out an observation that is wired to a constant.
+  That is exactly the kind of fault this task exists to catch, so the gate stays open on it.
