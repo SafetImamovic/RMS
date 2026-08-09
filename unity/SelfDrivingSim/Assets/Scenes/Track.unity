@@ -1264,6 +1264,7 @@ GameObject:
   - component: {fileID: 2103184340}
   - component: {fileID: 2103184339}
   - component: {fileID: 2103184341}
+  - component: {fileID: 2103184342}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -1514,6 +1515,27 @@ MonoBehaviour:
   ring: {fileID: 0}
   builder: {fileID: 0}
   includeMetres: 1
+--- !u!114 &2103184342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2103184329}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9473cf4bc3c7b8c4cb71ff90a53bd075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Agent.HeuristicDriver
+  strategy: 0
+  engaged: 0
+  agent: {fileID: 0}
+  car: {fileID: 0}
+  ring: {fileID: 0}
+  lapsToComplete: 1
+  timeLimitS: 120
+  noProgressLimitS: 60
+  endOnWallContact: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

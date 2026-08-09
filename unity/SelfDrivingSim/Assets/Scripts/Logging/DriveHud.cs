@@ -179,6 +179,8 @@ namespace SelfDrivingSim.Logging
             GUI.color = Color.white;
             GUILayout.Label(T.Vehicle, _header);
 
+            DrawControlSource();
+
             VehicleProfile p = _car.Profile;
             float speed = _car.SpeedMs;
 
@@ -194,6 +196,58 @@ namespace SelfDrivingSim.Logging
                 ? $"     -  {T.Straight}"
                 : $"{radius,6:F2} m   {T.MinShort} {p.RMinM:F2}");
 
+            DrawStatusRows();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// Who is driving, in one line at the top of the panel.
+        ///
+        /// FR-004 asks for exactly one source of control at a time AND for which one to be
+        /// visible to an observer. The second half is the part that is easy to skip: three
+        /// components can write <see cref="CarController.ScriptedMove"/>, and a run recorded
+        /// under the wrong one looks exactly like a run recorded under the right one.
+        ///
+        /// Colour-coded rather than only named, because this is read at a glance while driving.
+        /// </summary>
+        private void DrawControlSource()
+        {
+            var scripted = _car.GetComponent<SelfDrivingSim.Vehicle.ScriptedDriver>();
+            var heuristic = _car.GetComponent<SelfDrivingSim.Agent.HeuristicDriver>();
+
+            string who;
+            Color colour;
+
+            if (scripted != null && scripted.IsRunning)
+            {
+                who = $"scripted: {scripted.Current}";
+                colour = new Color(1.0f, 0.80f, 0.45f);
+            }
+            else if (heuristic != null && heuristic.Engaged)
+            {
+                who = $"heuristic: {heuristic.ActiveStrategy}";
+                colour = new Color(0.55f, 0.80f, 1.0f);
+
+                if (heuristic.Outcome != SelfDrivingSim.Agent.HeuristicDriver.EndReason.Running)
+                {
+                    who += $" ({heuristic.Outcome})";
+                    colour = new Color(1.0f, 0.55f, 0.45f);
+                }
+            }
+            else
+            {
+                who = "keyboard";
+                colour = new Color(0.72f, 0.75f, 0.78f);
+            }
+
+            GUI.color = colour;
+            Row(T.ControlSource, who);
+            GUI.color = Color.white;
+        }
+
+        /// <summary>Tilt, resets, whether the drive is being recorded, and the stability tally.</summary>
+        private void DrawStatusRows()
+        {
             float tiltDeg = Vector3.Angle(transform.up, Vector3.up);
             GUI.color = tiltDeg > 45f ? Bad : Idle;
             Row(T.BodyTilt, $"{tiltDeg,6:F1} {T.Degrees}  {T.TriggerAt45}");
@@ -222,8 +276,6 @@ namespace SelfDrivingSim.Logging
                                  (breached ? $"  {T.Breach}" : string.Empty));
                 GUI.color = Color.white;
             }
-
-            GUILayout.EndArea();
         }
 
         private void DrawRunPanel(Rect rect)

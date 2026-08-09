@@ -33,6 +33,9 @@ namespace SelfDrivingSim.Logging
         public string Brake;
         public string TurnRadius;
         public string BodyTilt;
+
+        /// <summary>Which of keyboard, scripted or heuristic holds the wheel (FR-004).</summary>
+        public string ControlSource;
         public string Resets;
         public string Recording;
         public string Stability;
@@ -73,6 +76,7 @@ namespace SelfDrivingSim.Logging
             Brake = "brake",
             TurnRadius = "turn radius",
             BodyTilt = "body tilt",
+            ControlSource = "driven by",
             Resets = "resets",
             Recording = "recording",
             Stability = "stability",
@@ -111,6 +115,7 @@ namespace SelfDrivingSim.Logging
             Brake = "kočnica",
             TurnRadius = "poluprečnik",
             BodyTilt = "nagib",
+            ControlSource = "vozi",
             Resets = "resetovanja",
             Recording = "snimanje",
             Stability = "stabilnost",
