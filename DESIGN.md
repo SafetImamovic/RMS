@@ -389,6 +389,64 @@ staza postoji.
 - 60 s bez novog checkpointa (zaglavljen), ili
 - 3 kompletirana kruga (uspjeh).
 
+### 4.7 Heuristički vozač (feature 005, referentna vrijednost bez učenja)
+
+Skriptovani vozač koji čita **isti vektor observacija** koji čita i agent koji uči, i piše u
+`CarController.ScriptedMove`. Nema modela, nema treninga, nema novog senzora.
+
+**Zašto postoji.** Dvije tvrdnje koje ovaj projekat iznosi na odbrani trenutno nemaju šta iza sebe.
+
+Prva je da je RL agent nešto naučio. Kriva nagrade koja raste kaže da se agent popravio u odnosu na
+vlastitu nagradu, ne da je rezultat dobar. Bez reference koja ne uči, rečenica "PPO završava
+krugove" se ne razlikuje od rečenice "ova staza je dovoljno laka da je svako završi".
+
+Druga je da je geometrija senzora dobra. Trinaest zraka preko 180 stepeni izabrano je prije nego je
+išta vozilo. T059 mjeri da u koridoru od 6 m sedam od trinaest zraka javlja praktično isto bočno
+rastojanje od 3 m, dok prednji konus, koji nosi svaku odluku u krivini, drži tri zrake. Niko nije
+provjerio da li to smeta. Skriptovani vozač daje cilj koji se mjeri u sekundama po konfiguraciji,
+gdje bi isto pitanje kroz PPO trening koštalo sate.
+
+**Dva regulatora, oba se zadržavaju.** Prvi bira zraku sa najvećim rastojanjem i skreće prema njenom
+uglu. Drugi računa prosjek uglova zraka otežan njihovom otvorenošću.
+
+Redoslijed nije slučajan: naivni se pravi prvi, mjeri se kako se ponaša, i tek onda se zamjenjuje.
+Pravilo ovog projekta je da se odluka o dizajnu **mjeri, a ne tvrdi**.
+
+Predviđanje zapisano prije mjerenja: zrake su na 15 stepeni, a upravljanje se zasićuje na 25, pa
+naivni regulator može zatražiti samo tri različite veličine skretanja, **0, 0.6 i 1.0**. Sve između
+je nedostižno, pa ne može držati liniju kroz krivinu nego mora da alternira. Uz ograničenje brzine
+upravljanja od 3.7 po sekundi, jedan korak traje oko 162 ms, što oscilaciju stavlja blizu 3 Hz.
+
+Ako se predviđanje pokaže netačnim, to je nalaz i tako se zapisuje. Feature 003 je već imao jedno
+oboreno predviđanje (C17) i obaranje je vrijedilo više od predviđanja.
+
+**Uzdužna kontrola nije dodatak nego uslov.** Granica prianjanja daje brzinu u krivini
+`sqrt(a_lat * r)`. Sa `a_lat = 5.85 m/s^2`, na najmanjem poluprečniku koji generator pravi (6.97 m)
+auto može držati 6.39 m/s, a maksimalna brzina je 10 m/s. **Prelomna tačka je 17.1 m**: ispod tog
+poluprečnika puni gas traži više bočnog ubrzanja nego što gume mogu dati. C9 već kaže da ove staze
+zakrivljuju svuda, pa vozač sa punim gasom izlazi u zaštitnu ogradu na većini krivina.
+
+Zato vozač izvodi ciljnu brzinu iz vlastite komande upravljanja: implicirani poluprečnik je
+`wheelbase / tan(delta * steer_max_rad)`, a ciljna brzina `sqrt(a_lat * R)` ograničena na `v_max`.
+Sve konstante dolaze iz `vehicle_profile.json`, nijedna nije ukucana, pa preštimavanje auta
+preštimava i vozača.
+
+**Granica prema agentu koji uči (FR-001).** Vozač smije čitati samo ono što bi čitao i agent: zrake
+i vlastitu brzinu. Ne čita fajl staze, ne čita pozicije checkpointa. Baseline koji vidi više od
+onoga čemu je baseline ne mjeri ništa. Zato živi u `Assets/Scripts/Agent/`, uz vektor observacija, a
+ne uz `Track/`.
+
+**Jedan izvor za geometriju senzora.** `RAY_COUNT`, `RAY_FOV_DEG` i `RAY_LENGTH_M` danas stoje na
+dva mjesta, u `python/track/config.py` i kao serijalizovana polja na `CarAgent`, i ništa ne provjerava
+da se slažu. Ovaj feature ih mora mijenjati kroz sweep, što bi razilaženje samo pogoršalo, pa se
+sele u `sensing` blok u `vehicle_profile.json` koji `CarAgent` učitava isto kao što `CarController`
+učitava profil. **Nijedna vrijednost se ne mijenja**, mijenja se samo odakle se čita.
+
+**Šta ovaj vozač nije.** Nije zamjena za ljudski krug tastaturom iz feature 003: skriptovani krug
+dokazuje da je staza prohodna, a to je druga tvrdnja od one da je vozilo vozivo za čovjeka. Ne
+optimizuje se na vrijeme kruga, jer štimovana heuristika prestaje biti baseline i postaje takmac, pa
+bi poređenje u M5 bilo između dva štimovana sistema.
+
 ---
 
 ## 5. RL trening (PPO)
@@ -725,13 +783,19 @@ Upotreba kamera u BC-u:
 `DrivingLogger.cs` tokom evaluacijskih vožnji RL agenta piše CSV:
 `time, steering, throttle, speed, checkpoint_index, collision`.
 
-| Metrika | RL agent | BC model | Ljudski podaci (dataset) |
-|---------|----------|----------|--------------------------|
-| Kompletiranje kruga (%) | ✓ | - (nema simulator ulaz) | - |
-| Prosjek \|steering\| | ✓ | ✓ (predikcije) | ✓ |
-| Glatkoća: prosjek \|Δsteering\| | ✓ | ✓ | ✓ |
-| Histogram steering distribucije | ✓ | ✓ | ✓ |
-| Vrijeme kruga | ✓ | - | - |
+| Metrika | RL agent | BC model | Heuristički vozač | Ljudski podaci (dataset) |
+|---------|----------|----------|-------------------|--------------------------|
+| Kompletiranje kruga (%) | ✓ | - (nema simulator ulaz) | ✓ | - |
+| Prosjek \|steering\| | ✓ | ✓ (predikcije) | ✓ | ✓ |
+| Glatkoća: prosjek \|Δsteering\| | ✓ | ✓ | ✓ | ✓ |
+| Histogram steering distribucije | ✓ | ✓ | ✓ | ✓ |
+| Vrijeme kruga | ✓ | - | ✓ | - |
+
+**Četvrta kolona je heuristički vozač iz §4.7**, i ona je jedina koja ne uči ništa. Bez nje se
+rezultat RL agenta poredi samo sa samim sobom i sa modelom koji se ne vozi u Unityju. Sa njom se
+može reći koliko je od uspjeha zasluga učenja, a koliko činjenica da je staza prohodna i za
+jednostavnu heuristiku. Ako heuristika pobijedi naučenog vozača na nekoj mjeri, to se navodi
+otvoreno.
 
 - Poređenje distribucija: histogrami preklopljeni + KL divergencija prema ljudskoj referenci.
 - Zaključak koji se brani: RL uči *zadatak* (proći stazu), BC uči *stil* (imitira čovjeka);

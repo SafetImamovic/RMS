@@ -96,10 +96,44 @@ namespace SelfDrivingSim.Vehicle
     [Serializable]
     public class VehicleProfileFile
     {
+        /// <summary>
+        /// 3 since feature 005 added the sensing block. A reader that does not recognise the
+        /// version refuses rather than reading a block that may have moved.
+        /// </summary>
+        public const int ExpectedSchemaVersion = 3;
+
         public int schema_version;
         public string source;
         public VehicleProfileRecord profile;
         public CalibrationEnvelope envelope;
+        public SensingBlock sensing;
+    }
+
+    /// <summary>
+    /// The ray fan, as Python exported it (feature 005, FR-016).
+    ///
+    /// These three numbers are serialised a second time on <c>CarAgent</c>, which is what the car
+    /// actually senses with. That duplication is the same shape as the vehicle profile's, and it
+    /// fails the same way: the scene keeps its own copy, and retuning a constant in
+    /// <c>config.py</c> does not touch it.
+    ///
+    /// It has happened once already on this project, with the steering rate in T023, and the only
+    /// symptom was a drive that mysteriously failed to improve. The Python mirror test cannot
+    /// catch it, because it compares the constants against the JSON and never opens the scene.
+    /// <c>CarAgent</c> checks itself against this block at startup for exactly that reason.
+    ///
+    /// Ray spacing is deliberately absent: it is <c>ray_fov_deg / (ray_count - 1)</c>, derived at
+    /// both ends. A stored spacing would be a third copy able to disagree with the two it came
+    /// from.
+    ///
+    /// Contract: specs/005-heuristic-ray-driver/contracts/sensing-block.md
+    /// </summary>
+    [Serializable]
+    public class SensingBlock
+    {
+        public int ray_count;
+        public float ray_fov_deg;
+        public float ray_length_m;
     }
 
     /// <summary>
