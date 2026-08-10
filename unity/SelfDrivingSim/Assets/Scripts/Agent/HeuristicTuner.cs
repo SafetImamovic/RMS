@@ -132,7 +132,7 @@ namespace SelfDrivingSim.Agent
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             try
             {
-                Draw(new Rect(12f, Screen.height - 250f, panelWidth, 238f));
+                Draw(new Rect(12f, Screen.height - 322f, panelWidth, 310f));
             }
             finally
             {
@@ -254,6 +254,8 @@ namespace SelfDrivingSim.Agent
                 GUI.color = Color.white;
             }
 
+            DrawStrategyContrast();
+
             GUI.color = Idle;
             GUILayout.Label($"  raw {driver.RawSteer,6:F3}    issued {driver.LastSteer,6:F3}", _label);
             GUILayout.Label($"  target {driver.TargetSpeedMs,5:F2} m/s   contacts {driver.WallContacts}",
@@ -263,6 +265,56 @@ namespace SelfDrivingSim.Agent
                       : driver.Outcome == HeuristicDriver.EndReason.Running ? Idle : Open;
             GUILayout.Label($"  {driver.Outcome}   {driver.ElapsedS,5:F1} s", _label);
             GUI.color = Color.white;
+        }
+
+        /// <summary>
+        /// Both strategies side by side, with the idle one shown as a counterfactual.
+        ///
+        /// This is the point of having two scenes rather than one. Reading that argmax "steers at
+        /// the longest ray and ignores the flank" is an argument; watching it command straight
+        /// ahead while the weighted average pulls away from a wall the car is about to touch is
+        /// the same claim as an observation.
+        ///
+        /// The divergence bar matters more than either number. On a clear straight both read zero
+        /// and agree, which says nothing. The step that ended the argmax run on seed 1 was one
+        /// where they disagreed by nearly a full lock, with the centre ray clear at 20 m and the
+        /// right flank at 1.46 m.
+        /// </summary>
+        private void DrawStrategyContrast()
+        {
+            bool argmaxDriving = driver.ActiveStrategy == RayControllers.Strategy.MostOpen;
+
+            GUI.color = argmaxDriving ? Accent : Idle;
+            GUILayout.Label(
+                $"  {(argmaxDriving ? ">" : " ")} most open      {driver.SteerMostOpen,6:F3}", _label);
+
+            GUI.color = argmaxDriving ? Idle : Accent;
+            GUILayout.Label(
+                $"  {(argmaxDriving ? " " : ">")} weighted avg   {driver.SteerWeighted,6:F3}", _label);
+
+            float d = driver.StrategyDivergence;
+
+            // Amber once they differ by more than a ray step, which is 0.6 on the stated fan and
+            // the smallest disagreement argmax is capable of expressing.
+            GUI.color = d > 0.6f ? Open : (d > 0.05f ? new Color(1f, 0.85f, 0.5f) : Idle);
+            GUILayout.Label($"    they differ by {d,5:F3}", _label);
+            DivergenceBar(d);
+            GUI.color = Color.white;
+        }
+
+        private void DivergenceBar(float divergence)
+        {
+            Rect line = GUILayoutUtility.GetRect(1f, 4f, GUILayout.ExpandWidth(true));
+
+            GUI.color = new Color(1f, 1f, 1f, 0.12f);
+            GUI.DrawTexture(line, _barTexture);
+
+            // Scaled against 2.0, the widest possible disagreement, so the bar means the same
+            // thing every frame rather than rescaling itself to whatever is happening.
+            GUI.color = divergence > 0.6f ? Open : Accent;
+            GUI.DrawTexture(new Rect(line.x, line.y,
+                                     line.width * Mathf.Clamp01(divergence / 2f), line.height),
+                            _barTexture);
         }
 
         /// <summary>

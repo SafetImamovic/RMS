@@ -196,6 +196,22 @@ namespace SelfDrivingSim.Agent
         /// <summary>The strategy's own output, before reaction delay or smoothing.</summary>
         public float RawSteer { get; private set; }
 
+        /// <summary>What most-open would command right now, whether or not it is driving.</summary>
+        public float SteerMostOpen { get; private set; }
+
+        /// <summary>What the weighted average would command right now, driving or not.</summary>
+        public float SteerWeighted { get; private set; }
+
+        /// <summary>
+        /// How far apart the two strategies are on this step.
+        ///
+        /// Worth watching rather than the two values separately: the interesting moments are the
+        /// ones where they disagree, and on a clear straight they agree at zero and say nothing.
+        /// The failure that killed most-open on seed 1 was a step where this read close to one
+        /// full lock, with the centre ray clear at 20 m and the flank at 1.46 m.
+        /// </summary>
+        public float StrategyDivergence => Mathf.Abs(SteerMostOpen - SteerWeighted);
+
         // --- Live knobs, driven by the in-sim panel as well as the Inspector -------------------
         //
         // Exposed as properties rather than left as private serialised fields so the on-screen
@@ -681,8 +697,21 @@ namespace SelfDrivingSim.Agent
         {
             EnsureAngles();
 
-            float steer = RayControllers.Steer(
-                strategy, agent.RayDistancesNorm, _angles, car.Profile.steerMaxDeg);
+            // Both strategies are evaluated every step, but only the selected one is sent.
+            //
+            // The other is the teaching instrument: the panel shows what the strategy that is NOT
+            // driving would have commanded right now, so the moment they disagree is visible while
+            // it happens rather than reconstructed from a trace afterwards. It costs two passes
+            // over thirteen floats, which is nothing, and both are pure functions so evaluating
+            // the idle one cannot affect the run.
+            SteerMostOpen = RayControllers.MostOpen(
+                agent.RayDistancesNorm, _angles, car.Profile.steerMaxDeg);
+            SteerWeighted = RayControllers.WeightedAverage(
+                agent.RayDistancesNorm, _angles, car.Profile.steerMaxDeg);
+
+            float steer = strategy == RayControllers.Strategy.MostOpen
+                ? SteerMostOpen
+                : SteerWeighted;
 
             RawSteer = steer;
             steer = ApplyReaction(steer);
