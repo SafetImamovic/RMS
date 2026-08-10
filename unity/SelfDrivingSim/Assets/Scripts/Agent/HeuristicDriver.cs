@@ -69,6 +69,18 @@ namespace SelfDrivingSim.Agent
         [Tooltip("Read only to decide when a run ends, never to decide how to steer.")]
         [SerializeField] private CheckpointRing ring;
 
+        [Tooltip("Used by RestartRun to put the car and the checkpoint ring back in agreement. " +
+                 "Resetting the two separately desynchronises them, because the ring restarts at " +
+                 "marker 0 while the car restarts at whichever marker the placer chose.")]
+        [SerializeField] private StartPlacer placer;
+
+        [Tooltip("Reseed the start placer on every restart, so every run of a sweep begins from " +
+                 "the same place and the threshold is the only thing that changed. " +
+                 "Turn this OFF to measure robustness instead: random starts across many runs " +
+                 "answer whether a threshold works from anywhere, which is a different and also " +
+                 "useful question. Requires a seed on the StartPlacer either way.")]
+        [SerializeField] private bool repeatableStart = true;
+
         [Header("Run limits")]
         [Tooltip("Laps to complete before the run ends successfully.")]
         [SerializeField] private int lapsToComplete = 1;
@@ -374,6 +386,7 @@ namespace SelfDrivingSim.Agent
             if (agent == null) { agent = GetComponentInChildren<CarAgent>(); }
             if (agent == null) { agent = FindAnyObjectByType<CarAgent>(); }
             if (ring == null) { ring = FindAnyObjectByType<CheckpointRing>(); }
+            if (placer == null) { placer = FindAnyObjectByType<StartPlacer>(); }
         }
 
         private void Start()
@@ -419,15 +432,47 @@ namespace SelfDrivingSim.Agent
             if (car != null)
             {
                 car.ScriptedMove = null;
-                car.ResetToSpawn();
             }
 
-            if (ring != null)
+            // Through StartPlacer, never by resetting the car and the ring separately.
+            //
+            // The obvious version of this method did exactly that: car.ResetToSpawn() plus
+            // ring.ResetProgress(). It is wrong, and wrong in a way that looks like a controller
+            // problem. ResetProgress sets NextIndex to 0, while the car spawns at whichever
+            // marker the placer chose, 17 on seed 1004. The car then drives into marker 18 while
+            // the ring is waiting for marker 0, no gate is ever awarded, and the run dies of
+            // NoProgress.
+            //
+            // It cost a sweep. Threshold 0.35 had completed a clean lap five times from a fresh
+            // Play, then reported NoProgress on the first restarted run, which reads as the
+            // controller being unreliable rather than the harness being broken. StartPlacer.Place
+            // sets the pose and calls ring.StartAt for the same marker, which is the only way the
+            // two stay consistent.
+            if (placer != null)
             {
-                ring.ResetProgress();
+                // Reseed first. Place draws from a sequence, so without this each restart begins
+                // at a different marker with a different offset and heading, and a sweep varying
+                // one threshold per run would be varying the start position alongside it. The
+                // first attempt at a threshold sweep did exactly that: three thresholds, three
+                // outcomes, none of them attributable.
+                if (repeatableStart)
+                {
+                    placer.ResetRandom();
+                }
+
+                placer.Place();
+            }
+            else
+            {
+                if (car != null) { car.ResetToSpawn(); }
+                if (ring != null) { ring.ResetProgress(); }
+                Debug.LogWarning(
+                    "[HeuristicDriver] no StartPlacer, so the ring restarts at marker 0 while the " +
+                    "car restarts at its spawn. If those differ, no marker will ever be awarded.",
+                    this);
             }
 
-            // After the ring, so the lap and marker baselines are taken from the reset state
+            // After the placement, so the lap and marker baselines are taken from the reset state
             // rather than from the run that just ended.
             BeginRun();
 

@@ -112,6 +112,33 @@ namespace SelfDrivingSim.Track
             Place();
         }
 
+        /// <summary>
+        /// Put the generator back to where <c>Awake</c> left it, so the next draw repeats the
+        /// first one of the session.
+        ///
+        /// Added for feature 005's in-simulation restart. Without it a restarted run begins
+        /// somewhere else on the track, because <see cref="Place"/> advances the same sequence,
+        /// and a sweep that changes one threshold per run would be varying the start position at
+        /// the same time. The first attempt at a threshold sweep did exactly that and produced
+        /// three results that could not be attributed to anything.
+        ///
+        /// Only meaningful when <c>randomSeed</c> is set. Unseeded, there is no sequence to
+        /// return to and this is a no-op with a warning, because a caller asking for
+        /// repeatability from an unseeded generator has a wrong assumption worth surfacing.
+        /// </summary>
+        public void ResetRandom()
+        {
+            if (randomSeed < 0)
+            {
+                Debug.LogWarning(
+                    "[StartPlacer] ResetRandom with randomSeed unset: starts stay random and " +
+                    "runs will not repeat. Set a seed to make a sweep controlled.", this);
+                return;
+            }
+
+            _random = new System.Random(randomSeed);
+        }
+
         /// <summary>Draw a start and put the car there.</summary>
         [ContextMenu("Place car at a random start")]
         public void Place()
