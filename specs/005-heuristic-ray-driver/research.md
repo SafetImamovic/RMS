@@ -143,6 +143,49 @@ configuration, which fails SC-004 outright.
 - **Consequence recorded now:** any geometry adopted under FR-018 was selected on training tracks,
   and the evaluation tracks remain untouched by that choice.
 
+## R5a - The development work was done on an evaluation seed (found 2026-08-10)
+
+- **Simply:** R5 says the sweep must run on training seeds, and every measurement taken before
+  this entry was taken on seed 1004, which is an evaluation seed.
+
+R5 was written to stop the sweep from choosing a sensing geometry against the tracks the learning
+agent is later judged on, and it names this feature as the first that could violate the split. The
+violation happened immediately, and not in the sweep: the scene was built on seed 1004 and all of
+the exploratory work ran there.
+
+Everything below was measured on an evaluation track and is therefore **illustrative, not
+admissible**:
+
+- the saturation finding, that argmax commands full lock 67 percent of the time
+- the falsification of the chatter prediction in R2
+- the critical-distance gate completing a lap in 24.7 s at a threshold of 0.35
+- the run-to-run spread of 0.100 s
+
+**What survives and what does not.** The mechanisms are still real: quantisation to three reachable
+commands follows from 15 degree spacing against a 25 degree limit and holds on any track, and the
+0.54 s slew between locks is a property of the vehicle. Those are arithmetic, not measurements.
+What does not survive is every number attached to a particular track: the completion result, the
+threshold, the spread, and the saturation percentage all have to be re-measured on training seeds
+before they mean anything.
+
+**The threshold does not transfer.** With the scene moved to seed 1, a training seed, threshold
+0.35 does not complete a lap. It reports NoProgress with the gate open 87 percent of steps against
+39 on seed 1004, and a mean speed of 1.81 m/s against 7.96. One track is one sample, which FR-012
+already says, and a threshold found on one track was never going to be more than a starting point.
+
+**How it was caught, which is worth recording.** Not by noticing the seed. The scene changed from
+1004 to 1 at some point and the same configuration started failing, which read as a regression in
+the controller. The trace settled it in one comparison: at the first physics step, with identical
+placement logged by the placer, ray 06 read 0.3327 on the old runs and 0.4658 on the new ones. Same
+pose, different geometry, so it could not be the same track. **A diagnostic that records what the
+car sensed, not only what it did, is what turned an unexplained regression into a one-line answer.**
+
+- **Decision:** `HeuristicTrack.unity` stays on a training seed. Seed 1004 is not used again by
+  this feature.
+- **Consequence:** the sweep in US3 is the only source of admissible numbers, and the results
+  quoted in the feature 005 merge commit and in DESIGN 4.7 are marked as measured on an evaluation
+  track until they are re-established.
+
 ## R6 - Run-to-run reproducibility, and the control loop's clock
 
 - **Simply:** the driver runs on the physics clock, so the same seed gives the same lap.
