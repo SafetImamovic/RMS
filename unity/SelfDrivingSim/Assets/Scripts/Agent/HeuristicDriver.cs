@@ -399,6 +399,47 @@ namespace SelfDrivingSim.Agent
             engaged = value;
         }
 
+        /// <summary>
+        /// Put the car back on the start line and begin a fresh run, without leaving play mode.
+        ///
+        /// **This is what makes a sweep possible from inside the simulation.** The tuning panel
+        /// is IMGUI, so it only exists while playing, which means a threshold cannot be chosen
+        /// before pressing Play. Without this the only way to run a second threshold was to stop,
+        /// change a field in the Inspector, and press Play again, which is exactly the workflow
+        /// the panel was built to avoid.
+        ///
+        /// The trace rolls over to a new file. One run per file is what lets the analyser treat
+        /// each file as one data point, and a run appended to the previous one would carry two
+        /// thresholds and be discarded as varied.
+        /// </summary>
+        public void RestartRun()
+        {
+            CloseTrace();
+
+            if (car != null)
+            {
+                car.ScriptedMove = null;
+                car.ResetToSpawn();
+            }
+
+            if (ring != null)
+            {
+                ring.ResetProgress();
+            }
+
+            // After the ring, so the lap and marker baselines are taken from the reset state
+            // rather than from the run that just ended.
+            BeginRun();
+
+            _wasEngaged = false;
+            _smoothed = 0f;
+            _delay = null;
+
+            Debug.Log(string.Format(CultureInfo.InvariantCulture,
+                "[HeuristicDriver] restart: {0}, mode {1}, threshold {2:F3}",
+                strategy, reactionMode, criticalDistanceNorm), this);
+        }
+
         /// <summary>Choose the strategy for the next run (FR-007).</summary>
         public void SetStrategy(RayControllers.Strategy value)
         {
@@ -745,6 +786,13 @@ namespace SelfDrivingSim.Agent
             // actually ran to the same end it is 0.100 s. A noise floor inflated by a factor of
             // 289 would have buried every difference the sweep exists to find.
             TraceStep(new Vector2(LastSteer, 0f));
+
+            // Flush once, here. Per-step flushing was removed because fifty disk writes a second
+            // cost enough frame rate to move the steering rate limiter this trace exists to
+            // measure. Flushing once when the run ends costs nothing and means the finished file
+            // is complete on disk immediately, rather than holding its last rows, including the
+            // outcome, in a buffer until play mode stops.
+            _trace?.Flush();
 
             string line = string.Format(CultureInfo.InvariantCulture,
                 "[HeuristicDriver] {0} | {1} | {2:F1}s | contacts {3} | markers {4}",

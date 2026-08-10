@@ -63,9 +63,23 @@ namespace SelfDrivingSim.Agent
         private void Update()
         {
             Keyboard keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.gKey.wasPressedThisFrame)
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if (keyboard.gKey.wasPressedThisFrame)
             {
                 visible = !visible;
+            }
+
+            // Enter restarts. Handled here rather than in OnGUI, which runs twice per frame for
+            // Layout and Repaint, so wasPressedThisFrame would be true in both passes and a
+            // single keypress would restart the run twice.
+            if (driver != null &&
+                (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
+            {
+                driver.RestartRun();
             }
         }
 
@@ -168,6 +182,9 @@ namespace SelfDrivingSim.Agent
             GUILayout.Space(6f);
             DrawLive();
 
+            GUILayout.Space(6f);
+            DrawRestart();
+
             GUILayout.EndArea();
         }
 
@@ -246,6 +263,24 @@ namespace SelfDrivingSim.Agent
                       : driver.Outcome == HeuristicDriver.EndReason.Running ? Idle : Open;
             GUILayout.Label($"  {driver.Outcome}   {driver.ElapsedS,5:F1} s", _label);
             GUI.color = Color.white;
+        }
+
+        /// <summary>
+        /// Start a fresh run at the current settings, without leaving play mode.
+        ///
+        /// The panel only exists while playing, so a threshold cannot be chosen before pressing
+        /// Play. Without this button a sweep meant stopping, editing a field in the Inspector and
+        /// pressing Play for every value, which is the workflow this panel was built to replace.
+        ///
+        /// Bound to Enter as well as the button, because a sweep is a dozen runs and reaching for
+        /// the mouse between each one is how a threshold gets left on the wrong value.
+        /// </summary>
+        private void DrawRestart()
+        {
+            if (GUILayout.Button("restart run at these settings   [Enter]"))
+            {
+                driver.RestartRun();
+            }
         }
 
         private void ClearanceBar(float clearance, float threshold)
