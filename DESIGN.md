@@ -447,6 +447,37 @@ dokazuje da je staza prohodna, a to je druga tvrdnja od one da je vozilo vozivo 
 optimizuje se na vrijeme kruga, jer štimovana heuristika prestaje biti baseline i postaje takmac, pa
 bi poređenje u M5 bilo između dva štimovana sistema.
 
+**Zašto heuristika uopšte zaslužuje mjesto pored mreže.** Ne zato što je bolja, nego zato što
+odgovara na pitanje koje mreža ne postavlja: koliko problema se riješi bez učenja. Argument nije
+akademski. Neuronska mreža na ugradbenom sistemu je luksuz: traži memoriju, računski budžet i
+determinističko vrijeme izvršavanja koje mikrokontroler često nema. Algoritam koji radi na trinaest
+brojeva i par korijena staje svuda i ponaša se isto svaki put.
+
+Zato se **obje heuristike zadržavaju iako nijedna nije savršena**, i zato se njihovi neuspjesi
+zapisuju jednako pažljivo kao i uspjesi. Poređenje u M5 nije "mreža protiv slabijeg protivnika",
+nego "koliko dodatnog ponašanja se plaća treningom".
+
+### 4.7.1 Mjereni rezultati (seed 1, trening seed)
+
+| Regulator | Uzdužna kontrola | Ishod |
+|---|---|---|
+| `MostOpen` | samo iz komande upravljanja | sudar sa ogradom, zaglavi se |
+| `MostOpen` + kapija na kritičnoj udaljenosti | isto | sudar, na svim pragovima 0.20-0.50 |
+| `MostOpen` | + ograničenje brzine na vidljivost | sudar u 6.0 s |
+| **`WeightedAverage`** | **+ ograničenje brzine na vidljivost** | **krug završen, 27.6 s i 27.5 s** |
+
+**Zašto argmax pada, izmjereno u trenutku sudara:** zraka 06 pravo naprijed javlja 20 m, zraka 07 na
++15 stepeni javlja 2.78 m, a desni bok je na 1.46 m. Argmax bira najdužu zraku, komanduje pravo, i
+struže ogradu uz koju već vozi. **Regulator je slijep na svaki zid u koji ne gleda.**
+
+Prosjek otežan otvorenošću to rješava po konstrukciji: svaka zraka glasa, pa blizak zid zdesna
+povlači srednju vrijednost ulijevo. **I ne treba mu nijedan naštimovan parametar**, dok je kapija
+bila zakrpa sa pragom koji se morao pogađati i koji se nije prenio sa jedne staze na drugu.
+
+Zapisano i ovo: prvi rezultati ovog feature-a mjereni su na seedu 1004, koji je **evaluacijski**
+seed, i to je prekršilo pravilo iz research R5. Ti brojevi su ilustrativni, ne dokazni. Tabela iznad
+je sa trening seeda.
+
 ---
 
 ## 5. RL trening (PPO)

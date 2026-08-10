@@ -688,7 +688,16 @@ namespace SelfDrivingSim.Agent
             steer = ApplyReaction(steer);
 
             LastSteer = steer;
-            TargetSpeedMs = TargetSpeedFor(steer, car.Profile);
+
+            // Two limits, and the lower wins.
+            //
+            // The first is what the corner the car is already turning into can hold. The second
+            // is what it can still stop inside of. Taking the minimum is the whole of the
+            // anticipation: a car may not enter a corner faster than it can leave it, and it may
+            // not travel faster than it can stop within what it can see.
+            float corner = TargetSpeedFor(steer, car.Profile);
+            float sight = SightLimitedSpeed();
+            TargetSpeedMs = Mathf.Min(corner, sight);
 
             // Throttle is a bang-bang response to the speed error, not a PID. A PID would settle
             // faster and would also introduce three constants that would have to be tuned, and a
@@ -749,6 +758,57 @@ namespace SelfDrivingSim.Agent
             float grip = Mathf.Sqrt(profile.brakeMs2 * radius);
             return Mathf.Min(grip, profile.vMaxMs);
         }
+
+        /// <summary>
+        /// The fastest the car may go and still stop inside what it can see ahead.
+        ///
+        /// **Why this was added, and why it was rejected first.** Research R1 chose to derive the
+        /// target speed from the steering command alone, and rejected anything reading the forward
+        /// distance as "tunable-looking". That rejection was wrong and the measurement says so: on
+        /// training seed 1 the car reached a barrier and wedged nose-first against it at every gate
+        /// threshold from 0.20 to 0.50, ending each run at zero speed with the wheel at full lock.
+        /// A speed derived from the steering command cannot slow a car that has not yet decided to
+        /// turn, so the car arrives at the corner already too fast to take it.
+        ///
+        /// **It is not a tuned constant.** `v = sqrt(2 * a * d)` is the standard stopping relation
+        /// rearranged, `a` is the braking figure measured in T024 and read from the profile, and
+        /// `d` is the gap the rays already report. The only other quantity is how far the nose sits
+        /// ahead of the sensor, which is read from the car's own collider rather than typed in: the
+        /// rays start at the car's centre, so a wall touching the bumper still reads as half a car
+        /// length of clearance.
+        /// </summary>
+        private float SightLimitedSpeed()
+        {
+            float clearanceM = ForwardCone() * agent.RayLengthM - NoseOffsetM();
+
+            if (clearanceM <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Sqrt(2f * car.Profile.brakeMs2 * clearanceM);
+        }
+
+        /// <summary>
+        /// How far the nose sits ahead of the ray origin, from the collider rather than a guess.
+        ///
+        /// The rays start at the car's centre, so the distance they report to a wall the bumper is
+        /// already touching is half the car's length, not zero. Measured on this vehicle that is
+        /// 2.0 m, which is exactly the 0.100 normalised reading every wedged run ended on.
+        /// </summary>
+        private float NoseOffsetM()
+        {
+            if (_noseOffsetM > 0f)
+            {
+                return _noseOffsetM;
+            }
+
+            var box = car.GetComponent<BoxCollider>();
+            _noseOffsetM = box != null ? box.size.z * 0.5f : 2.0f;
+            return _noseOffsetM;
+        }
+
+        private float _noseOffsetM;
 
         private void EnsureAngles()
         {

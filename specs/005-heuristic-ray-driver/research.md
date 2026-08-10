@@ -186,6 +186,61 @@ car sensed, not only what it did, is what turned an unexplained regression into 
   quoted in the feature 005 merge commit and in DESIGN 4.7 are marked as measured on an evaluation
   track until they are re-established.
 
+## R1a - Anticipatory speed, and why R1 rejected it wrongly (2026-08-10)
+
+- **Simply:** a speed derived from the steering command cannot slow a car that has not yet decided
+  to turn, so the car arrives at the corner already too fast.
+
+R1 derived the target speed from the steering command alone and rejected reading the forward
+distance as "tunable-looking". The measurement overturns that. On training seed 1 the car reached a
+barrier and wedged nose-first at every gate threshold from 0.20 to 0.50, each run ending at zero
+speed with the wheel at full lock and the forward ray at 2.0 m, which is a bumper against a wall.
+
+- **Decision:** take the minimum of two limits. What the corner being turned into can hold, as
+  before, and what the car can still stop inside of, `sqrt(2 * a * d)`.
+- **It is not a tuned constant.** The relation is the standard stopping formula rearranged, `a` is
+  the braking figure measured in T024 and read from the profile, and `d` is the gap the rays already
+  report. The one remaining quantity, how far the nose sits ahead of the ray origin, is read from
+  the car's own collider: 2.0 m, which is exactly the reading every wedged run ended on.
+- **Effect:** it works and it is not sufficient. The wedging stops, the car slows for what it can
+  see, and it still hits a barrier at 6.0 s. The remaining failure is not longitudinal, which is
+  what R1a was for. It is R2a.
+
+## R2a - Why argmax actually fails: it is blind to walls it does not point at (2026-08-10)
+
+- **Simply:** `MostOpen` steers at the single longest ray and takes no account of a wall two metres
+  off the flank.
+
+Measured at the moment of contact on seed 1:
+
+| Ray | Angle | Reading |
+|---|---|---|
+| 06 | 0 deg | **20.00 m**, clear to the range limit |
+| 07 | +15 deg | 2.78 m |
+| 10 | +60 deg | 1.46 m |
+| 12 | +90 deg | 1.48 m |
+
+The centre ray is the longest, so argmax commands straight ahead, while the car is already running
+along a barrier that its right flank is nearly touching. It drives straight and scrapes it.
+
+**This is a better argument for the weighted controller than the chatter prediction in R2 ever
+was.** R2 predicted an oscillation and was falsified: two sign changes in 54 seconds. The real
+weakness is structural rather than dynamic, and it follows from what argmax is: a maximum discards
+every value except one.
+
+The distance-weighted average fixes it by construction, because every ray votes and a near wall on
+one side pulls the mean to the other. Measured on seed 1, `WeightedAverage` with the sight limit
+**completes the lap in 27.6 s and again in 27.5 s**, where `MostOpen` cannot finish at any gate
+threshold.
+
+- **The gate is not adopted.** It was a patch with a threshold that had to be guessed, that did not
+  transfer between two tracks of equal difficulty, and that never prevented the collision it was
+  aimed at. `WeightedAverage` needs no tuned parameter at all, which is what a baseline should look
+  like. The gate stays in the code as a measured negative result and as a live knob for US3.
+- **Both controllers are kept** (FR-006). The point of this feature is not a heuristic that wins,
+  it is an honest account of how far a non-learned controller gets, so the failure of the simpler
+  one is part of the deliverable rather than something to tidy away.
+
 ## R6 - Run-to-run reproducibility, and the control loop's clock
 
 - **Simply:** the driver runs on the physics clock, so the same seed gives the same lap.
