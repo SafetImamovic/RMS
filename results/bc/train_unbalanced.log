@@ -1,0 +1,18 @@
+  epoch   1  train 0.132300  val 0.109915
+  epoch   2  train 0.113262  val 0.101737
+  epoch   3  train 0.104242  val 0.100572
+  epoch   4  train 0.099233  val 0.098643
+  epoch   5  train 0.096251  val 0.091720
+  epoch   6  train 0.093854  val 0.091616
+  epoch   7  train 0.092121  val 0.090922
+  epoch   8  train 0.090654  val 0.086670
+  epoch   9  train 0.089399  val 0.089992
+  epoch  10  train 0.088448  val 0.091317
+  epoch  11  train 0.087114  val 0.089950
+  epoch  12  train 0.086189  val 0.088220
+  epoch  13  train 0.084994  val 0.090400
+  stopping early: 5 epochs without improvement
+
+[bc_unbalanced_v01] none: val 0.086670 beat baseline 0.153623 after 13 epochs on NVIDIA GeForce RTX 3050 6GB Laptop GPU in 337 s
+  written to C:\Users\User\Development\RMS\results\bc\run_bc_unbalanced_v01
+  Log it in results/EXPERIMENTS.md in this session (Principle VI).

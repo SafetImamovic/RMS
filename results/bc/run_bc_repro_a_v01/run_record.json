@@ -1,0 +1,115 @@
+{
+  "balancing": {
+    "n_after": 77871,
+    "n_before": 77871,
+    "n_removed": 0,
+    "policy": "none",
+    "runner_up_share_after": 0.06289889689358041,
+    "runner_up_value": -0.25,
+    "zero_share_after": 0.20347754619819958,
+    "zero_share_before": 0.20347754619819958
+  },
+  "baseline_error": 0.153622828786396,
+  "beat_baseline": true,
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "duration_s": 371.1355660999998,
+  "epochs_completed": 13,
+  "history": [
+    {
+      "epoch": 1,
+      "train_error": 0.13247858328314382,
+      "val_error": 0.10834485536689738
+    },
+    {
+      "epoch": 2,
+      "train_error": 0.11297037257476117,
+      "val_error": 0.09883617420535176
+    },
+    {
+      "epoch": 3,
+      "train_error": 0.1034557150039843,
+      "val_error": 0.09812318564658527
+    },
+    {
+      "epoch": 4,
+      "train_error": 0.09885459935233736,
+      "val_error": 0.10098235858564227
+    },
+    {
+      "epoch": 5,
+      "train_error": 0.09602163940841475,
+      "val_error": 0.0915586894199017
+    },
+    {
+      "epoch": 6,
+      "train_error": 0.09371324984764327,
+      "val_error": 0.09083616539536624
+    },
+    {
+      "epoch": 7,
+      "train_error": 0.09201677927295503,
+      "val_error": 0.09080532002910822
+    },
+    {
+      "epoch": 8,
+      "train_error": 0.09080379352767091,
+      "val_error": 0.08668461661128436
+    },
+    {
+      "epoch": 9,
+      "train_error": 0.089521854483934,
+      "val_error": 0.09048936478098804
+    },
+    {
+      "epoch": 10,
+      "train_error": 0.08848426939175427,
+      "val_error": 0.09107072793022118
+    },
+    {
+      "epoch": 11,
+      "train_error": 0.08717213971218254,
+      "val_error": 0.09166704091528054
+    },
+    {
+      "epoch": 12,
+      "train_error": 0.08612600710476012,
+      "val_error": 0.0926008642767389
+    },
+    {
+      "epoch": 13,
+      "train_error": 0.08494296178564806,
+      "val_error": 0.09292687702833152
+    }
+  ],
+  "hyperparameters": {
+    "activation": "relu",
+    "batch_size": 64,
+    "brightness_range": [
+      0.5,
+      1.15
+    ],
+    "camera_offset_range": [
+      0.1,
+      0.3
+    ],
+    "crop": [
+      60,
+      137
+    ],
+    "early_stopping_patience": 5,
+    "flip_probability": 0.5,
+    "learning_rate": 0.0001,
+    "loss": "mse",
+    "max_epochs": 50,
+    "optimiser": "adam"
+  },
+  "n_train_samples": 77871,
+  "n_val_samples": 5576,
+  "parameter_count": 252219,
+  "policy": "none",
+  "run_id": "bc_repro_a_v01",
+  "seed": 42,
+  "split_digest": "f9151b481e7fcd51a5ca3bd3fcbf041da669eea97c2067e006add99ddbcfa75a",
+  "train_error": 0.08494296178564806,
+  "val_error": 0.08668461661128436
+}

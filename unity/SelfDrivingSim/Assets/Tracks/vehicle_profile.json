@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "source": "python/track/config.py via python.track.vehicle.export_profile",
+  "profile": {
+    "wheelbase_m": 2.5,
+    "steer_max_deg": 25.0,
+    "steer_rate_norm_per_s": 3.7,
+    "v_max_ms": 10.0,
+    "accel_ms2": 5.0,
+    "brake_ms2": 5.85,
+    "radius_margin": 1.3,
+    "r_min_m": 5.361267301273896,
+    "r_floor_m": 6.969647491656065,
+    "max_required_steer": 0.7893127506459947,
+    "steering_reserve": 0.2106872493540053
+  },
+  "envelope": {
+    "steer_abs_max": 1.0,
+    "dsteer_p95_track1": 0.3,
+    "dsteer_p95_track2": 0.7,
+    "dsteer_max": 1.0,
+    "speed_p99": 17.4865,
+    "speed_max": 21.9494,
+    "speed_max_over_p99": 1.2552197409430133,
+    "compare_hz": 14.08
+  },
+  "sensing": {
+    "ray_count": 13,
+    "ray_fov_deg": 180.0,
+    "ray_length_m": 20.0
+  }
+}

@@ -46,6 +46,32 @@ dataset/
 results/tensorboard/
 results/*/events.out.tfevents.*
 results/*/checkpoint*.pt
+# Napomena: pravilo iznad je jedan nivo duboko i pisano za RL raspored
+# (results/<run>/checkpoint.pt). BC pise dva nivoa duboko, results/bc/run_<id>/,
+# pa ga ovo pravilo NE hvata. To je namjerno ostavljeno: checkpoint dva
+# prijavljena BC runa se committa preko LFS (992 KB) da bi se M4 gate mogao
+# pokazati bez ponovnog treninga.
+# Izuzetak su reprodukcijski runovi iz T040: oni nisu kandidat-modeli, dokaz
+# koji nose je u run_record.json, a ne u tezinama. Fajlovi ostaju lokalno.
+results/bc/run_bc_repro_*/checkpoint.pt
+
+# ── Drive logovi (M2) ──
+# Svaki pritisak na Play pravi novi CSV, pa bi ih commitovanje sve redom zatrpalo.
+# Vožnje koje se CITIRAJU u DESIGN.md (T022-T026) dodaju se namjerno:
+#     git add -f results/drive_logs/<ime>.csv
+# stability_log.csv se PRATI: to je dokaz za odluku iz research C5 (fizika vs kinematika),
+# a odluka bez dokaza na disku nije provjerljiva.
+results/drive_logs/*.csv
+!results/drive_logs/stability_log.csv
+
+# ── Heuristički vozač (M2, feature 005) ──
+# Jedan sweep piše po jedan red za svaku kombinaciju seeda, regulatora i konfiguracije
+# senzora, pa sirovi CSV-ovi rastu brzo i nema razloga da ijedan uđe u historiju.
+# Izvještaji SE PRATE: oni nose brojeve koji se citiraju u research.md i u DESIGN §4.7,
+# a broj koji se citira mora biti provjerljiv iz repozitorija.
+results/heuristic/runs_*.csv
+results/heuristic/trace_*.csv
+!results/heuristic/*.md
 
 # ── OS ──
 Thumbs.db
