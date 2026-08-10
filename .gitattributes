@@ -1,6 +1,22 @@
 # Normalizacija line endinga
 * text=auto
 
+# ── Generisani fajlovi: sakriti iz pregleda diffa ──
+# Ovi fajlovi se NE pišu rukom. Pravi ih python -m python.track.export, odnosno
+# python.bc.split, i determinističke su funkcije seeda. Committuju se namjerno, da
+# Unity može učitati stazu bez pokretanja Pythona (feature 003).
+#
+# Problem je bio pregled na GitHubu, ne veličina na disku. Svaka staza ima 2000 tačaka
+# centralne linije ispisanih sa indent=2, što je 14.318 linija po fajlu i 629.992 linija
+# na 44 fajla. Uz split.json to je 86 posto diffa develop..master, pa pull request nije
+# bio čitljiv niti se htio otvoriti.
+#
+# linguist-generated skuplja ih u pregledu i izbacuje iz statistike jezika. Sadržaj
+# ostaje u historiji nepromijenjen i git diff lokalno i dalje radi.
+unity/SelfDrivingSim/Assets/Tracks/seed_*.json linguist-generated=true
+results/bc/split.json linguist-generated=true
+results/drive_logs/*.csv linguist-generated=true
+
 # Unity YAML fajlovi — tekst, korisni diffovi
 *.unity text eol=lf
 *.prefab text eol=lf
