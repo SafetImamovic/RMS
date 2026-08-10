@@ -517,6 +517,7 @@ namespace SelfDrivingSim.Agent
                               _framesSinceStep, RawSteer, reactionTimeS, commandSmoothingS,
                               reactionMode, ForwardClearance, _gateOpen ? 1 : 0,
                               criticalDistanceNorm);
+            _row.AppendFormat(CultureInfo.InvariantCulture, ",{0}", Outcome);
             _framesSinceStep = 0;
 
             for (int i = 0; i < agent.RayCount; i++)
@@ -550,7 +551,7 @@ namespace SelfDrivingSim.Agent
                     "t,argmax_index,argmax_angle_deg,argmax_steer,command_steer,applied_steer," +
                     "command_throttle,speed_ms,target_speed_ms,argmax_norm,frame_delta_time," +
                     "fixed_delta_time,frames_since_step,raw_steer,reaction_s,smoothing_s," +
-                    "mode,forward_clearance,gate_open,critical_distance");
+                    "mode,forward_clearance,gate_open,critical_distance,outcome");
                 for (int i = 0; i < agent.RayCount; i++)
                 {
                     header.AppendFormat(CultureInfo.InvariantCulture, ",ray{0:D2}", i);
@@ -734,6 +735,16 @@ namespace SelfDrivingSim.Agent
         {
             Outcome = reason;
             car.ScriptedMove = null;
+
+            // One last row carrying the terminal outcome.
+            //
+            // Without it a trace cannot say whether the run finished a lap or was stopped by
+            // hand, and the two are indistinguishable by duration alone. That cost a real
+            // measurement: a run-to-run spread computed over ten repeats of one setting read
+            // 28.9 s, because four of the ten had been interrupted mid-lap. Over the five that
+            // actually ran to the same end it is 0.100 s. A noise floor inflated by a factor of
+            // 289 would have buried every difference the sweep exists to find.
+            TraceStep(new Vector2(LastSteer, 0f));
 
             string line = string.Format(CultureInfo.InvariantCulture,
                 "[HeuristicDriver] {0} | {1} | {2:F1}s | contacts {3} | markers {4}",
