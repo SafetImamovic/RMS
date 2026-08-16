@@ -126,6 +126,48 @@ configuration, which fails SC-004 outright.
   but the sweep must verify that a run at the chosen scale produces the same outcome as the same
   seed at 1x. If it does not, the scale is lowered until it does, and the figure that survives is
   recorded. A sweep that is fast and wrong is worse than one that is slow.
+
+## R4a - The measurement, and the sentence in R4 that it falsifies
+
+R4 claims that raising `timeScale` alone "changes nothing about the simulation itself, so the
+trajectory is identical to a real-time run". **That is wrong, and T034 measured how wrong.**
+`CarController` integrates the steering rate limit in `Update` against `Time.deltaTime`, so a frame
+covering four times the simulated time moves the wheel four times as far in one step. The
+trajectory is therefore a function of the time scale, and the faster the sweep the coarser the
+steering becomes.
+
+Twelve runs, `WeightedAverage` on training seed 1, three repeats at each scale, judged against the
+T027 run-to-run spread of 0.160 s lap time, 0.0063 percentile, and one reversal:
+
+| Scale | lap mean | lap range | p95 mean | p95 range | reversals | verdict |
+|---|---|---|---|---|---|---|
+| 1x | 27.280 | 0.080 | 0.0464 | 0.0079 | 4, 4, 4 | reference |
+| 2x | 27.353 | 0.020 | 0.0431 | 0.0024 | 4, 4, 4 | **survives** |
+| 4x | 27.400 | 0.160 | 0.0446 | 0.0024 | 4, 4, **6** | fails |
+| 8x | 27.633 | 0.480 | 0.0538 | 0.0210 | 4, 4, 4 | fails |
+
+- **Every one of the twelve completed the lap**, 24 of 24 markers, zero contacts. Judged on outcome
+  alone, which is what T034's wording asks for, 8x would have passed. The outcome is the least
+  sensitive thing the sweep records, and it is not what US2 reports.
+- **4x fails on a smoothness measure, not on the outcome.** One run of three recorded six steering
+  reversals where every other run at every other scale recorded four. That is twice the quantum the
+  measure can resolve, appearing in the column the sweep exists to compare.
+- **8x fails on amplitude.** Its lap time drifts 0.353 s from the 1x mean, more than twice the noise
+  floor, and its within-scale range of 0.480 s is three times the 1x floor: the rig has stopped
+  reproducing itself.
+- **The degradation is not monotonic and should not be read as if it were.** 8x recorded four
+  reversals in all three runs while 4x did not. Both are past the point where the rig repeats, and
+  4x is not the safer of the two because its reversal count happened to be the thing that broke.
+
+- **Decision:** the surviving scale is **2x**.
+- **And 2x cannot meet SC-004.** At the measured 27.3 s lap, 34 seeds take 7.7 minutes at 2x and
+  5.2 at 3x; the five-minute budget needs at least 3.1x, which is past where the measurements stop
+  reproducing. **SC-004 and the correctness of the numbers the sweep reports are in direct
+  conflict**, and the conflict is structural rather than a tuning problem: it exists because the
+  steering rate limit is integrated on the frame clock. Moving that integration into `FixedUpdate`
+  would remove it, and that is a change to the vehicle, which this feature's declared scope
+  forbids. The table in R4 above is kept as written because it is the prediction being falsified:
+  it costed acceleration as free, and acceleration is not free.
 - **Alternatives rejected:** headless batch mode, which is the standard answer and would work, but
   costs a player build per configuration and cannot be watched while it runs; the editor path can
   be inspected the moment something looks wrong. Reducing the seed set, which trades the thing
@@ -349,3 +391,113 @@ mechanism FR-003 and FR-004 need and the reason no new control path is built.
   makes it less of a baseline. The spec's Out of Scope section already excludes tuning for lap
   time; recovery is the same category of creep. A failed run is a data point, and FR-010 requires
   the reason to be recorded.
+
+## R10 - The sweep's answer: is the current fan worse, equal, or better? (2026-08-16)
+
+The sweep US3 asks for, run at the 2x that R4a found survives. 34 training seeds, both
+controllers, three arrangements, one run each: **204 runs in 1402 real seconds**. A fourth
+arrangement was added afterwards to separate two things the first three varied together.
+
+### What the sweep found
+
+| Controller | Fan | Spacing | Completed | Lap time | \|dsteer\| P95 |
+|---|---|---|---|---|---|
+| `MostOpen` | 13 / 180 deg | 15.0 deg | **0 of 34** | - | 0.5588 |
+| `MostOpen` | 13 / 120 deg | 10.0 deg | **0 of 34** | - | 0.4412 |
+| `MostOpen` | 13 / 90 deg | 7.5 deg | **0 of 34** | - | 0.4824 |
+| `WeightedAverage` | 13 / 180 deg | 15.0 deg | 34 of 34 | 26.508 | **0.0500** |
+| `WeightedAverage` | 25 / 180 deg | 7.5 deg | 34 of 34 | 23.655 | 0.0656 |
+| `WeightedAverage` | 13 / 120 deg | 10.0 deg | 34 of 34 | 22.783 | 0.1156 |
+| `WeightedAverage` | 13 / 90 deg | 7.5 deg | 34 of 34 | **22.043** | 0.1341 |
+
+Every difference below is judged against the T027 noise floor: 0.160 s lap time, 0.0063
+percentile, 0.0366 reversals per second.
+
+### `MostOpen` does not complete a lap on any seed under any geometry
+
+102 runs, 102 wall contacts, a mean of 2.4 markers out of 24 before the first one. Widening or
+narrowing the fan does not help, because the fault is not the fan: R2a established that argmax
+steers at the single longest ray and discards every other, so it is blind to a wall it does not
+point at. No arrangement of rays fixes a rule that throws all but one of them away.
+
+**This settles the question US2 scenario 3 poses.** `MostOpen` does not perform acceptably, so
+`WeightedAverage` does not need justifying against it on smoothness. It needs justifying on
+completing 34 of 34 where the other completes 0 of 34.
+
+### The first three arrangements were confounded, and the fourth says by how much
+
+Varying `ray_fov_deg` at a fixed ray count varies two things at once. The fan gets narrower, and so
+does the **spacing**, which is what `HeuristicDriver.ForwardCone` uses to decide how wide the
+forward cone is: the cone is the rays within one spacing of dead ahead. A narrower cone looks
+further down a curving corridor before it sees a wall, so the sight-limited speed rises. The sweep
+was therefore varying the steering input and the speed rule together.
+
+25 rays over 180 degrees has the same 7.5 degree spacing as 13 over 90, with a full-width fan. It
+separates them:
+
+- **Lap time follows the spacing.** Holding the fan at 180 degrees and halving the spacing gives
+  26.508 to 23.655, which is 2.853 s, or 64 percent of the full 4.465 s gap to 13 over 90. The
+  remaining 1.612 s is the fan width.
+- **Roughness follows the fan width.** At a fixed 7.5 degree spacing, narrowing 180 to 90 takes the
+  percentile from 0.0656 to 0.1341, roughly doubling it. At a fixed 180 degree fan, halving the
+  spacing moves it only from 0.0500 to 0.0656.
+
+So the two effects are separable and both real: **spacing buys speed through the speed rule, width
+buys smoothness through the steering.** Neither is what "sweeping the angular width of the fan"
+sounds like it is measuring, and a sweep of the first three alone would have reported a single
+axis that does not exist.
+
+### The answer, per US3 scenario 3
+
+**The current geometry is not beaten, and it is not best either.** 13 rays over 180 degrees is the
+**smoothest** of the four at 0.0500 and the **slowest** at 26.508 s. 13 over 90 is the fastest at
+22.043 s and the roughest at 0.1341. All four complete 34 of 34, so completion does not
+discriminate between them.
+
+Every one of those differences exceeds the noise floor, and the per-seed check rules out an
+averaging artefact: 13 over 90 is faster than 13 over 180 on **34 of 34 seeds** and rougher on
+**33 of 34**. This is a real trade and not a ranking.
+
+- **Decision: measured and kept.** 13 rays over 180 degrees stays, recorded as a deliberate choice
+  rather than left alone by default. Nothing dominates it, FR-009 forbids collapsing speed and
+  smoothness into one verdict, and lap time is explicitly out of scope for this feature: a baseline
+  tuned for lap time is not a baseline.
+- **The interesting candidate is 25 over 180**, which is 2.853 s faster for 0.0156 of extra
+  roughness and keeps the full-width fan. It is not adopted here because it doubles the ray half of
+  the observation vector, and DESIGN 4.3 chose 13 partly for what the network has to learn to
+  ignore. That is a cost this feature does not measure, so adopting it on this feature's numbers
+  alone would be choosing on the measures that happen to be in hand.
+- **Anything adopted later invalidates every sensing result measured against the old fan**, and any
+  model trained against it, exactly as `contracts/sensing-block.md` requires the change to state.
+
+## R2b - The R2 prediction, judged at sweep scale (2026-08-16)
+
+R2 recorded a prediction before anything was built: the naive controller **oscillates near 3 Hz
+with a steering amplitude near 0.6**, and its |delta steer| P95 is several times the smoothed
+controller's. 102 runs of `MostOpen` over 34 training seeds and three geometries now settle it.
+
+| Claim | Predicted | Measured | Verdict |
+|---|---|---|---|
+| Steering amplitude | near 0.6 | P95 **0.5588** at the stated fan | **right** |
+| P95 against the smoothed controller | several times | 0.5588 against 0.0500, **11.2x** | **right** |
+| Oscillation frequency | near 3 Hz, about 6 reversals per second | **0.0077** reversals per second | **wrong by three orders of magnitude** |
+
+**33 of 34 runs at the stated fan reversed direction zero times.** At 120 degrees it is 34 of 34.
+The controller does not chatter, and it never did: the one long observation at 1x, 54 seconds on
+seed 1, recorded two reversals.
+
+- **What R2 got right is the quantisation**, and it got it exactly. 0.6 is one ray step at 13 rays
+  over 180 degrees against a 25 degree limit, and the measured P95 lands on it because the command
+  spends its time stepping between neighbouring reachable values. The arithmetic in R2 was sound.
+- **What R2 got wrong is the inference from it.** It assumed a controller that cannot hold a
+  mid-corner line must alternate between the two values bracketing it. It does not. It commits to
+  one and holds, because the argmax is stable: the longest ray does not flicker between two
+  candidates in a corridor, it slides smoothly as the car turns. Quantisation bounds how finely the
+  command can be placed; it says nothing about how often the placement changes.
+- **The real failure is the one R2a found**: argmax steers at the single longest ray and is blind to
+  every wall it does not point at. That is structural, not dynamic, and it is why no geometry fixes
+  it. The prediction pointed at the wrong axis entirely.
+- **The falsification is the finding**, as C17 was in feature 003. Had the chatter prediction stood
+  unmeasured, the obvious remedy would have been to smooth the command, and DESIGN 4.7 nearly
+  carried a low-pass filter for that reason. Smoothing a controller that does not oscillate would
+  have added a tuned constant, made the baseline less of a baseline, and fixed nothing.
