@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using SelfDrivingSim.Agent;
 using SelfDrivingSim.Vehicle;
 
 namespace SelfDrivingSim.Logging
@@ -228,18 +229,18 @@ namespace SelfDrivingSim.Logging
             _hasFirstSample = true;
         }
 
-        /// <summary>Nearest-rank percentile. Copies and sorts, so call it sparingly.</summary>
+        /// <summary>
+        /// Nearest-rank percentile. Copies and sorts, so call it sparingly.
+        ///
+        /// The arithmetic lives in <see cref="SteerSmoothness"/> and is called from here rather
+        /// than duplicated, for the reason this class's own comment already gives: two copies of a
+        /// percentile is how a HUD ends up showing green while the log it summarises shows red.
+        /// Feature 005 measures the same quantity on the heuristic driver's command, and the two
+        /// figures are put in the same table.
+        /// </summary>
         private static float Percentile(List<float> values, float percentile)
         {
-            if (values == null || values.Count == 0)
-            {
-                return 0f;
-            }
-
-            var sorted = new List<float>(values);
-            sorted.Sort();
-            int rank = Mathf.CeilToInt((percentile / 100f) * sorted.Count) - 1;
-            return sorted[Mathf.Clamp(rank, 0, sorted.Count - 1)];
+            return SteerSmoothness.NearestRankPercentile(values, percentile);
         }
 
         // --- Envelope verdicts. Each returns null when there is nothing to judge yet. -------
