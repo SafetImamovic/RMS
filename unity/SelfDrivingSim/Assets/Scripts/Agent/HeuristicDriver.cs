@@ -69,6 +69,10 @@ namespace SelfDrivingSim.Agent
         [Tooltip("Read only to decide when a run ends, never to decide how to steer.")]
         [SerializeField] private CheckpointRing ring;
 
+        [Tooltip("Read only for the seed the run record has to carry. A row that cannot say " +
+                 "which track it was measured on is not a data point.")]
+        [SerializeField] private TrackBuilder track;
+
         [Tooltip("Used by RestartRun to put the car and the checkpoint ring back in agreement. " +
                  "Resetting the two separately desynchronises them, because the ring restarts at " +
                  "marker 0 while the car restarts at whichever marker the placer chose.")]
@@ -170,10 +174,32 @@ namespace SelfDrivingSim.Agent
                  "the vehicle's actual angle and not the command.")]
         [SerializeField] private bool writeTrace;
 
+        [Tooltip("Append one row per finished run to results/heuristic/runs_<time>.csv, per " +
+                 "contracts/run-record.md.\n\n" +
+                 "On by default, and on for failures as much as for laps. A sweep that recorded " +
+                 "only the runs that finished would report an acceptance rate over a denominator " +
+                 "that silently shrank, which is the one error in this file that would look like " +
+                 "a result.")]
+        [SerializeField] private bool writeRunRecord = true;
+
         // --- Outcome, read by the sweep runner and the run record ------------------------------
 
         /// <summary>Whether the driver currently holds the wheel.</summary>
         public bool Engaged => engaged;
+
+        /// <summary>
+        /// Whether each run writes its per-step trace. Off for a sweep, on for a distribution run.
+        ///
+        /// US4 needs the steering COMMAND sample by sample, not the per-run summary the record
+        /// carries, because a distribution is the samples. Left off by default because a 34 seed
+        /// sweep with it on writes 34 files nobody reads, and the trace exists to explain one run
+        /// rather than to accumulate.
+        /// </summary>
+        public bool WriteTrace
+        {
+            get => writeTrace;
+            set => writeTrace = value;
+        }
 
         /// <summary>Which strategy is in effect.</summary>
         public RayControllers.Strategy ActiveStrategy => strategy;
@@ -195,6 +221,24 @@ namespace SelfDrivingSim.Agent
 
         /// <summary>The strategy's own output, before reaction delay or smoothing.</summary>
         public float RawSteer { get; private set; }
+
+        /// <summary>
+        /// The two smoothness measures for the run in progress (FR-008, FR-009).
+        ///
+        /// Fed the command rather than the vehicle's actual angle, and fed on this driver's own
+        /// run clock, which is what makes both of T018's measurement traps unreachable rather than
+        /// merely avoided. It is only ever fed from <see cref="FixedUpdate"/> while the driver
+        /// holds the wheel, so a window that includes a stationary car after the run ended cannot
+        /// be produced by getting the analysis wrong later.
+        /// </summary>
+        public SteerSmoothness Smoothness { get; } = new SteerSmoothness();
+
+        /// <summary>|delta steer| P95 at the compare rate, over this run's command. Never
+        /// combined with <see cref="SteerSignChangesPerS"/>.</summary>
+        public float SteerDeltaP95 => Smoothness.DeltaSteerP95;
+
+        /// <summary>Direction reversals per second over this run's command.</summary>
+        public float SteerSignChangesPerS => Smoothness.SignChangesPerS;
 
         /// <summary>What most-open would command right now, whether or not it is driving.</summary>
         public float SteerMostOpen { get; private set; }
@@ -403,11 +447,44 @@ namespace SelfDrivingSim.Agent
             if (agent == null) { agent = FindAnyObjectByType<CarAgent>(); }
             if (ring == null) { ring = FindAnyObjectByType<CheckpointRing>(); }
             if (placer == null) { placer = FindAnyObjectByType<StartPlacer>(); }
+            if (track == null) { track = FindAnyObjectByType<TrackBuilder>(); }
         }
 
         private void Start()
         {
+            // Read in Start rather than Awake because DriveTelemetry loads the envelope in its own
+            // Awake, and the order between two components' Awake is not defined. Taking the rate
+            // here means it is the exported one, not the fallback, on every run.
+            AdoptCompareRate();
             BeginRun();
+        }
+
+        /// <summary>
+        /// Resample the smoothness measure at the rate the rest of the project compares against.
+        ///
+        /// The figure only means something beside the human, PPO and BC columns if all four were
+        /// resampled to the same rate, and that rate lives in the exported envelope rather than in
+        /// any one script. <see cref="DriveTelemetry"/> already loads it, so it is asked rather
+        /// than the file being opened a second time. Without a telemetry component in the scene the
+        /// class falls back to the dataset's 14.08 Hz and says so, because a run measured at a
+        /// silently different rate is worse than one that did not measure.
+        /// </summary>
+        private void AdoptCompareRate()
+        {
+            var telemetry = GetComponent<DriveTelemetry>();
+            if (telemetry == null) { telemetry = FindAnyObjectByType<DriveTelemetry>(); }
+
+            if (telemetry == null)
+            {
+                Debug.LogWarning(
+                    "[HeuristicDriver] no DriveTelemetry in the scene, so the steering percentile " +
+                    $"falls back to {SteerSmoothness.DefaultCompareHz} Hz rather than the rate in " +
+                    "vehicle_profile.json. Check the two agree before comparing this run to the " +
+                    "human or BC columns.", this);
+                return;
+            }
+
+            Smoothness.SampleIntervalS = telemetry.SampleIntervalS;
         }
 
         /// <summary>Restart the run bookkeeping. The sweep calls this between seeds.</summary>
@@ -416,6 +493,7 @@ namespace SelfDrivingSim.Agent
             Outcome = EndReason.Running;
             ElapsedS = 0f;
             WallContacts = 0;
+            Smoothness.Reset();
             _lastProgressS = 0f;
             _lastAwarded = ring != null ? ring.AwardedCount : 0;
             _lapsAtStart = ring != null ? ring.LapCount : 0;
@@ -544,6 +622,11 @@ namespace SelfDrivingSim.Agent
             Vector2 move = Decide();
             car.ScriptedMove = move;
 
+            // Measured here, at the one place the command exists, rather than reconstructed from a
+            // log afterwards. The command is what FR-008 asks for, and this line runs only while
+            // the driver is actually driving, which is the run window and nothing either side.
+            Smoothness.Sample(move.x, ElapsedS);
+
             TraceStep(move);
 
             CheckEndConditions();
@@ -597,9 +680,12 @@ namespace SelfDrivingSim.Agent
             float argmaxSteer = Mathf.Clamp(argmaxAngle / car.Profile.steerMaxDeg, -1f, 1f);
 
             _row.Clear();
+            _row.AppendFormat(CultureInfo.InvariantCulture, "{0:F4},{1},{2},",
+                ElapsedS,
+                track != null && track.Current != null ? track.Current.seed : -1,
+                strategy);
             _row.AppendFormat(CultureInfo.InvariantCulture,
-                "{0:F4},{1},{2:F1},{3:F4},{4:F4},{5:F4},{6:F4},{7:F3},{8:F3},{9:F3},{10:F5},{11:F5}",
-                ElapsedS,          // t
+                "{0},{1:F1},{2:F4},{3:F4},{4:F4},{5:F4},{6:F3},{7:F3},{8:F3},{9:F5},{10:F5}",
                 argmax,            // which ray was longest
                 argmaxAngle,       // its angle
                 argmaxSteer,       // what argmax alone implies
@@ -649,8 +735,14 @@ namespace SelfDrivingSim.Agent
                     AutoFlush = false,
                 };
 
+                // seed and controller on every row, for the same reason the run record repeats
+                // its configuration (SC-006): a trace found on its own must say what produced it.
+                // Without them a folder of traces from a sweep is a pile of indistinguishable
+                // files, and US4's distribution would be computed over whichever ones happened to
+                // be there. They were added when that distribution was first attempted.
                 var header = new StringBuilder(
-                    "t,argmax_index,argmax_angle_deg,argmax_steer,command_steer,applied_steer," +
+                    "t,seed,controller," +
+                    "argmax_index,argmax_angle_deg,argmax_steer,command_steer,applied_steer," +
                     "command_throttle,speed_ms,target_speed_ms,argmax_norm,frame_delta_time," +
                     "fixed_delta_time,frames_since_step,raw_steer,reaction_s,smoothing_s," +
                     "mode,forward_clearance,gate_open,critical_distance,outcome");
@@ -684,6 +776,12 @@ namespace SelfDrivingSim.Agent
         private void OnDisable()
         {
             CloseTrace();
+
+            // The run record's handle is static and statics do not survive a domain reload, so
+            // without this it would be dropped rather than closed. Every row is flushed as it is
+            // written, so nothing is lost either way; this is so the next Play session opens a
+            // fresh file instead of inheriting a stale handle.
+            RunRecordWriter.Close();
         }
 
         /// <summary>
@@ -928,10 +1026,16 @@ namespace SelfDrivingSim.Agent
             // outcome, in a buffer until play mode stops.
             _trace?.Flush();
 
+            // Both measures on the summary line, side by side and never combined (FR-009). The n
+            // travels with the percentile because a run that ended at five seconds contributes
+            // about seventy points, and a percentile over a handful of them is not a measure.
             string line = string.Format(CultureInfo.InvariantCulture,
-                "[HeuristicDriver] {0} | {1} | {2:F1}s | contacts {3} | markers {4}",
+                "[HeuristicDriver] {0} | {1} | {2:F1}s | contacts {3} | markers {4} | " +
+                "dsteer p95 {5:F4} (n {6}) | sign changes {7:F2}/s ({8} in {9:F1}s)",
                 strategy, reason, ElapsedS, WallContacts,
-                ring != null ? ring.AwardedCount - 0 : -1);
+                ring != null ? ring.AwardedCount - 0 : -1,
+                Smoothness.DeltaSteerP95, Smoothness.SampleCount,
+                Smoothness.SignChangesPerS, Smoothness.SignChanges, Smoothness.MeasuredWindowS);
 
             if (reason == EndReason.LapComplete)
             {
@@ -941,6 +1045,69 @@ namespace SelfDrivingSim.Agent
             {
                 Debug.LogWarning(line, this);
             }
+
+            WriteRunRecord(reason);
+        }
+
+        /// <summary>
+        /// Append this run to the run record (T023, `contracts/run-record.md`).
+        ///
+        /// Written here rather than by the sweep runner, although the contract names the runner as
+        /// the writer. The runner does not exist until T032, and T027 needs three runs of one seed
+        /// recorded before anything in Phase 4 or Phase 5 may be interpreted. Putting it at the end
+        /// of a run instead means a hand-driven run and a swept run produce the same row through
+        /// the same code, which is what the comparison needs anyway: a sweep that recorded runs
+        /// differently from the runs it was validated against would measure the difference.
+        ///
+        /// Every field comes from something that already knows it. Nothing here recomputes a
+        /// quantity another component owns, because two answers to "how many checkpoints" is how a
+        /// row ends up internally inconsistent and believed anyway.
+        /// </summary>
+        private void WriteRunRecord(EndReason reason)
+        {
+            if (!writeRunRecord)
+            {
+                return;
+            }
+
+            if (track == null || track.Current == null)
+            {
+                Debug.LogError(
+                    "[HeuristicDriver] no track loaded, so this run cannot say which seed it was " +
+                    "measured on and no row was written. A run record without a seed is not a " +
+                    "data point, and writing one anyway would put a hole in the sweep that looks " +
+                    "like data.", this);
+                return;
+            }
+
+            RunRecordWriter.Append(new RunRecord
+            {
+                Seed = track.Current.seed,
+                Controller = strategy.ToString(),
+
+                RayCount = agent != null ? agent.RayCount : 0,
+                RayFovDeg = agent != null ? agent.RayFovDeg : 0f,
+                RayLengthM = agent != null ? agent.RayLengthM : 0f,
+
+                CompletedLap = reason == EndReason.LapComplete,
+
+                // Negative writes as an empty field. Zero is a lap time, so a failed run must not
+                // contribute one: an aggregate that averages zeros reports a fast sweep.
+                LapTimeS = reason == EndReason.LapComplete ? ElapsedS : -1f,
+
+                CheckpointsAwarded = ring != null ? ring.AwardedCount : 0,
+                CheckpointsTotal = ring != null ? ring.Count : 0,
+                CheckpointsSkipped = ring != null ? ring.SkippedContactCount : 0,
+                WallContacts = WallContacts,
+                EndReason = reason.ToString(),
+
+                // Side by side, never collapsed into one verdict (FR-009).
+                SteerP95DSteer = Smoothness.DeltaSteerP95,
+                SteerSignChangesPerS = Smoothness.SignChangesPerS,
+
+                TimeScale = Time.timeScale,
+                DurationS = ElapsedS,
+            });
         }
 
         /// <summary>
