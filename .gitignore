@@ -71,6 +71,10 @@ results/drive_logs/*.csv
 # a broj koji se citira mora biti provjerljiv iz repozitorija.
 results/heuristic/runs_*.csv
 results/heuristic/trace_*.csv
+# US4 skuplja tragove u podfoldere (results/heuristic/us4/), pa obrazac mora vrijediti i
+# tamo: bez ovoga 68 sirovih tragova ulazi u historiju kroz podfolder.
+results/heuristic/**/runs_*.csv
+results/heuristic/**/trace_*.csv
 !results/heuristic/*.md
 
 # ── OS ──
