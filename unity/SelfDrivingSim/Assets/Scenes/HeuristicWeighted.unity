@@ -454,6 +454,7 @@ GameObject:
   - component: {fileID: 679899605}
   - component: {fileID: 679899604}
   - component: {fileID: 679899606}
+  - component: {fileID: 679899607}
   m_Layer: 0
   m_Name: TrackBuilder
   m_TagString: Untagged
@@ -550,6 +551,28 @@ MonoBehaviour:
   ring: {fileID: 0}
   car: {fileID: 0}
   builder: {fileID: 0}
+--- !u!114 &679899607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679899601}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a430c95f549129e46b08dfd66fcb15df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.SweepRunner
+  track: {fileID: 0}
+  driver: {fileID: 0}
+  placer: {fileID: 0}
+  car: {fileID: 0}
+  seedSet: 0
+  maxSeeds: 0
+  repeatsPerSeed: 1
+  controllers: 0000000001000000
+  timeScale: 4
+  runOnStart: 0
 --- !u!1 &684926419
 GameObject:
   m_ObjectHideFlags: 0
@@ -1533,6 +1556,7 @@ MonoBehaviour:
   agent: {fileID: 2103184340}
   car: {fileID: 2103184330}
   ring: {fileID: 679899605}
+  track: {fileID: 0}
   placer: {fileID: 0}
   repeatableStart: 1
   lapsToComplete: 1
@@ -1544,6 +1568,7 @@ MonoBehaviour:
   commandSmoothingS: 0
   criticalDistanceNorm: 0.35
   writeTrace: 1
+  writeRunRecord: 1
 --- !u!114 &2103184343
 MonoBehaviour:
   m_ObjectHideFlags: 0
