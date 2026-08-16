@@ -457,6 +457,13 @@ Zato se **obje heuristike zadržavaju iako nijedna nije savršena**, i zato se n
 zapisuju jednako pažljivo kao i uspjesi. Poređenje u M5 nije "mreža protiv slabijeg protivnika",
 nego "koliko dodatnog ponašanja se plaća treningom".
 
+**Predviđanje je oboreno, i to na dva različita instrumenta.** Oscilacija od 3 Hz na amplitudi 0.6
+nije se pojavila ni jednom. `MostOpen` ne alternira nego se **opredijeli za jedan pogrešan smjer i
+drži ga**: 0.0000 promjena znaka po sekundi, a `|dsteer|` P95 mu je tačno **0.6000**, jedan korak
+zrake, dakle kvantizacija se pojavila kao doslovni kvant a ne kao titranje. `WeightedAverage` daje
+4 promjene znaka u cijelom krugu (**0.15/s**). Ono što je predviđanje pogodilo je uzrok
+(kvantizacija komande), a ne posljedica (oblik greške). Zapisano kao nalaz, kako §4.7 i traži.
+
 ### 4.7.1 Mjereni rezultati (seed 1, trening seed)
 
 | Regulator | Uzdužna kontrola | Ishod |
@@ -477,6 +484,37 @@ bila zakrpa sa pragom koji se morao pogađati i koji se nije prenio sa jedne sta
 Zapisano i ovo: prvi rezultati ovog feature-a mjereni su na seedu 1004, koji je **evaluacijski**
 seed, i to je prekršilo pravilo iz research R5. Ti brojevi su ilustrativni, ne dokazni. Tabela iznad
 je sa trening seeda.
+
+### 4.7.2 Mjereni rezultati (svih 34 trening seeda)
+
+Tabela iz §4.7.1 je jedan seed. Staze se po težini razlikuju po konstrukciji, pa je jedan seed
+uzorak veličine jedan (Princip IX). Sweep preko cijelog trening skupa, 13 zraka preko 180 stepeni,
+timeScale 2:
+
+| Mjera | `MostOpen` | `WeightedAverage` |
+|---|---|---|
+| Završenih krugova | **0 od 34** | **34 od 34** |
+| Vrijeme kruga | nema | 26.496 s prosjek, sd 0.578 |
+| Dodiri zida | 34 (po jedan po runu) | 0 |
+| \|dsteer\| P95 | 0.5824 prosjek | 0.0496 prosjek |
+| Promjene znaka /s | 0.0080 | 0.2370 |
+
+**Naivni regulator ne gubi poređenje, nego ga nikad ne završi.** Nijedan krug ni na jednoj od tri
+probane geometrije (0 od 102), i to je jači rezultat od očekivanog gubitka.
+
+Prag šuma iz pet ponovljenih runova istog seeda: **0.16 s** po vremenu kruga, **0.0063** po
+`|dsteer|` P95. Sve razlike u tabeli su iznad njega. Za promjene znaka prag nije izmjereni raspon
+nego **0.0366/s**, jedna promjena po dužini kruga, jer mjera ne može skočiti za manje od jedne.
+
+**Geometrija senzora je izmjerena, i ništa ne dominira.** Četiri rasporeda, sva četiri završe 34 od
+34: 13/180 je najglađi i najsporiji, 13/90 najbrži i najgrublji. Trgovina je stvarna, pa se
+**13 preko 180 zadržava kao mjerena odluka**, ne kao zatečena. Vrijeme kruga nije mjera po kojoj
+ovaj feature bira (§4.7: heuristika se ne optimizuje na vrijeme kruga).
+
+Cijena mjerenja: jedna konfiguracija traje 6.3-7.6 minuta, a budžet je bio pet. **Promašaj je
+zapisan, ne zaobiđen** - potreban bi bio 3.1x, a 2x je najbrže na čemu se brojevi reprodukuju.
+Uzrok je strukturni: `CarController` integriše ograničenje brzine upravljanja u `Update`, dakle po
+frame clocku. Popravka je izmjena vozila, što je van opsega ovog feature-a.
 
 ---
 
@@ -827,6 +865,13 @@ rezultat RL agenta poredi samo sa samim sobom i sa modelom koji se ne vozi u Uni
 može reći koliko je od uspjeha zasluga učenja, a koliko činjenica da je staza prohodna i za
 jednostavnu heuristiku. Ako heuristika pobijedi naučenog vozača na nekoj mjeri, to se navodi
 otvoreno.
+
+**Ta kolona sad postoji i pobijedila je na dijelu mjere**, u `results/heuristic/us4_steering.md`.
+Po koraku `|Δsteering|` na 14.08 Hz, `WeightedAverage` je mirniji od BC modela na sredini
+raspodjele (prosjek 0.0157 naspram 0.0248, P95 0.0465 naspram 0.0692) i grublji u repu (P99 0.1649
+naspram 0.1121). Oba se navode zajedno. Ono što se **ne** navodi kao pobjeda je 34 od 34 završena
+kruga: BC se ne vozi, pa tu nema kolone da se izgubi, i to je razlika između mjere na kojoj se
+pobjeđuje i mjere koju druga strana nema.
 
 - Poređenje distribucija: histogrami preklopljeni + KL divergencija prema ljudskoj referenci.
 - Zaključak koji se brani: RL uči *zadatak* (proći stazu), BC uči *stil* (imitira čovjeka);
