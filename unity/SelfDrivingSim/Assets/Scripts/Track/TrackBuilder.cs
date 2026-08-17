@@ -70,6 +70,21 @@ namespace SelfDrivingSim.Track
             Build();
         }
 
+        /// <summary>
+        /// Which seed this builder reads. The sweep sets it between runs (T032).
+        ///
+        /// Setting it does not rebuild. A rebuild destroys the current track's colliders, and in
+        /// play mode <c>Destroy</c> is deferred to the end of the frame, so a caller that changed
+        /// the seed and rebuilt in one breath would leave the car sharing a frame with two sets of
+        /// barriers. The sweep separates the two across a frame deliberately, and hiding a rebuild
+        /// inside this setter would take that choice away from it.
+        /// </summary>
+        public int Seed
+        {
+            get => seed;
+            set => seed = value;
+        }
+
         /// <summary>Path of the file this builder reads.</summary>
         public string TrackPath =>
             System.IO.Path.Combine(Application.dataPath, "Tracks", $"seed_{seed}.json");

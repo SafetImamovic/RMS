@@ -35,7 +35,13 @@ namespace SelfDrivingSim.Tests
                 $"vehicle_profile.json missing at {path}. Run: python -m python.track.vehicle");
 
             var file = JsonUtility.FromJson<VehicleProfileFile>(File.ReadAllText(path));
-            Assert.AreEqual(2, file.schema_version, "Unrecognised profile schema version.");
+            // Against the constant the loaders use, not a literal. The literal was 2, and T006
+            // bumped the export to 3 for the sensing block without moving it, so all eight cases
+            // in this class failed in SetUp from that commit until T022 ran the suite. Its python
+            // counterpart was updated in the same commit; this one was not, which is the argument
+            // for naming the constant rather than repeating its value.
+            Assert.AreEqual(VehicleProfileFile.ExpectedSchemaVersion, file.schema_version,
+                            "Unrecognised profile schema version.");
 
             _exported = file.profile;
             _envelope = file.envelope;

@@ -132,7 +132,7 @@ namespace SelfDrivingSim.Agent
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             try
             {
-                Draw(new Rect(12f, Screen.height - 250f, panelWidth, 238f));
+                Draw(new Rect(12f, Screen.height - 386f, panelWidth, 374f));
             }
             finally
             {
@@ -149,6 +149,7 @@ namespace SelfDrivingSim.Agent
             GUI.color = Color.white;
             GUILayout.Label($"HEURISTIC  {driver.ActiveStrategy}   [G] hide", _header);
 
+            DrawStrategyButtons();
             DrawModeButtons();
 
             GUILayout.Space(4f);
@@ -186,6 +187,42 @@ namespace SelfDrivingSim.Agent
             DrawRestart();
 
             GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// Which controller drives, chosen for a run without editing code (T026, FR-007).
+        ///
+        /// **Changing it restarts the run**, and that is the point rather than a convenience. A run
+        /// that switched controller halfway would produce one row of the run record describing two
+        /// controllers, and both smoothness measures would be computed over a window in which the
+        /// thing being measured changed. The restart makes the switch cost a run instead of
+        /// corrupting one.
+        ///
+        /// The two scenes still exist and are still the way a demonstration is repeated, since a
+        /// demonstration assembled by ticking boxes is one nobody repeats the same way twice. This
+        /// is for the other job: running the same build twice to compare, which is what FR-007
+        /// asks for and what T027 needs.
+        /// </summary>
+        private void DrawStrategyButtons()
+        {
+            var strategies = new[]
+            {
+                RayControllers.Strategy.MostOpen,
+                RayControllers.Strategy.WeightedAverage,
+            };
+
+            var names = new[] { "most open", "weighted avg" };
+
+            int current = System.Array.IndexOf(strategies, driver.ActiveStrategy);
+            int picked = GUILayout.Toolbar(current, names);
+
+            if (picked == current)
+            {
+                return;
+            }
+
+            driver.SetStrategy(strategies[picked]);
+            driver.RestartRun();
         }
 
         /// <summary>
@@ -254,15 +291,96 @@ namespace SelfDrivingSim.Agent
                 GUI.color = Color.white;
             }
 
+            DrawStrategyContrast();
+
             GUI.color = Idle;
             GUILayout.Label($"  raw {driver.RawSteer,6:F3}    issued {driver.LastSteer,6:F3}", _label);
             GUILayout.Label($"  target {driver.TargetSpeedMs,5:F2} m/s   contacts {driver.WallContacts}",
                             _label);
 
+            DrawSmoothness();
+
             GUI.color = driver.Outcome == HeuristicDriver.EndReason.LapComplete ? Held
                       : driver.Outcome == HeuristicDriver.EndReason.Running ? Idle : Open;
             GUILayout.Label($"  {driver.Outcome}   {driver.ElapsedS,5:F1} s", _label);
             GUI.color = Color.white;
+        }
+
+        /// <summary>
+        /// Both strategies side by side, with the idle one shown as a counterfactual.
+        ///
+        /// This is the point of having two scenes rather than one. Reading that argmax "steers at
+        /// the longest ray and ignores the flank" is an argument; watching it command straight
+        /// ahead while the weighted average pulls away from a wall the car is about to touch is
+        /// the same claim as an observation.
+        ///
+        /// The divergence bar matters more than either number. On a clear straight both read zero
+        /// and agree, which says nothing. The step that ended the argmax run on seed 1 was one
+        /// where they disagreed by nearly a full lock, with the centre ray clear at 20 m and the
+        /// right flank at 1.46 m.
+        /// </summary>
+        private void DrawStrategyContrast()
+        {
+            bool argmaxDriving = driver.ActiveStrategy == RayControllers.Strategy.MostOpen;
+
+            GUI.color = argmaxDriving ? Accent : Idle;
+            GUILayout.Label(
+                $"  {(argmaxDriving ? ">" : " ")} most open      {driver.SteerMostOpen,6:F3}", _label);
+
+            GUI.color = argmaxDriving ? Idle : Accent;
+            GUILayout.Label(
+                $"  {(argmaxDriving ? " " : ">")} weighted avg   {driver.SteerWeighted,6:F3}", _label);
+
+            float d = driver.StrategyDivergence;
+
+            // Amber once they differ by more than a ray step, which is 0.6 on the stated fan and
+            // the smallest disagreement argmax is capable of expressing.
+            GUI.color = d > 0.6f ? Open : (d > 0.05f ? new Color(1f, 0.85f, 0.5f) : Idle);
+            GUILayout.Label($"    they differ by {d,5:F3}", _label);
+            DivergenceBar(d);
+            GUI.color = Color.white;
+        }
+
+        /// <summary>
+        /// The two smoothness measures, on two lines, with no third line under them.
+        ///
+        /// **Deliberately not combined and deliberately not judged here** (FR-009). A single
+        /// "smoothness" number would hide the case this feature exists to find: a controller that
+        /// reverses direction constantly while each individual change stays small reads as smooth
+        /// on the percentile alone. No verdict colour either, because the threshold that would
+        /// decide it is the run-to-run spread, and that is measured in T027 and does not exist yet.
+        ///
+        /// The sample count is shown beside the percentile rather than hidden, since a run that
+        /// ends in five seconds contributes about seventy points and a reader should be able to
+        /// see that before quoting the number.
+        /// </summary>
+        private void DrawSmoothness()
+        {
+            SteerSmoothness s = driver.Smoothness;
+
+            GUI.color = Idle;
+            GUILayout.Label(
+                $"  |dsteer| p95 {s.DeltaSteerP95,6:F3}   n {s.SampleCount,4:D} @ " +
+                $"{(s.SampleIntervalS > 0f ? 1f / s.SampleIntervalS : 0f),5:F2} Hz", _label);
+            GUILayout.Label(
+                $"  sign changes {s.SignChangesPerS,6:F2}/s  {s.SignChanges,4:D} in " +
+                $"{s.MeasuredWindowS,5:F1} s", _label);
+            GUI.color = Color.white;
+        }
+
+        private void DivergenceBar(float divergence)
+        {
+            Rect line = GUILayoutUtility.GetRect(1f, 4f, GUILayout.ExpandWidth(true));
+
+            GUI.color = new Color(1f, 1f, 1f, 0.12f);
+            GUI.DrawTexture(line, _barTexture);
+
+            // Scaled against 2.0, the widest possible disagreement, so the bar means the same
+            // thing every frame rather than rescaling itself to whatever is happening.
+            GUI.color = divergence > 0.6f ? Open : Accent;
+            GUI.DrawTexture(new Rect(line.x, line.y,
+                                     line.width * Mathf.Clamp01(divergence / 2f), line.height),
+                            _barTexture);
         }
 
         /// <summary>

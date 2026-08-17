@@ -115,6 +115,7 @@ namespace SelfDrivingSim.Agent
         /// <summary>Degrees between neighbouring rays. 15 at the stated 13 rays over 180.</summary>
         public float RaySpacingDeg => rayCount > 1 ? rayFovDeg / (rayCount - 1) : 0f;
 
+
         /// <summary>
         /// The observation itself: one value per ray, in [0, 1], left to right.
         ///

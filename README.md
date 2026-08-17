@@ -162,8 +162,10 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 280 prolazi, 3 preskočena (bc moduli traže torch)
+pytest python/tests                  # 323 prolaza, 3 preskočena (bc moduli traže torch)
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
+#   Ne skraćivati izlaz sa | tail: -q ispisuje samo tačke dok ne dođe do sažetka,
+#   pa odsječen izlaz izgleda kao manji ukupan broj (izmjereno u 005/T046).
 
 # M2 - generisanje staza iz seed-ova (vidi sekciju gore)
 python -m python.track.export --batch all
@@ -175,7 +177,7 @@ tensorboard --logdir results
 
 # ---- M4: BC trening (.venv-bc) ----
 .venv-bc\Scripts\Activate.ps1
-pytest python/tests                  # 141 prolazi
+pytest python/tests                  # 377 prolaza (ništa se ne preskače, torch je tu)
 
 # 1. Podjela train/val: blokovski holdout sa 8 s zaštitnim pojasom.
 #    Piše results/bc/split.json. Deterministična - isti fajl bajt po bajt.
@@ -193,6 +195,36 @@ python -m python.bc.evaluate --compare bc_balanced_v01 bc_unbalanced_v01
 
 # 4. Opciono: animacija predikcija preko kadrova koje je čovjek vozio (otvorena petlja).
 python -m python.bc.playback --run bc_unbalanced_v01 bc_balanced_v01 --track track2data
+
+# ---- Heuristički vozač: vožnja je u Unityju, izvještaj u .venv ----
+
+# 1. Jedan run rukom. Unity → Assets/Scenes/HeuristicWeighted.unity → Play.
+#    Panel gore lijevo: [G] sakriva/prikazuje, gornji toolbar bira regulator
+#    (MostOpen / WeightedAverage), drugi bira način oblikovanja komande.
+#    Promjena regulatora NAMJERNO restartuje run: run koji bi se prebacio na pola
+#    opisao bi dva regulatora u jednom redu zapisa.
+#    Svaki završen run dopisuje red u results\heuristic\runs_<vrijeme>.csv, a trag
+#    po koraku u trace_<vrijeme>.csv. Oba su git-ignorisana; u repozitorij ulaze
+#    samo izvještaji (results\heuristic\*.md).
+
+# 2. Sweep preko svih 34 trening seeda, bez izlaska iz Play modea. U sceni dodaj
+#    SweepRunner, poveži TrackBuilder / HeuristicDriver / StartPlacer / CarController
+#    / CarAgent, pa u Inspectoru: seedSet = Train, timeScale = 2, runOnStart = true,
+#    fans = arrangements koje se porede. Play.
+#    timeScale 2 je najbrže na čemu se mjerenja reprodukuju; na 4 se mjeri frame
+#    clock, a ne vožnja (research R4a). Jedna konfiguracija traje 6.3-7.6 minuta,
+#    što NE staje u SC-004 budžet od pet minuta - zapisano kao promašaj, ne zaobiđeno.
+
+# 3. Izvještaj nad zapisom runova (.venv).
+.venv\Scripts\Activate.ps1
+python -m python.heuristic.report              # najnoviji results\heuristic\runs_*.csv
+
+#    --spread uzima prag šuma iz fajla sa ponovljenim runovima istog seeda; bez njega
+#    nijedna razlika nije nalaz (FR-015). --traces dodaje raspodjelu volana (US4) i
+#    poređenje sa naučenim vozačem iz results\bc\run_bc_balanced_v01.
+python -m python.heuristic.report results\heuristic\runs_A.csv `
+    --spread results\heuristic\runs_B.csv `
+    --traces results\heuristic\us4
 ```
 
 Svaki run piše `results/bc/run_<id>/` sa `checkpoint.pt`, `run_record.json` i
@@ -204,8 +236,16 @@ trening i 5.576 validacionih redova uz razmak 8.09 s; nebalansiran run daje vali
 **0.086670**, balansiran **0.090899**, oba naspram osnovice od oko 0.1536. Trening se reprodukuje
 na **±0.0005** MSE, ne tačnije - GPU bira kernele nedeterministički (DESIGN §6.2, research R13).
 
+Očekivane vrijednosti za heuristički recept (izmjereno 2026-08-16, 34 trening seeda, 13 zraka
+preko 180 stepeni, timeScale 2): `WeightedAverage` završava **34 od 34** kruga, prosjek
+**26.496 s**, nula dodira zida; `MostOpen` završava **0 od 34** i uvijek udari u zid za oko 2.7 s.
+Ponovljivost istog seeda: **0.16 s** raspona po vremenu kruga i **0.0063** po `|dsteer|` P95 nad
+pet runova. Izvještaj o raspodjeli volana i poređenje sa BC kolonom:
+[results/heuristic/us4_steering.md](results/heuristic/us4_steering.md).
+
 **M5 (poređenje RL / BC / čovjek) još nije implementiran.** Ranije je ovdje stajala komanda
-`python python/evaluation/compare.py`; taj modul ne postoji.
+`python python/evaluation/compare.py`; taj modul ne postoji. Heuristička kolona za M5 je gotova
+i stoji u `results/heuristic/us4_steering.md`.
 
 Detaljan razvojni proces (Play mode, heuristička vožnja, testiranje): [WORKFLOW.md](WORKFLOW.md).
 

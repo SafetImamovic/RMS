@@ -21,7 +21,7 @@ people, and because it appends across a sweep that may take minutes.
 | `checkpoints_total` | int | The track's own count, so a row is readable without the track file |
 | `checkpoints_skipped` | int | Non-zero means a corner was cut |
 | `wall_contacts` | int | |
-| `end_reason` | string | One of `LapComplete`, `TimeLimit`, `WallContact`, `WrongWay`, `FellThrough` |
+| `end_reason` | string | One of `LapComplete`, `TimeLimit`, `WallContact`, `WrongWay`, `FellThrough`, `NoProgress` |
 | `steer_p95_dsteer` | float | \|delta steer\| P95 resampled to 14.08 Hz |
 | `steer_sign_changes_per_s` | float | Direction reversals per second |
 | `time_scale` | float | What the run was simulated at |
@@ -37,6 +37,13 @@ comma decimals inside comma-separated fields is not recoverable by a reader that
 **Every run writes a row, including a failure.** A sweep that recorded only completed laps would
 report an acceptance rate computed over a denominator that silently shrank. `end_reason` is what
 makes a failure legible rather than absent.
+
+**`NoProgress` was added to `end_reason` after this contract was first written.** T016 implemented
+six terminal outcomes rather than the five listed here, mirroring DESIGN 4.6, so a car wedged
+against a barrier does not burn the whole 120 s limit before anyone learns it stopped moving. It is
+recorded here because the reporter reads this table: a value the writer emits and the contract does
+not list is a hole the python side would find at runtime, and T018 already produced three runs that
+ended this way.
 
 **A row is self-describing** (SC-006). The sensing configuration and the controller are repeated on
 every row rather than being stated once in a header or implied by the filename. The duplication is
