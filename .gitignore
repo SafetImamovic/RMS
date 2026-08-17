@@ -88,6 +88,12 @@ results/heuristic/**/trace_*.csv
 # pokazati bez ponovnog treninga.
 results/ppo_car*/
 #
+# Trener piše i unutar projekta: Assets/ML-Agents/Timers/<Scena>_timers.json nastaje pri svakom
+# pokretanju scene sa agentom. To je profiling izlaz jedne sesije, nije dio projekta, i Unity mu
+# generiše .meta koji bi ušao u historiju uz njega.
+unity/SelfDrivingSim/Assets/ML-Agents/
+unity/SelfDrivingSim/Assets/ML-Agents.meta
+#
 # Ono što se PRATI je destilovani CSV po runu (results/rl/curves/) i izvještaji (results/rl/*.md).
 # To je jedini oblik u kojem brojevi iz M3 prežive čist clone, jer sirove krive ovdje ne ulaze
 # (006 contracts/curve-export.md). Model koji se brani ide u

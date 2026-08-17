@@ -37,12 +37,14 @@ namespace SelfDrivingSim.Track
         public int CurrentSeed { get; private set; } = -1;
 
         /// <summary>Episodes finished since this area last changed track.</summary>
-        public int EpisodesOnSeed => agent == null ? 0 : agent.CompletedEpisodes - _episodesAtSwap;
+        public int EpisodesOnSeed =>
+            agent == null || !_built ? 0 : agent.CompletedEpisodes - _episodesAtSwap;
 
         /// <summary>The agent driving in this area, for the scheduler to pause across a swap.</summary>
         public DrivingAgent Agent => agent;
 
         private int _episodesAtSwap;
+        private bool _built;
 
         private void Awake()
         {
@@ -51,6 +53,18 @@ namespace SelfDrivingSim.Track
             if (placer == null) { placer = GetComponentInChildren<StartPlacer>(true); }
             if (agent == null) { agent = GetComponentInChildren<DrivingAgent>(true); }
             if (car == null) { car = GetComponentInChildren<CarController>(true); }
+
+            // **The car is parked until this area has a track under it.**
+            //
+            // Areas are built one at a time, so without this every car spends the first frames
+            // over nothing and falls. Measured before the fix: twelve areas produced twelve
+            // "car dropped below the world" entries and idle-drift reports of 40 to 60 m, all
+            // within the first two seconds of a session. The car is not merely misplaced there,
+            // it is in free fall while the physics that the whole model rests on runs.
+            if (car != null)
+            {
+                car.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>Name the area, once, so a log line can say which copy misbehaved.</summary>
@@ -96,6 +110,16 @@ namespace SelfDrivingSim.Track
             yield return new WaitForFixedUpdate();    // and the new ones register here
 
             CurrentSeed = seed;
+
+            // Only now is there something to stand on. On the first build this also un-parks the
+            // car; on later swaps it is already active and this changes nothing.
+            if (car != null && !car.gameObject.activeSelf)
+            {
+                car.gameObject.SetActive(true);
+                yield return new WaitForFixedUpdate();
+            }
+
+            _built = true;
 
             if (placer != null)
             {

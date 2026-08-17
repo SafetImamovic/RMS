@@ -113,10 +113,11 @@ episode can run.
   - The two truncations call different things on purpose: the stall calls `EpisodeInterrupted()`, which is ML-Agents' own truncation path, while wall contact and the lap target call `EndEpisode()`. The step cap is recorded and left to the framework, which performs that truncation itself
   - Each end reason is also reported as its own statistic (`episode/end_wallcontact` and so on), so the distribution is visible during a run rather than only after one. A run where every late episode ends in `WallContact` is a policy that never learned to avoid a barrier, and the cumulative reward can hide that if the speed term is carrying it
 - [X] T018 Report every reward term separately through `Academy.Instance.StatsRecorder.Add` under the keys in `contracts/reward-events.md`, and assert in the same place that the breakdown sums to the agent's cumulative reward (FR-008)
-- [ ] T019 Add and configure `DecisionRequester` on the agent with `DecisionPeriod = 4` and `TakeActionsBetweenDecisions = true`, giving 12.5 Hz against the 50 Hz physics clock (research R2)
+- [X] T019 Add and configure `DecisionRequester` on the agent with `DecisionPeriod = 4` and `TakeActionsBetweenDecisions = true`, giving 12.5 Hz against the 50 Hz physics clock (research R2)
 
 ### The area, the seeds and the scene
 
+  - Set on the prefab rather than in code: `DecisionPeriod = 4`, `TakeActionsBetweenDecisions = true`, giving 12.5 Hz against the 50 Hz physics clock
 - [X] T020 Create the training seed pool loader reading the `train` half of `results/tracks/seed_split.json`, through a single code path, in `unity/SelfDrivingSim/Assets/Scripts/Track/TrainingArea.cs`
   - Written as `SeedSplit`, a small loader beside the runner rather than a field on the scheduler. A seed list typed into a scene cannot satisfy SC-008, which asks for the separation to be demonstrable from the recorded configuration; reading the committed file means the scene cannot disagree with it
   - `SweepRunner`'s own parser was left alone. It is on the path that produced feature 005's published rows, and the duplication costs about twenty lines against the risk of touching that path again
@@ -132,10 +133,17 @@ episode can run.
 - [X] T024 Create `unity/SelfDrivingSim/Assets/Scripts/Track/AreaScheduler.cs`: rotates each area's seed through the 34 training seeds every K episodes, disabling that area's agent across the swap. **Not inside `OnEpisodeBegin`**, which is synchronous and would read colliders that do not exist yet (research R6)
   - Seeds are cycled rather than drawn at random. A random draw over 34 seeds would leave some tracks over-represented by chance across a run's episodes, and that imbalance is invisible in every number the run reports
   - The swap ends the episode that spans it. An episode that began on one track and finished on another is not a fair sample of either
-- [ ] T025 Create `unity/SelfDrivingSim/Assets/Prefabs/TrainingArea.prefab` holding one complete self-contained copy of the environment
-- [ ] T026 Create `unity/SelfDrivingSim/Assets/Scenes/Training.unity` with the area prefab instanced on a grid at 300 m pitch, which exceeds a roughly 200 m track plus the 20 m ray length so no area's sensing reaches another's barriers (research R7). **A new scene rather than an edit to an existing one**, which keeps the Principle IV scene lock uncontested
+- [X] T025 Create `unity/SelfDrivingSim/Assets/Prefabs/TrainingArea.prefab` holding one complete self-contained copy of the environment
+  - Built from **copies of the existing car and track objects**, not assembled from scratch. The vehicle every published baseline was measured on is the one that has to train, and a hand-rebuilt car with a subtly different mass or wheel friction would invalidate the comparison without ever looking wrong
+  - Stripped from the copy: `HeuristicDriver`, `HeuristicTuner`, `DriveHud`, `DriveLogger`, `ObservationDebug`, `ObservationProbe`, `ScriptedDriver`, `DriveTelemetry`, `LapReport`. Twelve IMGUI panels and twelve CSV writers in one session are noise and file contention
+  - `StabilityMonitor` was stripped too, on evidence rather than tidiness: see T026
+- [X] T026 Create `unity/SelfDrivingSim/Assets/Scenes/Training.unity` with the area prefab instanced on a grid at 300 m pitch, which exceeds a roughly 200 m track plus the 20 m ray length so no area's sensing reaches another's barriers (research R7). **A new scene rather than an edit to an existing one**, which keeps the Principle IV scene lock uncontested
+  - 12 areas on a 4x3 grid at 300 m pitch. Measured footprint per area is **59 to 82 m**, so with 20 m rays the separation is comfortable
+  - **The first play test found a real defect.** Areas build one at a time, so twelve cars spent the opening frames with no ground beneath them: the stability log gained twelve `FellThrough` entries and idle-drift reports of 40 to 60 m, all inside two seconds. `TrainingArea` now parks its car until the area has a track, and un-parks it after the first build. Re-tested: 12 areas built, 12 cars active, episodes running, and **the stability log was not written to at all**
+  - That defect also polluted a **committed** file. `results/drive_logs/stability_log.csv` is tracked deliberately as evidence for a feature 003 decision, and the training scene had appended twenty-two junk rows to it. Restored, and `StabilityMonitor` is out of the training prefab so it cannot happen again
+  - The trainer writes `Assets/ML-Agents/Timers/` on every session with an agent in the scene. Ignored, along with its generated `.meta`
 - [ ] T027 Create `config/ppo_car.yaml` per `contracts/training-config.md`, with `max_steps` left unset pending T031 and `summary_freq` pinned at 10000 so every committed curve has the same resolution
-- [ ] T028 Set `BehaviorParameters` on the agent: behaviour name `CarDriver` matching the config string exactly, vector observation size 19, two continuous actions. A mismatched behaviour name does not error; the trainer simply sits at zero steps
+- [X] T028 Set `BehaviorParameters` on the agent: behaviour name `CarDriver` matching the config string exactly, vector observation size 19, two continuous actions. A mismatched behaviour name does not error; the trainer simply sits at zero steps
 
 **Checkpoint**: an episode can run, end for a recorded reason, and start again. Training can begin.
 
@@ -150,6 +158,7 @@ is recorded in a form that survives a clean clone.
 shapes, confirm episodes end for the stated reasons, and confirm the recorded cumulative reward is
 higher at the end than at the start.
 
+  - Verified on the saved prefab: behaviour name `CarDriver`, vector observation size **19**, **2** continuous actions, one stacked observation
 - [ ] T029 [US1] Smoke run: start `mlagents-learn config/ppo_car.yaml --run-id=ppo_car_smoke` from the repository root, press Play, and confirm the connection line reports package 4.0.3 and communication version 1.5.0. Record what it printed, because that line is the compatibility proof and `ENVIRONMENT.md` treats it as such
 - [ ] T030 [US1] Pilot run of roughly 100k steps. Measure and record here: steps per second, wall clock, mean episode length, and the share of episodes ending in each of the three reasons. This is the measurement T031 depends on and the only honest input to a training budget
 - [ ] T031 [US1] Set `max_steps` in `config/ppo_car.yaml` from T030's measured throughput so a full run fits inside 12 hours (SC-006), and write the arithmetic into this task. A number chosen from the design's range instead is the mistake this feature exists to avoid
