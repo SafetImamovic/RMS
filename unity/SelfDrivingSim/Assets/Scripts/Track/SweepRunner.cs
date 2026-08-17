@@ -62,7 +62,13 @@ namespace SelfDrivingSim.Track
 
         [Header("Wiring")]
         [SerializeField] private TrackBuilder track;
-        [SerializeField] private HeuristicDriver driver;
+
+        [Tooltip("The driver under test. Anything implementing IRunDriver: the scripted driver, " +
+                 "or the learned agent in inference (feature 006, FR-023).\n\n" +
+                 "Typed as MonoBehaviour because Unity cannot serialise an interface reference. " +
+                 "The field keeps its name so scenes wired before feature 006 keep their " +
+                 "reference; only the declared type changed.")]
+        [SerializeField] private MonoBehaviour driver;
         [SerializeField] private StartPlacer placer;
         [SerializeField] private CarController car;
         [SerializeField] private CarAgent agent;
@@ -132,6 +138,7 @@ namespace SelfDrivingSim.Track
         public IReadOnlyList<int> Seeds => _seeds;
 
         private readonly List<int> _seeds = new List<int>();
+        private IRunDriver _driver;
         private float _startedRealAt;
         private float _restoreTimeScale = 1f;
         private float _restoreMaxDelta;
@@ -143,6 +150,29 @@ namespace SelfDrivingSim.Track
             if (placer == null) { placer = FindAnyObjectByType<StartPlacer>(); }
             if (car == null) { car = FindAnyObjectByType<CarController>(); }
             EnsureAgent();
+            ResolveDriver();
+        }
+
+        /// <summary>
+        /// Bind the serialized component to the interface the runner actually talks to
+        /// (feature 006, T011).
+        ///
+        /// **It fails loudly rather than running without a driver.** Unity cannot serialise an
+        /// interface, so the field is a <c>MonoBehaviour</c> and the type check happens here
+        /// instead of in the inspector. A sweep that started with a null driver would spend its
+        /// whole budget writing rows for a car nobody drove, which is the same shape of failure
+        /// <see cref="EnsureAgent"/> exists to prevent.
+        /// </summary>
+        private void ResolveDriver()
+        {
+            _driver = driver as IRunDriver;
+
+            if (driver != null && _driver == null)
+            {
+                Debug.LogError(
+                    $"{driver.GetType().Name} is wired as the driver but does not implement " +
+                    "IRunDriver, so the runner cannot start or stop a run with it.", this);
+            }
         }
 
         /// <summary>
@@ -378,7 +408,14 @@ namespace SelfDrivingSim.Track
 
                 foreach (RayControllers.Strategy strategy in controllers)
                 {
-                    driver.SetStrategy(strategy);
+                    // Strategy selection belongs to the scripted driver alone, so it is not in
+                    // IRunDriver (feature 006, T011). A learned policy has no strategy to set, and
+                    // for it the controller loop runs once and the run record carries the run id
+                    // in the controller column instead.
+                    if (driver is HeuristicDriver scripted)
+                    {
+                        scripted.SetStrategy(strategy);
+                    }
 
                     foreach (int seed in _seeds)
                     {
@@ -431,15 +468,15 @@ namespace SelfDrivingSim.Track
         /// </summary>
         private IEnumerator RunOnce()
         {
-            driver.RestartRun();
-            driver.SetEngaged(true);
+            _driver.RestartRun();
+            _driver.SetEngaged(true);
 
             // A frame for the restart to take effect before the outcome is believed. Without it
             // the loop can see the PREVIOUS run's terminal outcome and finish instantly, which
             // would fill the record with rows that never drove.
             yield return new WaitForFixedUpdate();
 
-            while (driver.Outcome == HeuristicDriver.EndReason.Running)
+            while (_driver.RunActive)
             {
                 ElapsedRealS = Time.realtimeSinceStartup - _startedRealAt;
                 yield return null;
@@ -460,7 +497,7 @@ namespace SelfDrivingSim.Track
         /// </summary>
         private IEnumerator SwapTrack(int seed)
         {
-            driver.SetEngaged(false);
+            _driver.SetEngaged(false);
 
             if (car != null)
             {

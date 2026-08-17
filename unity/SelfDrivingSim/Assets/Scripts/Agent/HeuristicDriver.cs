@@ -39,7 +39,7 @@ namespace SelfDrivingSim.Agent
     /// both clocks per row so the effect can be quantified instead of argued about.
     /// </summary>
     [RequireComponent(typeof(CarController))]
-    public class HeuristicDriver : MonoBehaviour
+    public class HeuristicDriver : MonoBehaviour, IRunDriver
     {
         /// <summary>Why a run stopped. Written into every run record (FR-010).</summary>
         public enum EndReason
@@ -206,6 +206,16 @@ namespace SelfDrivingSim.Agent
 
         /// <summary>Why the run stopped, or <see cref="EndReason.Running"/> while it has not.</summary>
         public EndReason Outcome { get; private set; } = EndReason.Running;
+
+        /// <summary>
+        /// <see cref="IRunDriver.RunActive"/>, which is this driver's outcome read as a yes or no
+        /// (feature 006, T010).
+        ///
+        /// Added so that <c>SweepRunner</c> can drive a learned policy through the same code path.
+        /// It reads existing state and decides nothing, which is what keeps this addition from
+        /// changing any row this driver has already produced.
+        /// </summary>
+        public bool RunActive => Outcome == EndReason.Running;
 
         /// <summary>Simulated seconds since the run began.</summary>
         public float ElapsedS { get; private set; }
