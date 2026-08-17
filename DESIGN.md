@@ -384,10 +384,56 @@ nauči redoslijed umjesto vožnje. Isti razlog stoji iza podjele na train i eval
 politika koja je naučila jednu stazu napamet pada na drugoj, a to se vidi samo ako druga
 staza postoji.
 
+**Odlučeno za M3 (feature 006, prije koda).**
+
+**Frekvencija odluke.** Fizika ide na 50 Hz (`Fixed Timestep: 0.02`), ljudski dataset je snimljen
+na 14.08 Hz (`COMPARE_HZ`), a 50 se sa 14.08 ne dijeli. `DecisionPeriod = 4` daje **12.5 Hz**,
+najbližu ostvarivu frekvenciju ispod dataset rate-a; `DecisionPeriod = 3` bi dao 16.67 Hz.
+Odlučivati brže nego što je čovjek snimljen znači praviti više promjena komande u sekundi nego
+raspodjela iz koje je prag 0.55 izmjeren, čime prag tiho postaje lakši za izbjeći. Na 12.5 Hz je
+korak nešto duži nego u datasetu, pa ista putanja daje nešto veće delte po koraku, dakle greška
+ide u stranu strožijeg kažnjavanja.
+
+**Prag bez svoje frekvencije nije prag.** 0.55 je P95 od |Δsteering| na 14.08 Hz, pa se frekvencija
+odluke upisuje uz svaki run. Feature 005 je istu grešku već sreo: ista vožnja daje različit broj za
+glatkoću na fizičkom taktu i na `COMPARE_HZ`.
+
+Ono što tabela sama ne rješava:
+
+- Kazna za nagli steering množi **cijelu** |Δ|, ne višak iznad praga, kako tabela i piše.
+  Posljedica je skok: delta 0.549 ne košta ništa, 0.551 košta 0.00276. To je svojstvo odluke,
+  zapisano ovdje da se kasnije ne pročita kao greška u kodu.
+- Brzina se plaća samo naprijed. `v_norm` je predznačen, pa se negativni dio odsijeca na nulu;
+  inače bi vožnja unazad zarađivala po simetriji sa onim što gubi.
+- Kazna za zid se dodaje **prije** kraja epizode. Obrnut redoslijed je izbacuje iz epizode kojoj je
+  trener pripisuje.
+- Pogrešan smjer se boduje na **prelazu** u stanje, ne svaki korak dok stanje traje. Prsten drži
+  `WrongWay` kao zapamćeno stanje, pa bi bodovanje po koraku jednu grešku naplatilo desetinama
+  puta. Time M3 zatvara ono što je M2 ostavio otvorenim: pravilo je prijavljivalo, sada i boduje, i
+  to iz iste detekcije.
+- Dodire zida za agenta broji **zaseban component** (`WallSensor`), a ne isti kod kojim ih broji
+  heuristički vozač. Unity isporučuje `OnCollisionEnter` svakom componentu na objektu, pa dva
+  brojača rade nezavisno. Dupliranje je namjerno: kod koji je proizveo objavljene redove feature-a
+  005 se ne dira zbog ušteda od petnaestak linija.
+- Svaki član rewarda se prijavljuje zasebno (`reward/checkpoint`, `reward/wrong_way`, `reward/wall`,
+  `reward/step`, `reward/speed`, `reward/jerk`), a njihov zbir mora biti jednak povratu epizode.
+  **Ukupan reward koji raste ne kaže koji ga je član podigao**, a to je razlika između napretka i
+  naplaćivanja nagrade za brzinu u krug.
+
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili
 - 60 s bez novog checkpointa (zaglavljen), ili
 - 3 kompletirana kruga (uspjeh).
+
+**Dodano za M3 (feature 006).** Uz pravilo zaglavljivanja stoji i tvrda granica `MaxStep = 6000`
+koraka, dakle 120 s na 50 Hz. Heuristički vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri
+kruga oko 80 s, a 120 s ostavlja pola toga kao rezervu za politiku koja je sporija od heuristike.
+
+**Razlika između kraja i presjecanja nije kozmetička.** Sudar i tri kruga su terminalni; obje
+vremenske granice su presjecanje. Trener drugačije procjenjuje vrijednost presječene epizode, pa bi
+završavanje vremenski ograničene epizode kao da je vozilo udarilo u zid naučilo politiku da je
+preživjeti 120 s kažnjeno. Zato se razlozi bilježe odvojeno: `WallContact`, `LapsCompleted`,
+`Stalled` i `StepLimit`.
 
 ### 4.7 Heuristički vozač (feature 005, referentna vrijednost bez učenja)
 
@@ -522,11 +568,52 @@ frame clocku. Popravka je izmjena vozila, što je van opsega ovog feature-a.
 
 - `mlagents-learn config/ppo_car.yaml --run-id=ppo_car_vXX`
 - Početni hiperparametri: batch 2048, buffer 20480, lr 3e-4 (linear decay),
-  hidden 256×2, gamma 0.99, max_steps 2–5M.
+  hidden 256×2, gamma 0.99.
 - 8–16 paralelnih kopija staze u sceni (Training Area pattern) - brži trening.
 - Praćenje: TensorBoard (cumulative reward, episode length, policy loss).
 - Kriterij uspjeha: agent stabilno završava 3 kruga bez sudara u 95%+ epizoda.
 - Izlaz: `.onnx` model → nazad u Unity za inference demo.
+
+**Odlučeno za M3 (feature 006, prije koda).**
+
+**`max_steps` se ne piše unaprijed.** Ranija verzija ove sekcije je pisala 2-5M, a taj raspon je
+star koliko i sekcija: napisan prije nego što je išta u ovom okruženju izmjereno. Jedini broj koji
+projekat ima je 700 koraka/s na 3DBall, uz koji `ENVIRONMENT.md` izričito piše da je gornja granica,
+jer naše okruženje ima WheelCollider fiziku i 13 raycastova po koraku. Zato budžet postavlja **pilot
+run** od oko 100k koraka, iz izmjerene propusnosti i granice od 12 sati. Razlika između 100 i 30
+koraka/s je razlika između 4.3M i 1.3M koraka u istoj noći, a to je preširoko da bi se biralo iz
+tabele.
+
+**Raspored trening kopija.** Svaka kopija je samostalna: svoj `TrackBuilder`, svoj prsten markera,
+svoj `StartPlacer`, svoje vozilo, svoj agent. Kopije stoje na mreži sa korakom **300 m**. Broj nije
+proizvoljan: zrake su duge 20 m, a staza ima oko 200 m centralne linije, pa 300 m drži barijere
+jedne kopije izvan dosega senzora svake druge. Jeftinije od sloja fizike po kopiji, i vidljivo u
+scene view-u, što je bitno kad nešto krene naopako.
+
+**Rotacija seedova.** Epizode se vuku iz svih **34 trening seeda**, a scena za trening 10 eval
+seedova ne učitava nikad. Sa 8 do 16 kopija nijedan raspored ne pokriva 34 seeda bez rotacije, pa
+svaka kopija mijenja stazu svakih K epizoda. **Ne unutar `OnEpisodeBegin`**: taj callback je sinhron,
+a rušenje i gradnja staze traju najmanje tri frame-a, jer stari collideri nestaju u jednom, a novi
+se registruju tek u sljedećem fizičkom koraku. Zamjena ide između epizoda, sa isključenim agentom te
+kopije.
+
+**Prag šuma prije svakog poređenja.** Isti postupak koji su feature 004 (R13) i 005 (T027) već
+koristili, ali sa cijenom koju PPO nosi: tri identična runa punog budžeta su tri noći. Zato se prag
+mjeri na **smanjenom budžetu**, iz tri runa koja se razlikuju samo po `--seed`, i **sva poređenja
+konfiguracija se rade na tom istom budžetu**. Puni budžet dobija samo konfiguracija koja je tu
+pobijedila. Ograničenje se piše, ne prešućuje: politika koja još uči je bučnija od konvergirane, pa
+je prag sa smanjenog budžeta vjerovatno precijenjen, a to je sigurna strana za pitanje je li razlika
+iznad šuma.
+
+**Krive kao podaci.** `results/tensorboard/` i `events.out.tfevents.*` ostaju van gita, jer su
+binarni i rastu sa runom. Commituje se **destilovani CSV po runu** u `results/rl/curves/`, bez
+zaglađivanja i bez presempliranja, sa šest serija po članu rewarda uz standardne. Broj koji se
+citira mora biti provjerljiv iz repozitorija, a slika sa nečijeg ekrana to nije.
+
+**Izvezeni model nije politika koja je trenirala.** PPO tokom treninga uzorkuje iz raspodjele, a
+`BehaviorParameters` nosi zastavicu za determinističku inferencu, pa iste težine daju dva različita
+vozača. Evaluacija za M5 se radi **deterministički**, jer su i heuristika i BC deterministični, a
+razlika između dva načina se mjeri i zapisuje umjesto da se pretpostavi.
 
 ## 6. BC pipeline (PyTorch, CUDA)
 
