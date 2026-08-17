@@ -81,7 +81,7 @@ record on termination.
 | `lapsCompleted` | int | from `CheckpointRing.LapCount` |
 | `checkpointsAwarded` | int | from `CheckpointRing.AwardedCount` |
 | `wallContacts` | int | from `WallSensor` |
-| `endReason` | enum | `WallContact`, `LapsCompleted`, `StepLimit` |
+| `endReason` | enum | `WallContact`, `LapsCompleted`, `Stalled`, `StepLimit` |
 | `reward` | reward breakdown | as above |
 
 **State transitions.**
@@ -98,6 +98,7 @@ RUNNING, each agent step
 
 RUNNING -> WallContact     when WallSensor reports a new contact      (reward -5.0, EndEpisode)
 RUNNING -> LapsCompleted   when ring.LapCount reaches the target      (EndEpisode)
+RUNNING -> Stalled         when 60 s pass with no new marker          (truncation, not terminal)
 RUNNING -> StepLimit       when steps reach MaxStep                   (truncation, not terminal)
 ```
 

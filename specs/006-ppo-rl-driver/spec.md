@@ -193,7 +193,10 @@ held-out seeds and confirm they use the same measures as the columns already rec
 - **FR-010**: Every episode MUST begin from a randomised legal start using the randomisation
   already fixed in the design, so that the agent cannot learn one approach to one corner
 - **FR-011**: Every episode MUST end, and MUST end for exactly one recorded reason among wall
-  contact, completing the required number of laps, and exceeding a step limit
+  contact, completing the required number of laps, going too long without reaching a new marker,
+  and exceeding a total step limit. The last two are both time limits and both are truncations,
+  but they answer different questions and a run that conflates them cannot say whether a policy
+  was stuck or merely slow
 - **FR-012**: Episodes MUST draw their track from the accepted training seeds, varying across the
   run, so that the policy is exposed to the same variety of tracks the scripted driver was
   measured on

@@ -116,15 +116,23 @@ step.
 
 ## R5: When an episode ends, and how long it may run
 
-**Decision.** Three terminal conditions, matching FR-011:
+**Decision.** Four recorded conditions, matching FR-011:
 
 | Condition | Call | Reward |
 |---|---|---|
 | Barrier contact | `EndEpisode()` | `-5.0` applied first |
 | Required laps completed | `EndEpisode()` | the last checkpoint reward only |
-| Step limit reached | `Agent.MaxStep`, which raises `EpisodeInterrupted` semantics internally | nothing extra |
+| 60 s without a new marker | `EpisodeInterrupted()` | nothing extra |
+| Total step limit reached | `Agent.MaxStep`, which raises `EpisodeInterrupted` semantics internally | nothing extra |
 
 `MaxStep = 6000` agent steps, which is 120 s at 50 Hz.
+
+**Corrected after first drafting.** This item originally listed three conditions and missed the
+stall rule `DESIGN.md` 4.6 already fixed in M2: 60 s without a new checkpoint. Both time limits are
+kept, because they answer different questions. The stall rule catches a policy that has stopped
+making progress while the total cap bounds a policy that is merely slow, and a single reason
+covering both would make the end-reason distribution unreadable. `DESIGN.md` 4.6 now carries both,
+and FR-011 was amended before any code was written.
 
 **Rationale.** The scripted driver's 34 completed laps in
 `results/heuristic/runs_2026-08-16_17-26-51.csv` have lap times between 25.28 s and 27.52 s, mean
