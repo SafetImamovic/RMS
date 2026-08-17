@@ -1,0 +1,62 @@
+# PPO trainer configuration for the M3 driving agent (feature 006).
+#
+# Committed because a hyperparameter that exists only in a shell history is not reproducible
+# (Constitution Principle VI, FR-014). This file is the one a run actually used; the run id, the
+# trainer seed and the device are command-line arguments, because they identify a run rather than
+# configure the trainer.
+#
+#   mlagents-learn config/ppo_car.yaml --run-id=ppo_car_vNN --seed=<n> --torch-device=cuda
+#
+# Run it from the repository root, so the trainer's results/ is the project's results/
+# (ENVIRONMENT.md). Full contract: specs/006-ppo-rl-driver/contracts/training-config.md
+behaviors:
+  # Must match BehaviorParameters.BehaviorName on the prefab exactly. A mismatch does not error:
+  # the trainer simply never sees the agent and the run sits at zero steps.
+  CarDriver:
+    trainer_type: ppo
+
+    hyperparameters:
+      # Starting values from DESIGN 5. These are what tuning may change, one per run, each with
+      # its own row in results/EXPERIMENTS.md (FR-007).
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 3.0e-4
+      learning_rate_schedule: linear
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+
+    network_settings:
+      # Pinned true. The observation vector mixes normalised ray distances in [0, 1] with signed
+      # speeds and heading dots, so the ranges differ and the network should not have to learn
+      # the scaling before it learns the driving.
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    # PROVISIONAL, and deliberately small. This is the reduced budget the noise-floor runs and
+    # the configuration comparisons use (research R9), not the full-run value.
+    #
+    # T031 sets the full budget from the throughput T030 measures. It is not chosen here because
+    # the only figure this project has is 700 steps/s on 3DBall, which ENVIRONMENT.md itself calls
+    # an upper bound: our environment adds WheelCollider physics and 13 raycasts per step. At 100
+    # steps/s a twelve-hour run reaches 4.3M steps and at 30 steps/s it reaches 1.3M, which is too
+    # wide a spread to pick a number from a table.
+    max_steps: 500000
+
+    # An episode is at most 6000 agent steps, being 120 s at 50 Hz (DESIGN 4.6), so the horizon is
+    # well inside one episode and the value function bootstraps rather than waiting for a terminal.
+    time_horizon: 128
+
+    # Pinned. It fixes the resolution of every committed curve, so two runs' CSV exports line up
+    # row for row (contracts/curve-export.md).
+    summary_freq: 10000
+
+    keep_checkpoints: 5
+    checkpoint_interval: 100000
