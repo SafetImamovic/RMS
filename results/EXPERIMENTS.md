@@ -56,4 +56,19 @@ Notes on the pair, since a table row cannot carry them:
 
 | Date | Run ID | Changed | Outcome | Kept |
 |---|---|---|---|---|
-| | | | | |
+| 2026-08-17 | `ppo_car_smoke` | First run of anything. 12 training areas, 34 training seeds rotating every 5 episodes, reward table as DESIGN 4.5 fixes it, `config/ppo_car.yaml` at its provisional 500k budget | Connected on package 4.0.3 / communication 1.5.0. **500,000 steps in 814.9 s**, so 660 steps/s in steady state. **The policy did not learn.** Cumulative reward went from -4.852 over the first ten summaries to -4.332 over the last ten, inside a per-summary spread of 2 to 3. Checkpoint reward fell, 0.321 to 0.219, against the 24 markers a lap needs. Episodes ran 387 to 727 steps, so 8 to 15 s, and the wall term sat near -3.0 throughout | Not a candidate model. Kept as the throughput measurement (T030) and as the first evidence that 500k steps is not a budget at which this reward produces progress |
+
+Notes on the first run, since a table row cannot carry them:
+
+- **The throughput is the good news.** `ENVIRONMENT.md` warned that 700 steps/s on 3DBall was an
+  upper bound and that WheelCollider physics with 13 raycasts would be "substantially slower". It
+  is not: 660 steps/s steady state with twelve areas. A 5M-step run is about 2.1 hours, which is
+  what makes the tuning FR-007 expects affordable at all.
+- **What the run does not say.** It does not say the reward is wrong, or that the budget is the
+  only problem, or that the wall penalty is too harsh. Those are the candidate explanations and
+  each one is a separate run with one changed thing (FR-007). What it says is that at this budget,
+  with these weights, the agent ends episodes against a barrier after 8 to 15 seconds having taken
+  a fifth of one marker, and that not one of the six reward terms trended anywhere over 500k steps.
+- The per-term series are what make that legible rather than guessed. `reward/checkpoint` flat near
+  0.2 underneath a total that wanders between -3.7 and -5.1 is precisely the case FR-008 exists to
+  expose, and it was visible in TensorBoard while the run was going rather than afterwards.
