@@ -53,6 +53,16 @@ namespace SelfDrivingSim.Agent
             LapsCompleted,
             Stalled,
             StepLimit,
+
+            /// <summary>
+            /// The area put a different track under the car and cut the episode short.
+            ///
+            /// Not a policy outcome, and it is here so the accounting closes rather than to be read
+            /// as one. The trainer counts a swap-ended episode in `Environment/Cumulative Reward`
+            /// like any other, so leaving it out of the breakdown made the two disagree: see the
+            /// FR-008 note in `results/EXPERIMENTS.md` for the 0.69 that cost.
+            /// </summary>
+            TrackSwapped,
         }
 
         /// <summary>Why the episode that just ended, ended.</summary>
@@ -366,7 +376,36 @@ namespace SelfDrivingSim.Agent
             stats.Add("reward/step", _reward.StepCostTotal);
             stats.Add("reward/speed", _reward.ForwardSpeed);
             stats.Add("reward/jerk", _reward.SteeringJerk);
-            stats.Add("episode/end_" + Outcome.ToString().ToLowerInvariant(), 1f);
+
+            // Summed, not averaged. The default aggregation takes the mean, and the mean of a
+            // value that is always 1.0 is 1.0 however often it was written: `ppo_car_v01` reported
+            // exactly 1.0000 for both reasons that occurred over 5M steps and carried no
+            // information about how often either happened. Summing makes the series a count, which
+            // is what a distribution needs and what T036 asked for.
+            stats.Add(
+                "episode/end_" + Outcome.ToString().ToLowerInvariant(),
+                1f,
+                StatAggregationMethod.Sum);
+        }
+
+        /// <summary>
+        /// End the episode because the area is changing track under the car (<see cref="EndReason.TrackSwapped"/>).
+        ///
+        /// The area owns the swap, so it owns this call. What it must not do is end the episode
+        /// itself: the trainer counts every episode that ends, and one ended without passing
+        /// through here is in the cumulative reward while its six terms are missing from the
+        /// breakdown, which is how the FR-008 residual got in.
+        ///
+        /// It is <c>EpisodeInterrupted</c> rather than <c>EndEpisode</c> because the episode was
+        /// cut by the environment rather than finished by the policy, and the trainer bootstraps
+        /// the value of a truncated episode instead of treating the return as complete.
+        /// </summary>
+        public void EndForTrackSwap()
+        {
+            Outcome = EndReason.TrackSwapped;
+            _runActive = false;
+            ReportEpisode();
+            EpisodeInterrupted();
         }
 
         /// <summary>

@@ -135,7 +135,13 @@ namespace SelfDrivingSim.Track
 
                 // The episode that spans a swap is not a fair sample of either track, so it is
                 // ended rather than allowed to finish on a course it did not start on.
-                agent.EndEpisode();
+                //
+                // Through the agent's own path, not `EndEpisode` directly. The trainer counts a
+                // swap-ended episode in `Environment/Cumulative Reward` either way, so ending it
+                // from outside left its six terms out of the breakdown and made FR-008 fail by
+                // about 0.69 across every summary of `ppo_car_smoke` and `ppo_car_v01`. Rotating
+                // every five episodes, roughly one episode in six ended here.
+                agent.EndForTrackSwap();
                 _episodesAtSwap = agent.CompletedEpisodes;
             }
         }
