@@ -178,3 +178,46 @@ episodes per window, since 16 episodes gives 0.0008 while 21 gives -0.5353. FR-0
 tolerance — "the six terms sum to the total" is a derived check, not a threshold the spec states.
 The defect that made the breakdown unreadable is fixed. A residual an order of magnitude smaller and
 of no fixed sign is recorded here rather than rounded away.
+
+### The noise floor: sd 0.0924 on the run mean, and a gate of 0.19
+
+Three runs at the T045 budget, identical but for `--seed`, are `ppo_car_spread_a`, `_b` and `_c`
+above. This is the number every comparison in M3 is tested against, and it exists so that no
+configuration is called better than another on a difference the seed alone could have produced.
+
+**The metric is the run mean of `Environment/Cumulative Reward`** over all 200 summaries of a
+2,000,000-step run. Stated explicitly because FR-020 requires it, and chosen over late-phase
+checkpoint reward because it is tighter and uses every summary rather than a tail.
+
+| | a (seed 1) | b (seed 2) | c (seed 3) | mean | sd | range |
+|---|---|---|---|---|---|---|
+| run mean | -4.5070 | -4.6613 | -4.6722 | -4.6135 | **0.0924** | 0.1651 |
+| last-50 mean | -4.4003 | -4.5490 | -4.6721 | -4.5404 | 0.1361 | 0.2718 |
+| last-50 checkpoint | 0.2012 | 0.2393 | 0.3212 | 0.2539 | 0.0613 | 0.1200 |
+| within-run sd | 0.4911 | 0.5022 | 0.5360 | 0.5098 | | |
+| episodes | 4,990 | 5,093 | 4,866 | | | |
+| wall / stalled / swapped | 45.6 / 41.0 / 13.4 | 47.9 / 38.9 / 13.3 | 47.0 / 39.8 / 13.2 | | | |
+| laps completed | 0 | 0 | 0 | | | |
+
+**The gate is 0.19**, two standard deviations rounded up, with the observed range of 0.1651 as a
+cross-check just inside it. A candidate whose run mean differs from its baseline by less than 0.19
+is recorded as having made no measurable difference, not dropped.
+
+**Between-run spread is five times smaller than within-run spread**, 0.0924 against 0.5098. That is
+the result that makes the gate usable: a single summary is far too noisy to compare anything, while
+a run mean is stable. It also condemns any comparison quoted from a few summaries, which would be
+reading scatter five times larger than the effect being tested.
+
+**Two honest limits.** Three runs estimate a standard deviation to roughly 50 per cent, so 0.19 is
+a working threshold and a result landing near it deserves a fourth run rather than a verdict. And
+research R9 expected a reduced-budget spread to over-estimate the full-budget one, since a policy
+still improving is noisier than a converged one. That argument does not apply here, because this
+policy is not improving at any budget: v01 was flat over 5M and all three of these are flat over
+2M. The risk points the other way instead. A candidate that genuinely starts to learn may be
+noisier than these three, so clearing 0.19 is credible while failing to clear it is weaker evidence
+of no effect than it appears.
+
+**What the set says beyond the number.** The end-reason mix is the same to within two points across
+three independent seeds, no run completed a lap, and late-phase checkpoint reward sits near 0.25
+against the 24 markers a lap needs. The stall-not-drive result first seen in `ppo_car_v01` under
+seed 42 is now reproduced under seeds 1, 2 and 3, so it belongs to the reward rather than to a seed.
