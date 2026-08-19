@@ -96,6 +96,31 @@ def test_all_six_reward_terms_have_a_column():
         assert f"reward_{term}" in names
 
 
+def test_all_five_end_reasons_have_a_column():
+    # T036 asks for a distribution, and a distribution needs every reason the agent can record,
+    # including the ones a healthy run never produces. `end_lapscompleted` absent from the schema
+    # would hide the difference between "no lap was completed" and "laps were not counted".
+    names = [name for name, _ in export_curves.COLUMNS]
+
+    for reason in ("wallcontact", "lapscompleted", "stalled", "steplimit", "trackswapped"):
+        assert f"end_{reason}" in names
+
+
+def test_an_end_reason_that_never_occurred_writes_empty_rather_than_zero():
+    # The distinction the whole export turns on, applied to the counts. A reason absent from the
+    # event file means the trainer recorded nothing, which is not the same claim as "it happened
+    # zero times", and only one of those two is safe to average across runs.
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/end_wallcontact": {10000: 41.0},
+    }
+
+    rows = export_curves.to_rows(data, "counts")
+
+    assert rows[0]["end_wallcontact"] == 41.0
+    assert rows[0]["end_lapscompleted"] == ""
+
+
 def test_a_run_that_stopped_early_exports_the_rows_it_has():
     data = {
         REFERENCE: {10000: 1.0, 20000: 2.0},

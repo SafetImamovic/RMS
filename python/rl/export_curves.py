@@ -55,6 +55,15 @@ COLUMNS: Sequence[tuple] = (
     ("reward_step", "reward/step"),
     ("reward_speed", "reward/speed"),
     ("reward_jerk", "reward/jerk"),
+    # Counts, not means, and only because the agent asks the trainer to sum them. A run trained
+    # before that change wrote these as an average of a constant 1.0 and carried no frequency
+    # information; it exports them as empty, which is the honest answer rather than a 1.0 that
+    # looks like a count of one.
+    ("end_wallcontact", "episode/end_wallcontact"),
+    ("end_lapscompleted", "episode/end_lapscompleted"),
+    ("end_stalled", "episode/end_stalled"),
+    ("end_steplimit", "episode/end_steplimit"),
+    ("end_trackswapped", "episode/end_trackswapped"),
 )
 
 HEADER: Sequence[str] = ("run_id", "step") + tuple(name for name, _ in COLUMNS)
