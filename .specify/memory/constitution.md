@@ -53,6 +53,10 @@ Branch model is git-flow; commit granularity is atomic. Full detail lives in
 - One commit = one logical change that leaves the project consistent. If the message
   needs an "and", split it (`git add -p`).
 - Messages follow Conventional Commits: `<type>(<scope>): <imperative ≤50 chars>`.
+- **A commit message is its subject line and nothing else.** One `-m`, no body, no
+  trailing paragraphs. The reasoning belongs in the artefacts that are read: the spec,
+  `results/EXPERIMENTS.md`, the task list, `DESIGN.md`. A body duplicates them and then
+  drifts from them, and the subject is what a reader of `git log --oneline` sees.
   Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `exp` (training run).
   Scopes: `unity`, `bc`, `eval`, `config`, `data`, `spec`.
 - Unity: a script, its `.meta`, and the scene edit that uses it are one logical change
@@ -60,12 +64,17 @@ Branch model is git-flow; commit granularity is atomic. Full detail lives in
 
 ### III. Human-Only Commits & Reviewed Handoffs (NON-NEGOTIABLE)
 
-**No AI agent commits or pushes, ever - under any circumstance, on any branch,
-including when explicitly told to "just commit it".** An agent MUST NEVER run
-`git commit`, `git push`, `git merge`, `git rebase`, `git tag`, `git reset`, or any
-other history-mutating command. Read-only git (`status`, `log`, `diff`,
-`branch --list`, `show`) is allowed. All commits and pushes are performed by the
-repository owner, by hand.
+**The default is that an agent does not commit, and the owner may suspend that
+default by saying so.** Unprompted, an agent MUST NOT run `git commit`, `git push`,
+`git merge`, `git rebase`, `git tag`, `git reset`, or any other history-mutating
+command; it prepares the change and stops. Read-only git (`status`, `log`, `diff`,
+`branch --list`, `show`) is always allowed.
+
+On an explicit instruction from the owner to run them, an agent runs them, and does not
+re-litigate the point. The permission is the owner's to give: he is the sole contributor
+and the sole author of record, so the rule protects his control of history rather than
+anyone else's. An instruction covers the work in front of it and does not become
+standing; the default returns on the next task.
 
 **Every handoff requires an explain-and-review step.** After an agent creates or edits
 files, before the owner commits, the agent MUST:
@@ -255,8 +264,9 @@ A gate is not "reached" until its exit criterion is demonstrable from a clean cl
 - This constitution supersedes all other working practices. A conflict between it and a
   task, prompt, or habit is resolved in its favor; the contributor stops and proposes
   an amendment rather than deviating quietly.
-- **Amendments** are made by editing this file in a `docs(spec):` commit whose body
-  states what changed and why. Version bumps follow semver:
+- **Amendments** are made by editing this file in a `docs(spec):` commit. What changed
+  and why is stated in the amendment log below rather than in the commit body, which
+  Principle II does not allow. Version bumps follow semver:
   - **MAJOR** - a principle is removed or redefined in a backward-incompatible way.
   - **MINOR** - a new principle or section is added, or guidance is materially expanded.
   - **PATCH** - wording, typo, or non-semantic clarification.
@@ -276,5 +286,6 @@ A gate is not "reached" until its exit criterion is demonstrable from a clean cl
 | 1.3.0 | 2026-07-29 | Principle V gained a binding writing-style rule: no em dashes, sparing bold. Applied across the repository in the same commit |
 | 1.4.0 | 2026-08-05 | Principle III gained the no-attribution rule: commit messages, pull request bodies, tags and run-log entries carry no tool trailers |
 | 1.5.0 | 2026-08-08 | Principle II accepts the spec-kit `NNN-<kebab-desc>` branch form alongside `feature/`. The repository already carried both shapes and the rule recognised only one, so compliance depended on which branch a reader looked at |
+| 2.0.0 | 2026-08-19 | Principle III redefined: an agent does not commit by default, but the owner may suspend that default by saying so, which is what practice had already become. Principle II gained the subject-only commit rule, one `-m` and no body, and the Governance clause that required an amendment body was corrected to match it |
 
-**Version:** 1.5.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-08-08
+**Version:** 2.0.0 | **Ratified:** 2026-07-23 | **Last Amended:** 2026-08-19
