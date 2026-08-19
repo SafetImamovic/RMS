@@ -57,6 +57,76 @@ Notes on the pair, since a table row cannot carry them:
 | Date | Run ID | Changed | Outcome | Kept |
 |---|---|---|---|---|
 | 2026-08-17 | `ppo_car_smoke` | First run of anything. 12 training areas, 34 training seeds rotating every 5 episodes, reward table as DESIGN 4.5 fixes it, `config/ppo_car.yaml` at its provisional 500k budget | Connected on package 4.0.3 / communication 1.5.0. **500,000 steps in 814.9 s**, so 660 steps/s in steady state. **The policy did not learn.** Cumulative reward went from -4.852 over the first ten summaries to -4.332 over the last ten, inside a per-summary spread of 2 to 3. Checkpoint reward fell, 0.321 to 0.219, against the 24 markers a lap needs. Episodes ran 387 to 727 steps, so 8 to 15 s, and the wall term sat near -3.0 throughout | Not a candidate model. Kept as the throughput measurement (T030) and as the first evidence that 500k steps is not a budget at which this reward produces progress |
+| 2026-08-18 | `ppo_car_v01` | One thing: the budget, 500k to **5,000,000 steps**, the value T031 set from the pilot's throughput. Same twelve areas, same seeds, same reward weights, same `config/ppo_car.yaml` otherwise. Seed pinned at 42, which the pilot left to the trainer | **5,000,000 steps in 7,308.3 s across two segments**, 684 steps/s. **The budget is not the explanation.** Ten times the pilot's length and the total is flat: first and last 250 summaries are -4.573 and -4.409, against a standard deviation of 0.512 across the 500 summary means. Checkpoint reward *fell again*, 0.394 to 0.245, so **0.249 markers per episode in the late phase against the 24 a lap needs**. `episode/end_lapscompleted` never appears, at any point in 5M steps. What did move is the policy learning **to stall instead of to drive**: wall share 60.1 to 45.2 percent, episode length 465 to 548 steps, step cost -1.797 to -2.031 | Not a candidate model. Kept as the run that retires the budget hypothesis, and as the evidence that the reward's degenerate solution is passivity |
+| 2026-08-19 | `ppo_car_spread_a` | Nothing about the policy. First of the three T046 spread runs: `config/ppo_car_spread.yaml`, which differs from the pinned config in `max_steps` alone (5M to the **2,000,000** T045 chose), `--seed=1`. Same twelve areas, same seeds, same reward weights. **First run carrying the fixed instrumentation**, so its end-reason counts are counts | **2,000,000 steps in 2,834.0 s**, 706 steps/s, uninterrupted. Cumulative reward mean **-4.5070, sd 0.4911** over 200 summaries, range -6.0466 to -3.0214. First 25 to last 25 summaries: -4.7968 to -4.3147, **+0.4820**. **The v01 signature reproduces at 2M**: wall term -2.5283 to -1.9120 and episode length 463.6 to 540.6 steps, while checkpoint reward *fell* 0.2541 to 0.2248 and step cost went -1.4809 to -1.7808. Over 4,990 episodes: **45.6% wall contact, 41.0% stalled, 13.4% track-swapped, zero laps completed, zero step-limit**. Those are read counts, not derived shares | Not a candidate model. Kept as run a of the three T047 needs. The seed changed and the stall-not-drive result did not, which is the first evidence it is a property of the reward rather than of seed 42 |
+
+Notes on the first full run:
+
+- **The budget hypothesis is dead, and that is the result.** The pilot could not distinguish "too
+  few steps" from "wrong weights". At 5M the total is flat over the whole run, and the first-ten to
+  last-ten improvement of 0.765 that a reader might quote is not one: split by halves the same
+  series moves 0.163 against a summary-mean spread of 0.512. The two remaining candidates from the
+  pilot, the jerk penalty's scale and the -5.0 wall terminal, are now the next two runs.
+- **The policy did learn something, and it is the wrong thing.** Avoiding the barrier and reaching
+  markers are separable, and it took the first: wall share fell by 15 points while checkpoint reward
+  fell too, and episodes got 83 steps longer. Driving less is a cheaper way to stop paying -5.0 than
+  driving better, and nothing in the current weights prefers the second. That is a reward design
+  finding rather than a tuning one.
+- **Only two end reasons occur in 5M steps**, `end_stalled` and `end_wallcontact`, splitting about
+  evenly (50.1 / 49.9 over the run, 48.3 / 51.7 in the late fifth). No lap was ever completed and the
+  6000-step cap was never reached.
+- Entropy fell 1.4137 to 1.3220 over 5M steps and floors there, so the policy stayed near its initial
+  spread for the whole run rather than committing to a behaviour.
+- **The run was interrupted once and resumed**, which the reproduction needs to know. Segment one ran
+  0 to 1,210,000 in 1,800.5 s and was killed by a 30-minute cap in the tooling that launched it, not
+  by anything in the trainer; segment two resumed from checkpoint `CarDriver-1199901` and ran to
+  5,000,000 in 5,507.8 s, exiting cleanly. The trainer warned `Training status file not found`,
+  because a killed process never writes `run_logs/training_status.json`. What that costs is
+  checkpoint bookkeeping and the lifetime stats history. It does **not** cost the schedules:
+  `ppo/optimizer_torch.py:108` computes the decayed learning rate, epsilon and beta from
+  `policy.get_current_step()`, which the checkpoint restored, so the linear decay resumed in place.
+  The two segments' logs are committed separately, and the run directory holds two event files that
+  the exporter merges by tag and step.
+
+### FR-008 does not hold, in this run or in the pilot
+
+The requirement is that the six reported terms sum to the agent's cumulative reward. Measured over
+every summary rather than one of them, they do not:
+
+| Run | Summaries | Mean residual | Std | Share off by more than 0.05 |
+|---|---|---|---|---|
+| `ppo_car_smoke` | 50 | -0.675 | 0.362 | 96.0 percent |
+| `ppo_car_v01` | 500 | -0.694 | 0.345 | 97.4 percent |
+
+The residual is the terms' sum minus `Environment/Cumulative Reward`, so the reported breakdown is
+about 0.69 more negative than the total it is supposed to decompose, consistently and in both runs.
+
+The pilot's entry above says the export "confirmed FR-008 on live data" at step 10000, where the
+terms summed to -5.094 against -5.086. That check was correct and the conclusion drawn from it was
+not: the step-10000 row is one of the 4 percent that happen to agree, and one row cannot establish a
+property of 500. The claim is withdrawn here rather than left standing.
+
+What the discrepancy is has not been established and is not guessed at in this entry. The obvious
+candidate is that the two numbers average over different sets of episodes — `ReportEpisode` runs on
+the paths in `DrivingAgent.Finish` and the step-limit branch, while the trainer's cumulative reward
+counts every episode the agent processor sees — but that is a hypothesis for an instrumented check,
+not a finding. It does not affect the per-term *trends* this entry rests on, which are what FR-008
+was written to expose, and it does affect any claim that a term's absolute value accounts for the
+total.
+
+### The end-reason distribution cannot be read from the instrumentation as built
+
+T036 asks for the distribution of end reasons. `DrivingAgent.cs:369` records each one as
+`stats.Add("episode/end_" + reason, 1f)`, and `StatsRecorder` averages by default, so the mean of a
+constant 1.0 is 1.0 however often it occurs. Both tags read exactly `1.0000` over the whole run and
+over the late phase: the series say *which* reasons happened and carry no information about *how
+often*. Counting needs `StatsAggregationMethod.Sum`.
+
+The shares quoted above are therefore derived rather than read: the wall term is exactly -5.0 once
+on an episode that ends against a barrier and 0 otherwise, so its per-episode mean divided by -5.0
+is the wall share, and with only two reasons occurring the stall share is the complement. The
+derivation is sound but indirect, and the aggregation method should be fixed before a run whose
+conclusion depends on these counts.
 
 Notes on the first run, since a table row cannot carry them:
 
@@ -72,3 +142,37 @@ Notes on the first run, since a table row cannot carry them:
 - The per-term series are what make that legible rather than guessed. `reward/checkpoint` flat near
   0.2 underneath a total that wanders between -3.7 and -5.1 is precisely the case FR-008 exists to
   expose, and it was visible in TensorBoard while the run was going rather than afterwards.
+
+### Both instrumentation defects are fixed, and one residual is left unexplained
+
+`ppo_car_fr008_check`, 2026-08-19: 100,000 steps in 165.0 s, the pinned config with `max_steps`
+alone reduced. Not an experiment and it gets no table row — it exists to check that the two defects
+recorded above are gone, and its curve is committed at
+`results/rl/curves/ppo_car_fr008_check.csv`.
+
+**The end-reason series are counts now.** `end_wallcontact` reads 18, 26, 11, 25, 8, 13, 27, 5, 18,
+15 over the ten summaries instead of the flat 1.0000 that carried no frequency information.
+`end_trackswapped` is non-zero in every window, which is the swap-ended episodes reaching
+`ReportEpisode` for the first time.
+
+**The two halves now average over the same episodes.** `reward/wall` equals
+`-5.0 x end_wallcontact / total_episodes` exactly on all ten rows — at step 10000,
+`-5 x 18/39 = -2.3077` against a recorded -2.307692. That identity is the real check: it can only
+hold if the per-term means and the end counts are divided by the same denominator, which is what
+`SwapTo` calling `EndEpisode` directly had broken.
+
+**The systematic residual is gone; a small one is not.** `cumulative_reward` minus the six terms:
+
+| step | 10000 | 20000 | 30000 | 40000 | 50000 | 60000 | 70000 | 80000 | 90000 | 100000 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| residual | -1.5632 | 0.0435 | -0.5353 | -0.3528 | 0.0353 | 0.1345 | -0.0168 | 0.0008 | -0.1902 | -0.0107 |
+
+Before the fix it was -0.694 with the same sign on 97.4% of rows. It is now two-signed, averages
+-0.099 excluding the startup window, and sits inside +/-0.02 on four of ten rows.
+
+**What is left is not explained, and saying so is the point.** Episodes straddling a summary
+boundary is the obvious candidate and it does not survive checking: the residual does not track
+episodes per window, since 16 episodes gives 0.0008 while 21 gives -0.5353. FR-008 sets no numeric
+tolerance — "the six terms sum to the total" is a derived check, not a threshold the spec states.
+The defect that made the breakdown unreadable is fixed. A residual an order of magnitude smaller and
+of no fixed sign is recorded here rather than rounded away.
