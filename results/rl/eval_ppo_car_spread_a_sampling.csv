@@ -1,0 +1,11 @@
+seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,checkpoints_awarded,checkpoints_total,checkpoints_skipped,wall_contacts,end_reason,steer_p95_dsteer,steer_sign_changes_per_s,time_scale,duration_s
+1001,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8605,5.7851,4.00,60.001
+1002,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.7235,5.4184,4.00,60.001
+1003,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8026,5.6018,4.00,60.001
+1004,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8399,5.1683,4.00,60.001
+1005,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8190,5.3350,4.00,60.001
+1006,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8124,4.3847,4.00,60.001
+1007,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8142,5.2683,4.00,60.001
+1008,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.7972,5.2016,4.00,60.001
+1009,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.8384,5.2183,4.00,60.001
+1010,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.7710,4.7015,4.00,60.001

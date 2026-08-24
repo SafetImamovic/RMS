@@ -127,6 +127,22 @@ namespace SelfDrivingSim.Logging
         private static StreamWriter _writer;
         private static string _path;
 
+        /// <summary>
+        /// Which folder under `results/` the session's rows go to. Defaults to the scripted
+        /// driver's, because that is who wrote the first three years of these files.
+        ///
+        /// **Set before the first row, or not at all.** The file opens lazily on the first
+        /// <see cref="Append"/> and is not reopened, so a change after that is silently ignored
+        /// rather than moving rows already written. `DrivingAgent` sets it to "rl" when it is
+        /// configured to record (FR-023, T040), which keeps a learned sweep out of the scripted
+        /// driver's directory without changing the row format that makes them loadable together.
+        ///
+        /// One session writes to one folder. Two drivers recording in the same session would have
+        /// the last writer win, which no scene does today and which is worth knowing before one
+        /// tries.
+        /// </summary>
+        public static string Folder { get; set; } = "heuristic";
+
         /// <summary>Where the current session's rows are going, or null before the first row.</summary>
         public static string Path => _path;
 
@@ -157,7 +173,7 @@ namespace SelfDrivingSim.Logging
             try
             {
                 string dir = RepoPaths.EnsureDir(
-                    System.IO.Path.Combine(RepoPaths.Root, "results", "heuristic"));
+                    System.IO.Path.Combine(RepoPaths.Root, "results", Folder));
                 _path = System.IO.Path.Combine(dir, $"runs_{RepoPaths.TimestampStamp()}.csv");
 
                 _writer = new StreamWriter(_path, false, new UTF8Encoding(false))

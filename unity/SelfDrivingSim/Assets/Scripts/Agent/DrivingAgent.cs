@@ -3,6 +3,7 @@ using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+using SelfDrivingSim.Logging;
 using SelfDrivingSim.Track;
 using SelfDrivingSim.Vehicle;
 
@@ -34,6 +35,36 @@ namespace SelfDrivingSim.Agent
         [SerializeField] private CheckpointRing ring;
         [SerializeField] private StartPlacer placer;
         [SerializeField] private WallSensor wall;
+
+        [Tooltip("Only needed by the evaluation sweep, which records which seed a row was " +
+                 "measured on. Training never reads it, because the area owns the track there.")]
+        [SerializeField] private TrackBuilder track;
+
+        [Header("Evaluation (US2, FR-023)")]
+        [Tooltip("Hand episode control to SweepRunner and write a RunRecord row per run (FR-023). " +
+                 "OFF by default, and that default is load-bearing rather than cautious. It " +
+                 "changes two things at once, and they belong together. " +
+                 "First, output: training runs twelve areas for millions of steps and calls " +
+                 "ReportEpisode on roughly five thousand episodes a run, so writing a sweep row " +
+                 "for each would produce a file nothing asked for and mix training episodes into " +
+                 "the evaluation CSV. " +
+                 "Second, and less obvious, who owns the restart: in training the agent restarts " +
+                 "itself, because ML-Agents wants episodes back to back. IRunDriver promises the " +
+                 "opposite - a run ends and RunActive STAYS false until the runner calls " +
+                 "RestartRun. Left self-restarting, the sweep never observes a run finishing, so " +
+                 "it never advances the seed and the agent drives the first track forever while " +
+                 "writing a row each time. Measured before the fix: ten rows, all seed 1001, with " +
+                 "RunsDone still zero.")]
+        [SerializeField] private bool evaluationMode;
+
+        [Tooltip("What goes in the run record's controller column. " +
+                 "The scripted driver writes its strategy there, because that is what varies " +
+                 "between its runs. A learned policy has no strategy; what varies between its runs " +
+                 "is which training run produced the weights, so the run id goes here and a row " +
+                 "stays self-describing (SC-006). Set it to the run id whose .onnx is on " +
+                 "BehaviorParameters, and nothing checks the two agree, so they are worth checking " +
+                 "by eye.")]
+        [SerializeField] private string runId = "";
 
         [Header("Episode (DESIGN 4.6)")]
         [Tooltip("Laps that count as success. DESIGN 4.6 says three.")]
@@ -68,6 +99,28 @@ namespace SelfDrivingSim.Agent
         /// <summary>Why the episode that just ended, ended.</summary>
         public EndReason Outcome { get; private set; } = EndReason.Running;
 
+        /// <summary>Seconds of simulated time in the current episode, for the run record.</summary>
+        public float ElapsedS { get; private set; }
+
+        /// <summary>
+        /// Barrier contacts in the current episode.
+        ///
+        /// Read from <see cref="WallSensor"/> rather than counted again here, for the reason the
+        /// scripted driver's record gives: two answers to the same question is how a row ends up
+        /// internally inconsistent and believed anyway.
+        /// </summary>
+        public int WallContacts => wall != null ? wall.Contacts : 0;
+
+        /// <summary>
+        /// The two smoothness measures, kept apart (FR-009).
+        ///
+        /// Sampled at <see cref="SteerSmoothness.DefaultCompareHz"/> rather than from a
+        /// <c>DriveTelemetry</c>, which the training prefab does not carry. That is the same rate
+        /// the scripted and imitation columns were measured at, which is the condition under which
+        /// M5 can put the columns beside each other at all.
+        /// </summary>
+        public SteerSmoothness Smoothness { get; } = new SteerSmoothness();
+
         /// <summary>What the last episode's return was made of (FR-008).</summary>
         public RewardModel.Breakdown Reward => _reward;
 
@@ -79,7 +132,9 @@ namespace SelfDrivingSim.Agent
         /// <inheritdoc />
         public void RestartRun()
         {
-            _runActive = true;
+            // A request rather than a direct arm, because EndEpisode runs OnEpisodeBegin
+            // synchronously and that callback is what decides whether the run is live.
+            _restartRequested = true;
             EndEpisode();
         }
 
@@ -99,6 +154,7 @@ namespace SelfDrivingSim.Agent
         private RewardModel.Breakdown _reward;
         private bool _engaged = true;
         private bool _runActive;
+        private bool _restartRequested;
         private int _awardedLast;
         private bool _wrongWayLast;
         private float _steerLast;
@@ -113,6 +169,8 @@ namespace SelfDrivingSim.Agent
             if (ring == null) { ring = GetComponentInParent<CheckpointRing>(); }
             if (placer == null) { placer = GetComponentInParent<StartPlacer>(); }
             if (wall == null) { wall = GetComponent<WallSensor>() ?? GetComponentInChildren<WallSensor>(true); }
+            if (track == null) { track = GetComponentInParent<TrackBuilder>(true); }
+            if (track == null) { track = FindAnyObjectByType<TrackBuilder>(FindObjectsInactive.Include); }
 
             AssertObservationSize();
         }
@@ -207,12 +265,19 @@ namespace SelfDrivingSim.Agent
                 car.ScriptedMove = null;
             }
 
+            // In training the agent arms itself, because the trainer wants episodes back to
+            // back. Under a sweep it must not: IRunDriver promises the run stays over until the
+            // runner asks for the next one.
+            _runActive = !evaluationMode || _restartRequested;
+            _restartRequested = false;
+
             _reward = default;
+            ElapsedS = 0f;
+            Smoothness.Reset();
             _awardedLast = ring != null ? ring.AwardedCount : 0;
             _wrongWayLast = ring != null && ring.WrongWay;
             _steerLast = 0f;
             _stepsSinceAward = 0;
-            _runActive = true;
             Outcome = EndReason.Running;
         }
 
@@ -253,6 +318,12 @@ namespace SelfDrivingSim.Agent
             _reward.StepCostTotal += step;
             _reward.ForwardSpeed += speed;
             _reward.SteeringJerk += jerk;
+
+            // Here rather than in FixedUpdate, so the clock and the steering samples advance on
+            // exactly the ticks the reward terms are charged on. Two different notions of "a step"
+            // in one component is how the episode-length discrepancy in T050 got in.
+            ElapsedS += Time.fixedDeltaTime;
+            Smoothness.Sample(steer, ElapsedS);
 
             AddReward(step + speed + jerk);
             _stepsSinceAward++;
@@ -308,6 +379,14 @@ namespace SelfDrivingSim.Agent
         /// </summary>
         private void CheckTermination()
         {
+            // Between runs the sweep owns the car and the agent is still being stepped. Ending an
+            // episode here would write a row for a run nobody asked for, against whichever seed
+            // happened to be loaded.
+            if (evaluationMode && !_runActive)
+            {
+                return;
+            }
+
             if (wall != null && wall.TakeNewContact())
             {
                 float penalty = RewardModel.Wall(true);
@@ -386,6 +465,74 @@ namespace SelfDrivingSim.Agent
                 "episode/end_" + Outcome.ToString().ToLowerInvariant(),
                 1f,
                 StatAggregationMethod.Sum);
+
+            WriteRunRecord();
+        }
+
+        /// <summary>
+        /// The evaluation row for the episode that just ended (FR-023, US2).
+        ///
+        /// **The same struct the scripted driver writes**, so a learned row and a scripted row load
+        /// through one `pandas` call with no branch on driver type. That is T044's check, and it is
+        /// the whole point of `RunRecord` being a shared type rather than a per-driver format.
+        ///
+        /// Called from <see cref="ReportEpisode"/> because every end path already funnels through
+        /// there. A second write site would be a second place for the two to drift apart, which is
+        /// how the FR-008 residual got in when a swap-ended episode bypassed this method.
+        /// </summary>
+        private void WriteRunRecord()
+        {
+            if (!evaluationMode)
+            {
+                return;
+            }
+
+            // Set before the first Append, which is what RunRecordWriter.Folder requires: the file
+            // opens lazily and is never reopened, so this has to happen ahead of any row rather
+            // than in a one-time setup that might run after one.
+            RunRecordWriter.Folder = "rl";
+
+            if (track == null || track.Current == null)
+            {
+                Debug.LogError(
+                    "[DrivingAgent] no track loaded, so this run cannot say which seed it was " +
+                    "measured on and no row was written. A run record without a seed is not a " +
+                    "data point, and writing one anyway would put a hole in the sweep that looks " +
+                    "like data.", this);
+                return;
+            }
+
+            RunRecordWriter.Append(new RunRecord
+            {
+                Seed = track.Current.seed,
+
+                // The run id, not a strategy. A learned policy has none, and what distinguishes
+                // one of its runs from another is which training run produced the weights.
+                Controller = string.IsNullOrEmpty(runId) ? "(unset)" : runId,
+
+                RayCount = sensing != null ? sensing.RayCount : 0,
+                RayFovDeg = sensing != null ? sensing.RayFovDeg : 0f,
+                RayLengthM = sensing != null ? sensing.RayLengthM : 0f,
+
+                CompletedLap = Outcome == EndReason.LapsCompleted,
+
+                // Negative writes as an empty field. Zero is a lap time, so a failed run must not
+                // contribute one: an aggregate that averages zeros reports a fast sweep.
+                LapTimeS = Outcome == EndReason.LapsCompleted ? ElapsedS : -1f,
+
+                CheckpointsAwarded = ring != null ? ring.AwardedCount : 0,
+                CheckpointsTotal = ring != null ? ring.Count : 0,
+                CheckpointsSkipped = ring != null ? ring.SkippedContactCount : 0,
+                WallContacts = WallContacts,
+                EndReason = Outcome.ToString(),
+
+                // Side by side, never collapsed into one verdict (FR-009).
+                SteerP95DSteer = Smoothness.DeltaSteerP95,
+                SteerSignChangesPerS = Smoothness.SignChangesPerS,
+
+                TimeScale = Time.timeScale,
+                DurationS = ElapsedS,
+            });
         }
 
         /// <summary>
