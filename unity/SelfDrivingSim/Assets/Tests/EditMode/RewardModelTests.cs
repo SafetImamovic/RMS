@@ -66,8 +66,13 @@ namespace SelfDrivingSim.Tests
         [Test]
         public void Speed_pays_forwards_only()
         {
-            Assert.That(RewardModel.Speed(1f), Is.EqualTo(0.001f).Within(Tol));
-            Assert.That(RewardModel.Speed(0.5f), Is.EqualTo(0.0005f).Within(Tol));
+            // Against the constant rather than its arithmetic, for the reason the jerk assertions
+            // are: `ppo_car_speed_hi` tunes this scale, and the rule under test is that the term is
+            // linear in forward speed, not what the weight happens to be this week.
+            Assert.That(
+                RewardModel.Speed(1f), Is.EqualTo(RewardModel.SpeedReward).Within(Tol));
+            Assert.That(
+                RewardModel.Speed(0.5f), Is.EqualTo(RewardModel.SpeedReward * 0.5f).Within(Tol));
             Assert.That(RewardModel.Speed(0f), Is.EqualTo(0f).Within(Tol));
 
             // Reversing earns nothing. Paying the raw signed value would let a policy sit in
@@ -75,7 +80,8 @@ namespace SelfDrivingSim.Tests
             Assert.That(RewardModel.Speed(-1f), Is.EqualTo(0f).Within(Tol));
 
             // An overspeed does not pay more than the term is worth.
-            Assert.That(RewardModel.Speed(1.7f), Is.EqualTo(0.001f).Within(Tol));
+            Assert.That(
+                RewardModel.Speed(1.7f), Is.EqualTo(RewardModel.SpeedReward).Within(Tol));
         }
 
         [Test]
@@ -121,17 +127,39 @@ namespace SelfDrivingSim.Tests
             // surface collects the speed reward without going anywhere. The defence is arithmetic
             // rather than a rule, so it has to be asserted rather than assumed.
             //
-            // At full speed the step cost and the speed reward cancel exactly, so the best
-            // sustainable rate is zero per step against 1.0 for reaching the next marker.
-            Assert.That(RewardModel.Idle(1f), Is.EqualTo(0f).Within(Tol));
+            // This used to read Idle(1f) == 0 exactly, because the table made the step cost and
+            // the speed reward cancel at full speed. `ppo_car_speed_hi` raised SpeedReward to give
+            // the policy a gradient towards moving at all, which turns that identity into a
+            // margin, and this assertion caught the change rather than letting it through. What is
+            // asserted now is the property the identity was protecting, not the identity.
+            //
+            // The margin: circling flat out for a whole episode must stay well under what one lap
+            // of markers pays. A third is the bound DESIGN 4.5 derives the weight from.
+            const float episodeSteps = 6000f;
+            const float lapCheckpoints = 24f;
 
-            // At any speed below the maximum it is strictly negative, so loitering is worse than
-            // nothing rather than merely no better.
-            Assert.That(RewardModel.Idle(0.6f), Is.LessThan(0f));
-            Assert.That(RewardModel.Idle(0.99f), Is.LessThan(0f));
+            float circlingWholeEpisode = RewardModel.Idle(1f) * episodeSteps;
 
-            // And the whole point: one marker outweighs a great many circling steps.
-            Assert.That(RewardModel.Checkpoints(1), Is.GreaterThan(RewardModel.Idle(1f) * 1000f));
+            Assert.That(
+                circlingWholeEpisode,
+                Is.LessThan(RewardModel.Checkpoints(1) * lapCheckpoints / 3f),
+                "circling flat out must stay under a third of a lap, or farming competes with driving");
+
+            // At half speed and below it is still strictly negative, so loitering slowly is worse
+            // than nothing rather than merely no better. Break-even is v_norm 0.5 by construction.
+            Assert.That(RewardModel.Idle(0.4f), Is.LessThan(0f));
+            Assert.That(RewardModel.Idle(0.49f), Is.LessThan(0f));
+
+            // What used to stand here was `Checkpoints(1) > Idle(1f) * 1000f`. Under the old table
+            // Idle(1f) was exactly zero, so that assertion read `1.0 > 0` and constrained nothing;
+            // the 1000 was illustration, not a bound. It is removed rather than retuned, because
+            // promoting a decorative constant into a real constraint on a weight would invent a
+            // requirement the design never made. The episode-level margin above is the derived
+            // bound and is what DESIGN 4.5 sizes the weight from.
+            //
+            // Recorded as a consequence rather than asserted: at SpeedReward 0.002 the car must
+            // circle flat out for 1000 steps, 20 s at 50 Hz, to earn what one marker pays. Under
+            // the old table no amount of circling ever equalled a marker.
         }
 
         [Test]
@@ -163,10 +191,12 @@ namespace SelfDrivingSim.Tests
                 SteeringJerk = RewardModel.Jerk(0.9f) * 3f,
             };
 
-            // The jerk term is written against the constant, not its arithmetic: T048 tunes that
-            // scale, and this test is about the six fields summing rather than about the weight.
+            // The jerk and speed terms are written against their constants, not their arithmetic:
+            // T048 tunes both scales, and this test is about the six fields summing rather than
+            // about any one weight.
             float expected =
-                24f - 1f - 5f + (-0.001f * 1200f) + (0.0008f * 1200f)
+                24f - 1f - 5f + (RewardModel.StepCost * 1200f)
+                + (RewardModel.SpeedReward * 0.8f * 1200f)
                 + (RewardModel.JerkPenalty * 0.9f * 3f);
 
             Assert.That(b.Total, Is.EqualTo(expected).Within(1e-4f));

@@ -443,6 +443,7 @@ Zato se mijenja po jedna težina po runu, svaka u svom redu tabele eksperimenata
 |---|---|---|---|---|
 | `ppo_car_jerk_lo` | `JerkPenalty` | -0.005 | **-0.001** | da li kazna za glatkoću guši istraživanje steeringa koje treba da bi se došlo do markera |
 | `ppo_car_wall_lo` | `WallPenalty` | -5.0 | **-1.0** | obrće odnos iz gornje tačke: udarac (-1.0) postaje jeftiniji od zaglavljivanja (-3.0) |
+| `ppo_car_speed_hi` | `SpeedReward` | 0.001 | **0.002** | spušta prag isplativosti sa `v_norm` 1.0 na 0.5, koliko invarijanta protiv farmanja dopušta (dodan 2026-08-24, obrazložen niže) |
 
 Kazna za steering ostaje živa, ne gasi se na nulu, jer je glatkoća namjera tabele, a prag 0.55 i
 dalje nosi svoju frekvenciju. Petina skale skida oko 0.28 pritiska protiv okretanja volana bez
@@ -467,6 +468,55 @@ ovu politiku zaustavlja. Dva člana koja nijedan kandidat nije dirao su ona koja
 učinila sumnjivim: **cijena koraka -1.676 po runu naspram nagrade za brzinu +0.0069**, dakle vozilo
 plaća 240 puta više za postojanje nego što dobija za kretanje. To je hipoteza za sljedeću izmjenu
 dizajna, ne rezultat ovih runova, i mijenja se tek kad bude zapisana ovdje.
+
+**Treći kandidat, odlučen 2026-08-24 (T048 proširen).** Prethodni pasus je bio hipoteza; ovaj
+pasus je odluka, i piše se prije koda kako Princip V traži. Mijenja se **`SpeedReward`, sa 0.001 na
+0.002**, i to je jedina promjena u tom runu.
+
+**Zašto se mijenja nagrada za brzinu, a ne cijena koraka.** Prag isplativosti je
+`|StepCost| / SpeedReward`, pa ga obje promjene pomjeraju jednako. Razlika je u tome šta rade sa
+zaglavljivanjem: spuštanje `StepCost` čini stajanje jeftinijim, a zaglavljivanje je već 39.9 posto
+završetaka, dok podizanje `SpeedReward` plaća kretanje bez da smanjuje pritisak protiv stajanja.
+
+**Zašto baš 0.002, a ne više.** Ovdje postoji gornja granica koju tabela sama nameće, i nije stvar
+ukusa. Član `Idle` je namjerno napisan tako da se pri punoj brzini trošak koraka i nagrada za
+brzinu **tačno ponište**, što je odbrana od farmanja: vožnja u krug po otvorenoj površini ne smije
+zaraditi koliko i krug kroz markere. Epizoda po DESIGN 4.6 traje najviše 6000 koraka, pa granica
+glasi:
+
+```
+(SpeedReward - |StepCost|) x 6000  <  24 markera / 3
+(SpeedReward - 0.001)      x 6000  <  8         =>  SpeedReward < 0.002333
+```
+
+Na 0.002 vožnja u krug punom brzinom donosi najviše +6 kroz cijelu epizodu, naspram +24 za krug,
+dakle krug je i dalje četiri puta bolji. Na 0.005 bi krug u mjestu donosio +24 i izjednačio se sa
+krugom kroz markere, što bi ugasilo odbranu iz `Idle`.
+
+**Zašto 0.002, a ne 0.0023 koliko granica dopušta.** Ispod plafona se bira okrugao broj sa
+rezervom od oko 15 posto, i to zato što prag isplativosti tada ispada tačno `v_norm = 0.5`, što je
+veličina koja se da pročitati i provjeriti, a 0.0023 bi dalo 0.435 i ništa ne bi kupilo. Sjedjeti
+tačno na ivici invarijante je ionako loše: pri 0.002333 razlika `SpeedReward - |StepCost|` se
+računa u `float` aritmetici i granica postaje pitanje zaokruživanja, a ne dizajna.
+
+**Šta ova promjena košta, rečeno brojem.** Pri 0.002 vozilo mora voziti u krug punom brzinom 1000
+koraka, dakle 20 s pri 50 Hz, da zaradi koliko nosi jedan marker. Pod starom tabelom nikakva
+količina vožnje u krug nije dostizala marker, jer je zarada bila tačno nula. To je cijena gradijenta
+i zapisana je ovdje da se kasnije ne pročita kao previd.
+
+**Posljedica koju treba reći naglas: ovo je promjena od svega dva puta, a nesrazmjer je 240 puta.**
+Prag isplativosti pada sa `v_norm = 1.0`, dakle vozilo je moralo voziti punom brzinom samo da ne
+gubi, na `v_norm = 0.5`. To je pomak u pravu stranu, ali invarijanta protiv farmanja ne dozvoljava
+više. **Zato je ovaj run pre-registrovan u oba ishoda:** ako pređe prag iz T047, odnos koraka i
+brzine jeste bio ograničenje; ako ne pređe, onda se ova tabela ne može popraviti skaliranjem ta dva
+člana i problem je istraživanje prostora, ne težine - što je zaključak koji vrijedi jednako kao i
+pozitivan.
+
+**Invarijanta se ne briše, nego se zamjenjuje.** `RewardModelTests` je do sada tvrdio
+`Idle(1) == 0` tačno, i taj test je ovu promjenu uhvatio, što je i bio razlog da postoji. Zamjenjuje
+ga tvrdnja sa marginom: zarada od vožnje u krug kroz cijelu epizodu mora ostati manja od trećine
+onoga što nosi krug kroz markere. Tvrdnja da stajanje u mjestu gubi svaki korak ostaje netaknuta,
+jer `Idle(0)` i dalje zavisi samo od `StepCost`.
 
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili

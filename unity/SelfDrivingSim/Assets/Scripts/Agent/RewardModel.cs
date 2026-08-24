@@ -37,8 +37,16 @@ namespace SelfDrivingSim.Agent
         /// <summary>Paid every step, so that standing still costs something.</summary>
         public const float StepCost = -0.001f;
 
-        /// <summary>Scale on normalised forward speed, paid every step.</summary>
-        public const float SpeedReward = 0.001f;
+        /// <summary>
+        /// Scale on normalised forward speed, paid every step.
+        ///
+        /// Raised from 0.001 to 0.002 by `ppo_car_speed_hi` (T048, third candidate). The break-even
+        /// speed is <see cref="StepCost"/> over this, so it falls from a `v_norm` of 1.0 to 0.5:
+        /// the car no longer has to be at maximum speed merely to stop losing. The ceiling is not
+        /// taste, it is <see cref="Idle"/>'''s anti-farming arithmetic, which caps this at 0.00233.
+        /// DESIGN 4.5 derives it.
+        /// </summary>
+        public const float SpeedReward = 0.002f;
 
         /// <summary>
         /// Scale on the steering change, paid only above the threshold.
@@ -163,11 +171,14 @@ namespace SelfDrivingSim.Agent
         /// payment for moving.
         ///
         /// This sum is the arithmetic the whole table rests on. It is at most
-        /// <see cref="StepCost"/> + <see cref="SpeedReward"/>, which is zero, so a policy that
-        /// drives in circles on open surface collecting the speed reward earns nothing per step
-        /// against 1.0 for reaching the next marker. That is the design's defence against reward
-        /// farming, and <c>RewardModelTests</c> asserts its sign so a future weight change cannot
-        /// remove it silently.
+        /// <see cref="StepCost"/> + <see cref="SpeedReward"/>, which is +0.001 per step since
+        /// `ppo_car_speed_hi` raised the speed scale. **It used to be exactly zero, and the move
+        /// from "cannot profit" to "profits slowly" is the part that needs watching**: a policy
+        /// driving in circles on open surface now earns something, so the defence against reward
+        /// farming is a margin rather than an identity. Over the 6000-step episode of DESIGN 4.6
+        /// that margin is +6 against the +24 a lap's markers pay, and <c>RewardModelTests</c>
+        /// asserts the ratio so a future weight change cannot erode it silently. DESIGN 4.5
+        /// derives the 0.00233 ceiling this weight sits under.
         /// </summary>
         public static float Idle(float speedForwardNorm)
         {
