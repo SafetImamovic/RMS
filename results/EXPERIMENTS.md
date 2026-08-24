@@ -61,6 +61,8 @@ Notes on the pair, since a table row cannot carry them:
 | 2026-08-19 | `ppo_car_spread_a` | Nothing about the policy. First of the three T046 spread runs: `config/ppo_car_spread.yaml`, which differs from the pinned config in `max_steps` alone (5M to the **2,000,000** T045 chose), `--seed=1`. Same twelve areas, same seeds, same reward weights. **First run carrying the fixed instrumentation**, so its end-reason counts are counts | **2,000,000 steps in 2,834.0 s**, 706 steps/s, uninterrupted. Cumulative reward mean **-4.5070, sd 0.4911** over 200 summaries, range -6.0466 to -3.0214. First 25 to last 25 summaries: -4.7968 to -4.3147, **+0.4820**. **The v01 signature reproduces at 2M**: wall term -2.5283 to -1.9120 and episode length 463.6 to 540.6 steps, while checkpoint reward *fell* 0.2541 to 0.2248 and step cost went -1.4809 to -1.7808. Over 4,990 episodes: **45.6% wall contact, 41.0% stalled, 13.4% track-swapped, zero laps completed, zero step-limit**. Those are read counts, not derived shares | Not a candidate model. Kept as run a of the three T047 needs. The seed changed and the stall-not-drive result did not, which is the first evidence it is a property of the reward rather than of seed 42 |
 | 2026-08-19 | `ppo_car_spread_b` | Run b of three. Identical to `ppo_car_spread_a` in every respect except `--seed=2`, which is what T046 requires of the set | **2,000,000 steps in 2,577.4 s**, 776 steps/s, uninterrupted. Cumulative reward mean **-4.6613, sd 0.5022** over 200 summaries, against a's -4.5070 and 0.4911. First 25 to last 25: -4.9286 to -4.4381. The same shape again: episodes lengthen 491.2 to 529.4 steps while checkpoint reward *falls* 0.3351 to 0.2192, the steepest checkpoint decline of the three runs so far. Over 5,093 episodes, 47.9 per cent wall contact, 38.9 per cent stalled, 13.3 per cent track-swapped, zero laps | Not a candidate model. Run b of the three T047 needs. **Two seeds now agree to within 0.15 on the run mean**, which is the first direct evidence about the size of the noise floor, though the number T047 reports needs all three |
 | 2026-08-19 | `ppo_car_spread_c` | Run c of three. Identical to a and b except `--seed=3` | **2,000,000 steps in 2,709.4 s**, 738 steps/s, uninterrupted. Cumulative reward mean **-4.6722, sd 0.5360** over 200 summaries. Over 4,866 episodes, 47.0 per cent wall contact, 39.8 per cent stalled, 13.2 per cent track-swapped, zero laps. Late-phase checkpoint reward 0.3212, the highest of the three, and still an eighth of one marker against the 24 a lap needs | Not a candidate model. Completes the set T047 measures. **No run in the set completed a lap**, and the end-reason mix is the same to within two points across all three seeds |
+| 2026-08-20 | `ppo_car_jerk_lo` | One thing: `RewardModel.JerkPenalty`, -0.005 to **-0.001**. Same `config/ppo_car_spread.yaml` at 2M, same `--seed=1` as `ppo_car_spread_a`, same twelve areas, every other weight untouched. T048's first candidate, asking whether the smoothness charge was suppressing the steering exploration needed to reach a marker | **2,000,000 steps in 3,164.4 s**, 632 steps/s, uninterrupted. Cumulative reward mean **-4.2757, sd 0.4996** over 200 summaries. **Against the baseline rescored to this candidate's own table (-4.3310) the difference is +0.0553, which does not clear the 0.19 gate**, and on `reward/checkpoint`, which this candidate does not touch, it is **-0.0415 against a 0.0631 gate**, also not clearing. The jerk term fell -0.3531 to -0.0775 where an unchanged policy would give exactly -0.0706, so the wheel is thrashed slightly *more* once it is cheaper. Nothing else moved: 5,162 episodes at 48.0 per cent wall, 38.6 per cent stalled, 13.3 per cent track-swapped against the baseline's 46.8 / 39.9 / 13.3, **zero laps**, and checkpoint reward *fell again* across the run, 0.2793 to 0.2005 | Not a candidate model, and the weight is **not kept**. Recorded as a change that made no measurable difference, which is a result and not a gap: the jerk penalty was not what stopped this policy driving |
+| 2026-08-20 | `ppo_car_wall_lo` | One thing: `RewardModel.WallPenalty`, -5.0 to **-1.0**. The jerk scale is back at the pinned -0.005, so this run differs from the baseline in the wall terminal alone. Same `config/ppo_car_spread.yaml` at 2M, same `--seed=1`. T048's second candidate, aiming at the ordering the spread runs exposed: stalling out costs about -3.0 and a wall cost -5.0, so doing nothing was the cheaper option | **2,000,000 steps in 2,598.0 s**, 770 steps/s, uninterrupted. Cumulative reward mean **-3.1479, sd 0.5592**. Against the baseline rescored to this candidate's table (-2.8294) the difference is **-0.3185, which clears the 0.19 gate in the worse direction**. **The mechanism did work**: over 5,350 episodes the end-reason mix is 51.4 per cent wall and 35.4 per cent stalled against the baseline's 46.8 and 39.9, a shift of about 4.5 points that holds across all four quarters rather than fading. `reward/checkpoint` is +0.0318, inside its 0.0631 gate, but its quarter trend runs 0.286, 0.237, 0.269, **0.339** where every baseline is flat near 0.25 and every earlier run fell. **Zero laps**, as in every run of this feature | Not a candidate model, and the weight is **not kept**: it made the return measurably worse. Kept as the run that shows the wall terminal is load-bearing on *which* failure the policy chooses without being what stops it driving, and as the first curve in M3 whose checkpoint reward rises late |
 
 Notes on the first full run:
 
@@ -221,3 +223,90 @@ of no effect than it appears.
 three independent seeds, no run completed a lap, and late-phase checkpoint reward sits near 0.25
 against the 24 markers a lap needs. The stall-not-drive result first seen in `ppo_car_v01` under
 seed 42 is now reproduced under seeds 1, 2 and 3, so it belongs to the reward rather than to a seed.
+
+### The jerk penalty was not the constraint, and the naive comparison would have said it was
+
+`ppo_car_jerk_lo`, 2026-08-20, is T048's first tuning candidate: `JerkPenalty` from -0.005 to
+-0.001, nothing else, at the T045 budget on seed 1.
+
+**Changing a reward weight changes the scale of the metric, so the T047 gate cannot be applied to
+the raw number.** The 0.19 gate was measured on one reward table. Read raw, this run scores -4.2757
+against the baseline's -4.6135, a difference of **+0.3378 that clears the gate comfortably** and
+would have been reported as the jerk penalty working. It is not. Of that difference, **+0.2824 is
+pure bookkeeping**: the same episodes charged at a fifth the scale. What is left is +0.0553.
+
+**The fix costs nothing, because FR-008 already logs the six terms separately.** Each baseline
+summary can be rescored exactly to the candidate's table as
+`cumulative_reward - reward_jerk + reward_jerk x (new / old)`, which needs no extra run and no
+estimate. Rescored, the three baselines give -4.2271, -4.3784 and -4.3875, a mean of **-4.3310**.
+
+| metric | baseline | candidate | difference | gate | verdict |
+|---|---|---|---|---|---|
+| cumulative reward, rescored | -4.3310 | -4.2757 | **+0.0553** | 0.19 | does not clear |
+| `reward/checkpoint` | 0.2510 | 0.2095 | **-0.0415** | 0.0631 | does not clear |
+| cumulative reward, raw | -4.6135 | -4.2757 | +0.3378 | 0.19 | confounded, not read as an effect |
+
+The second row is the honest cross-check: `reward/checkpoint` is +1.0 per marker and this candidate
+does not touch it, so it needs no rescoring. Its noise floor is the run-mean spread of the same
+three runs, sd 0.0315, hence the 0.0631 gate. It moves the wrong way and stays inside its floor.
+
+**The behaviour did not move at all.** End reasons are 48.0 / 38.6 / 13.3 per cent against the
+baseline's 46.8 / 39.9 / 13.3, zero laps as in every run of this feature so far, and checkpoint
+reward falls across the run again, 0.2793 to 0.2005. The one thing that did respond is the term
+itself: -0.0775 where an unchanged policy would give exactly -0.0706, so a cheaper penalty buys
+slightly more wheel movement and no more driving.
+
+**A first attempt was killed at 900,000 steps and was discarded rather than resumed.** Its evidence
+is kept at `results/ppo_car_jerk_lo.killed_at_900k/` and
+`results/rl/ppo_car_jerk_lo.killed_at_900k.log` rather than overwritten with `--force`. The cause
+was the tooling that launched the trainer, the third time in this feature after `ppo_car_v01`
+segment one and the first spread attempt, both at 1,800 s; this one died at 1,380 s, so it is not a
+fixed cap. Discarded for T046's reason: the baselines it is compared against ran uninterrupted, and
+a resume would make this run differ from them by something other than the jerk weight. Relaunching
+the trainer detached from that tooling ran to 2M without incident, and the rerun reproduced the
+killed attempt's step-10,000 summary exactly at -5.010, so seed 1 is deterministic and nothing was
+lost but an hour.
+
+### Cheapening the wall changed which failure the policy picks, and made the return worse
+
+`ppo_car_wall_lo`, 2026-08-20, is T048's second candidate: `WallPenalty` from -5.0 to -1.0, the
+jerk scale returned to its pinned -0.005, nothing else, seed 1 at the T045 budget.
+
+**The prediction was specific and it held.** The spread runs showed stalling out costs about -3.0
+in step cost over 60 s while a wall cost -5.0 at once, so not trying was cheaper than trying. At
+-1.0 that ordering inverts. The end-reason mix moved exactly as that predicts: **wall 46.8 to 51.4
+per cent and stalled 39.9 to 35.4**, and the gap against the baselines holds at 3.4, 4.0, 7.1 and
+4.1 points across the four quarters rather than fading as training proceeds.
+
+**And the return got measurably worse.** Rescored to the same table the baselines average -2.8294;
+this run means -3.1479, a difference of **-0.3185 that clears the 0.19 gate**. FR-021 asks for the
+direction to be stated rather than the result buried: this is a change that made a difference, and
+the difference is negative. Trading a stall for a crash pays the wall term more often and ends the
+episode sooner without buying progress.
+
+| metric | baseline | candidate | difference | gate | verdict |
+|---|---|---|---|---|---|
+| cumulative reward, rescored | -2.8294 | -3.1479 | **-0.3185** | 0.19 | clears, worse |
+| `reward/checkpoint` | 0.2510 | 0.2828 | +0.0318 | 0.0631 | does not clear |
+
+**The rescored spread is tighter than the pinned one, and that is not a free win.** The three
+baselines rescored to the wall -1.0 table give sd 0.0540 against 0.0924 on their own table, because
+the wall term carried most of the between-seed variance. The gate is still quoted at T047's 0.19
+rather than the tighter 0.11, which is the conservative choice: rescoring shrinks the baselines'
+spread without saying anything about how noisy a genuinely different policy is, and this run's
+within-run sd of 0.5592 is the largest of the five 2M runs so far.
+
+**One signal points somewhere new.** `reward/checkpoint` by quarter runs 0.286, 0.237, 0.269,
+**0.339**, where the three baselines sit flat at 0.254, 0.251, 0.245, 0.254 and where
+`ppo_car_v01`, `ppo_car_smoke` and all three spread runs *fell* over their length. It does not
+clear its gate on the run mean and is not reported as a result. It is recorded because it is the
+first upward late-phase checkpoint trend in M3, and because a fourth run is the stated remedy for
+exactly this kind of near-gate reading.
+
+**What both candidates together say.** The jerk penalty is not the constraint and the wall terminal
+is not either: one changed nothing, the other changed which way the policy fails. Neither completed
+a lap, and neither is kept. The two terms neither candidate touched are the ones the spread
+decomposition made suspicious: **step cost at -1.676 a run against a speed reward of +0.0069**,
+which is a car that is charged 240 times more for existing than it is paid for moving. That is a
+hypothesis for the next design change rather than a result from these runs, and it belongs in
+`DESIGN.md` before it belongs in a trainer.

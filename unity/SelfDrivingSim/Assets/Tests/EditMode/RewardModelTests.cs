@@ -90,7 +90,9 @@ namespace SelfDrivingSim.Tests
             // Just above it, the whole delta is charged rather than the excess, so the term jumps
             // rather than growing from zero. DESIGN 4.5 writes it that way and the discontinuity is
             // a property of the decision, not a bug to be smoothed away later.
-            Assert.That(RewardModel.Jerk(0.56f), Is.EqualTo(-0.0028f).Within(1e-5f));
+            Assert.That(
+                RewardModel.Jerk(0.56f),
+                Is.EqualTo(RewardModel.JerkPenalty * 0.56f).Within(1e-5f));
 
             // Sign of the delta does not matter; a hard turn either way costs the same.
             Assert.That(RewardModel.Jerk(-0.8f), Is.EqualTo(RewardModel.Jerk(0.8f)).Within(Tol));
@@ -103,7 +105,11 @@ namespace SelfDrivingSim.Tests
             float above = RewardModel.Jerk(RewardModel.JerkThreshold + 1e-4f);
 
             Assert.That(below, Is.EqualTo(0f).Within(Tol));
-            Assert.That(above, Is.LessThan(-0.0027f));
+            // Against the constant rather than its arithmetic, so tuning the scale (T048)
+            // changes one number in one file and this test still asserts the same rule.
+            Assert.That(
+                above,
+                Is.LessThan(RewardModel.JerkPenalty * RewardModel.JerkThreshold * 0.99f));
         }
 
         // --- the two ways to satisfy this reward without driving ------------------------------
@@ -157,8 +163,11 @@ namespace SelfDrivingSim.Tests
                 SteeringJerk = RewardModel.Jerk(0.9f) * 3f,
             };
 
+            // The jerk term is written against the constant, not its arithmetic: T048 tunes that
+            // scale, and this test is about the six fields summing rather than about the weight.
             float expected =
-                24f - 1f - 5f + (-0.001f * 1200f) + (0.0008f * 1200f) + (-0.0045f * 3f);
+                24f - 1f - 5f + (-0.001f * 1200f) + (0.0008f * 1200f)
+                + (RewardModel.JerkPenalty * 0.9f * 3f);
 
             Assert.That(b.Total, Is.EqualTo(expected).Within(1e-4f));
         }

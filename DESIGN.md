@@ -343,6 +343,10 @@ Tabela se provjerava red po red u `python/tests/test_vehicle.py` i u
 Težine su početne - tjuniraju se tokom M3. Svaka promjena se dokumentuje
 (tabela eksperimenata u results/).
 
+Gornja tabela je **polazna**, i to je ona koju kod nosi osim dok traje pojedini tjuning run.
+Koja težina je u kojem runu promijenjena stoji niže, u „Dva kandidata za tjuniranje“, i u redu tog
+runa u `results/EXPERIMENTS.md`.
+
 **Odlučene vrijednosti markera i starta (fiksirano u M2, prije bilo kakvog koda faze 5).**
 
 | Veličina | Vrijednost | Odakle |
@@ -419,6 +423,50 @@ Ono što tabela sama ne rješava:
   `reward/step`, `reward/speed`, `reward/jerk`), a njihov zbir mora biti jednak povratu epizode.
   **Ukupan reward koji raste ne kaže koji ga je član podigao**, a to je razlika između napretka i
   naplaćivanja nagrade za brzinu u krug.
+
+**Dva kandidata za tjuniranje, odlučena prije koda (T048, feature 006).** Tabela je od početka
+pisana kao početna, a mjerenja iz Phase 5 kažu šta u njoj ne radi. Tri seeda na 2M koraka
+(`ppo_car_spread_a/b/c`) daju povrat -4.61 koji se razlaže ovako: zid -2.230, korak -1.676,
+pogrešan smjer -0.605, steering -0.353, checkpoint +0.251, brzina **+0.0069**.
+
+Iz toga slijede dvije stvari koje tabela nije predvidjela:
+
+- **Nagrada za brzinu je mrtva.** +0.0069 naspram -1.676 za postojanje znači prosječni `v_norm`
+  oko 0.004. Vozilo se praktično ne kreće.
+- **Zaglaviti se je jeftinije nego udariti.** Zaglavljivanje završava epizodu nakon 60 s, dakle
+  oko -3.0 po cijeni koraka, a zid naplaćuje -5.0 odmah. Politika je izabrala dominantnu strategiju
+  ispravno; problem je u tabeli, ne u učenju.
+
+Zato se mijenja po jedna težina po runu, svaka u svom redu tabele eksperimenata (FR-007):
+
+| Kandidat | Polje | Sa | Na | Šta testira |
+|---|---|---|---|---|
+| `ppo_car_jerk_lo` | `JerkPenalty` | -0.005 | **-0.001** | da li kazna za glatkoću guši istraživanje steeringa koje treba da bi se došlo do markera |
+| `ppo_car_wall_lo` | `WallPenalty` | -5.0 | **-1.0** | obrće odnos iz gornje tačke: udarac (-1.0) postaje jeftiniji od zaglavljivanja (-3.0) |
+
+Kazna za steering ostaje živa, ne gasi se na nulu, jer je glatkoća namjera tabele, a prag 0.55 i
+dalje nosi svoju frekvenciju. Petina skale skida oko 0.28 pritiska protiv okretanja volana bez
+uklanjanja člana.
+
+**Promjena težine mijenja i mjerilo, pa se poređenje ne smije čitati naivno.** Prag 0.19 iz T047 je
+izmjeren na jednoj tabeli rewarda; run pod drugom tabelom ima drugu skalu povrata. Zato T049
+izvještava na tri načina: povrat baseline runova preskaliran na kandidatove težine iz već
+zabilježenih članova (FR-008 to čini tačnim, a ne procjenom), `reward/checkpoint` koji je
+nepromijenjen u oba kandidata, i sirovi povrat sa upisanom ogradom. Preskalirane baseline
+vrijednosti su **-4.3310** za tabelu sa steeringom -0.001 i **-2.8294** za tabelu sa zidom -1.0.
+
+**Ishod, upisan nakon oba runa (2026-08-20).** Nijedna od dvije težine se ne zadržava, pa gornja
+tabela ostaje ta koju kod nosi. `ppo_car_jerk_lo` daje +0.0553 naspram praga 0.19, dakle nema
+mjerljive razlike. `ppo_car_wall_lo` daje -0.3185, dakle **prelazi prag, ali na lošiju stranu**:
+mješavina razloga kraja se pomjerila tačno kako je predviđeno, sa 46.8 na 51.4 posto zida i sa
+39.9 na 35.4 posto zaglavljivanja, a povrat je pao. Nijedan run nije završio krug. Detalji i
+brojevi po kvartalima su u `results/EXPERIMENTS.md`.
+
+**Šta ovo ostavlja kao sljedeću hipotezu.** Ni kazna za steering ni terminal za zid nisu ono što
+ovu politiku zaustavlja. Dva člana koja nijedan kandidat nije dirao su ona koja je dekompozicija
+učinila sumnjivim: **cijena koraka -1.676 po runu naspram nagrade za brzinu +0.0069**, dakle vozilo
+plaća 240 puta više za postojanje nego što dobija za kretanje. To je hipoteza za sljedeću izmjenu
+dizajna, ne rezultat ovih runova, i mijenja se tek kad bude zapisana ovdje.
 
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili

@@ -25,7 +25,13 @@ namespace SelfDrivingSim.Agent
         /// <summary>Approaching a marker already passed, paid once on the transition.</summary>
         public const float WrongWayPenalty = -1.0f;
 
-        /// <summary>Touching a barrier. Terminal, and applied before the episode ends.</summary>
+        /// <summary>
+        /// Touching a barrier. Terminal, and applied before the episode ends.
+        ///
+        /// Back at DESIGN 4.5's value. `ppo_car_wall_lo` tried -1.0, which did shift the end-reason
+        /// mix the way it was meant to, and made the return measurably worse. The weight is not
+        /// kept; the result is.
+        /// </summary>
         public const float WallPenalty = -5.0f;
 
         /// <summary>Paid every step, so that standing still costs something.</summary>
@@ -34,7 +40,12 @@ namespace SelfDrivingSim.Agent
         /// <summary>Scale on normalised forward speed, paid every step.</summary>
         public const float SpeedReward = 0.001f;
 
-        /// <summary>Scale on the steering change, paid only above the threshold.</summary>
+        /// <summary>
+        /// Scale on the steering change, paid only above the threshold.
+        ///
+        /// Back at DESIGN 4.5's value. `ppo_car_jerk_lo` tried -0.001 and the change did not clear
+        /// the T047 gate on either valid metric, so the weight is not kept.
+        /// </summary>
         public const float JerkPenalty = -0.005f;
 
         /// <summary>

@@ -1,0 +1,290 @@
+[INFO] Listening on port 5004. Start training by pressing the Play button in the Unity Editor.
+[INFO] Connected to Unity environment with package version 4.0.3 and communication version 1.5.0
+[INFO] Connected new brain: CarDriver?team=0
+
+            ┐  ╖
+        ╓╖╬│╡  ││╬╖╖
+    ╓╖╬│││││┘  ╬│││││╬╖
+ ╖╬│││││╬╜        ╙╬│││││╖╖                               ╗╗╗
+ ╬╬╬╬╖││╦╖        ╖╬││╗╣╣╣╬      ╟╣╣╬    ╟╣╣╣             ╜╜╜  ╟╣╣
+ ╬╬╬╬╬╬╬╬╖│╬╖╖╓╬╪│╓╣╣╣╣╣╣╣╬      ╟╣╣╬    ╟╣╣╣ ╒╣╣╖╗╣╣╣╗   ╣╣╣ ╣╣╣╣╣╣ ╟╣╣╖   ╣╣╣
+ ╬╬╬╬┐  ╙╬╬╬╬│╓╣╣╣╝╜  ╫╣╣╣╬      ╟╣╣╬    ╟╣╣╣ ╟╣╣╣╙ ╙╣╣╣  ╣╣╣ ╙╟╣╣╜╙  ╫╣╣  ╟╣╣
+ ╬╬╬╬┐     ╙╬╬╣╣      ╫╣╣╣╬      ╟╣╣╬    ╟╣╣╣ ╟╣╣╬   ╣╣╣  ╣╣╣  ╟╣╣     ╣╣╣┌╣╣╜
+ ╬╬╬╜       ╬╬╣╣      ╙╝╣╣╬      ╙╣╣╣╗╖╓╗╣╣╣╜ ╟╣╣╬   ╣╣╣  ╣╣╣  ╟╣╣╦╓    ╣╣╣╣╣
+ ╙   ╓╦╖    ╬╬╣╣   ╓╗╗╖            ╙╝╣╣╣╣╝╜   ╘╝╝╜   ╝╝╝  ╝╝╝   ╙╣╣╣    ╟╣╣╣
+   ╩╬╬╬╬╬╬╦╦╬╬╣╣╗╣╣╣╣╣╣╣╝                                             ╫╣╣╣╣
+      ╙╬╬╬╬╬╬╬╣╣╣╣╣╣╝╜
+          ╙╬╬╬╣╣╣╜
+             ╙
+        
+ Version information:
+  ml-agents: 1.1.0,
+  ml-agents-envs: 1.1.0,
+  Communicator API: 1.5.0,
+  PyTorch: 2.6.0+cu124
+[INFO] Hyperparameters for behavior name CarDriver: 
+	trainer_type:	ppo
+	hyperparameters:	
+	  batch_size:	2048
+	  buffer_size:	20480
+	  learning_rate:	0.0003
+	  beta:	0.005
+	  epsilon:	0.2
+	  lambd:	0.95
+	  num_epoch:	3
+	  shared_critic:	False
+	  learning_rate_schedule:	linear
+	  beta_schedule:	linear
+	  epsilon_schedule:	linear
+	checkpoint_interval:	100000
+	network_settings:	
+	  normalize:	True
+	  hidden_units:	256
+	  num_layers:	2
+	  vis_encode_type:	simple
+	  memory:	None
+	  goal_conditioning_type:	hyper
+	  deterministic:	False
+	reward_signals:	
+	  extrinsic:	
+	    gamma:	0.99
+	    strength:	1.0
+	    network_settings:	
+	      normalize:	False
+	      hidden_units:	128
+	      num_layers:	2
+	      vis_encode_type:	simple
+	      memory:	None
+	      goal_conditioning_type:	hyper
+	      deterministic:	False
+	init_path:	None
+	keep_checkpoints:	5
+	even_checkpoints:	False
+	max_steps:	2000000
+	time_horizon:	128
+	summary_freq:	10000
+	threaded:	False
+	self_play:	None
+	behavioral_cloning:	None
+[INFO] CarDriver. Step: 10000. Time Elapsed: 55.426 s. Mean Reward: -5.010. Std of Reward: 1.481. Training.
+[INFO] CarDriver. Step: 20000. Time Elapsed: 68.235 s. Mean Reward: -4.507. Std of Reward: 2.218. Training.
+[INFO] CarDriver. Step: 30000. Time Elapsed: 84.401 s. Mean Reward: -3.231. Std of Reward: 1.666. Training.
+[INFO] CarDriver. Step: 40000. Time Elapsed: 97.381 s. Mean Reward: -4.817. Std of Reward: 2.583. Training.
+[INFO] CarDriver. Step: 50000. Time Elapsed: 113.851 s. Mean Reward: -4.146. Std of Reward: 1.948. Training.
+[INFO] CarDriver. Step: 60000. Time Elapsed: 125.735 s. Mean Reward: -4.987. Std of Reward: 1.741. Training.
+[INFO] CarDriver. Step: 70000. Time Elapsed: 141.524 s. Mean Reward: -3.580. Std of Reward: 2.027. Training.
+[INFO] CarDriver. Step: 80000. Time Elapsed: 154.065 s. Mean Reward: -4.911. Std of Reward: 2.502. Training.
+[INFO] CarDriver. Step: 90000. Time Elapsed: 170.038 s. Mean Reward: -5.023. Std of Reward: 2.414. Training.
+[INFO] CarDriver. Step: 100000. Time Elapsed: 181.656 s. Mean Reward: -4.566. Std of Reward: 1.908. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-99897.onnx
+[INFO] CarDriver. Step: 110000. Time Elapsed: 197.944 s. Mean Reward: -4.448. Std of Reward: 2.244. Training.
+[INFO] CarDriver. Step: 120000. Time Elapsed: 210.305 s. Mean Reward: -4.368. Std of Reward: 2.910. Training.
+[INFO] CarDriver. Step: 130000. Time Elapsed: 226.378 s. Mean Reward: -7.078. Std of Reward: 2.226. Training.
+[INFO] CarDriver. Step: 140000. Time Elapsed: 240.510 s. Mean Reward: -4.023. Std of Reward: 1.681. Training.
+[INFO] CarDriver. Step: 150000. Time Elapsed: 258.869 s. Mean Reward: -4.447. Std of Reward: 2.624. Training.
+[INFO] CarDriver. Step: 160000. Time Elapsed: 273.054 s. Mean Reward: -4.960. Std of Reward: 1.740. Training.
+[INFO] CarDriver. Step: 170000. Time Elapsed: 292.153 s. Mean Reward: -4.929. Std of Reward: 2.998. Training.
+[INFO] CarDriver. Step: 180000. Time Elapsed: 305.978 s. Mean Reward: -3.431. Std of Reward: 1.649. Training.
+[INFO] CarDriver. Step: 190000. Time Elapsed: 324.542 s. Mean Reward: -3.959. Std of Reward: 2.594. Training.
+[INFO] CarDriver. Step: 200000. Time Elapsed: 338.929 s. Mean Reward: -5.086. Std of Reward: 2.132. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-199934.onnx
+[INFO] CarDriver. Step: 210000. Time Elapsed: 357.621 s. Mean Reward: -4.265. Std of Reward: 2.397. Training.
+[INFO] CarDriver. Step: 220000. Time Elapsed: 371.574 s. Mean Reward: -5.332. Std of Reward: 3.065. Training.
+[INFO] CarDriver. Step: 230000. Time Elapsed: 390.981 s. Mean Reward: -4.416. Std of Reward: 2.226. Training.
+[INFO] CarDriver. Step: 240000. Time Elapsed: 405.783 s. Mean Reward: -4.656. Std of Reward: 2.447. Training.
+[INFO] CarDriver. Step: 250000. Time Elapsed: 424.429 s. Mean Reward: -5.474. Std of Reward: 2.116. Training.
+[INFO] CarDriver. Step: 260000. Time Elapsed: 439.972 s. Mean Reward: -4.049. Std of Reward: 2.819. Training.
+[INFO] CarDriver. Step: 270000. Time Elapsed: 457.368 s. Mean Reward: -5.107. Std of Reward: 2.105. Training.
+[INFO] CarDriver. Step: 280000. Time Elapsed: 469.421 s. Mean Reward: -4.354. Std of Reward: 2.439. Training.
+[INFO] CarDriver. Step: 290000. Time Elapsed: 486.342 s. Mean Reward: -4.393. Std of Reward: 2.107. Training.
+[INFO] CarDriver. Step: 300000. Time Elapsed: 498.565 s. Mean Reward: -3.567. Std of Reward: 1.785. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-299990.onnx
+[INFO] CarDriver. Step: 310000. Time Elapsed: 514.772 s. Mean Reward: -4.820. Std of Reward: 2.135. Training.
+[INFO] CarDriver. Step: 320000. Time Elapsed: 526.809 s. Mean Reward: -4.501. Std of Reward: 2.559. Training.
+[INFO] CarDriver. Step: 330000. Time Elapsed: 544.266 s. Mean Reward: -4.638. Std of Reward: 2.235. Training.
+[INFO] CarDriver. Step: 340000. Time Elapsed: 557.226 s. Mean Reward: -4.554. Std of Reward: 2.663. Training.
+[INFO] CarDriver. Step: 350000. Time Elapsed: 572.769 s. Mean Reward: -4.855. Std of Reward: 1.796. Training.
+[INFO] CarDriver. Step: 360000. Time Elapsed: 585.406 s. Mean Reward: -4.249. Std of Reward: 2.580. Training.
+[INFO] CarDriver. Step: 370000. Time Elapsed: 598.077 s. Mean Reward: -4.338. Std of Reward: 1.993. Training.
+[INFO] CarDriver. Step: 380000. Time Elapsed: 614.346 s. Mean Reward: -5.150. Std of Reward: 3.045. Training.
+[INFO] CarDriver. Step: 390000. Time Elapsed: 626.523 s. Mean Reward: -4.061. Std of Reward: 2.197. Training.
+[INFO] CarDriver. Step: 400000. Time Elapsed: 644.411 s. Mean Reward: -4.434. Std of Reward: 1.964. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-399932.onnx
+[INFO] CarDriver. Step: 410000. Time Elapsed: 659.256 s. Mean Reward: -4.445. Std of Reward: 2.571. Training.
+[INFO] CarDriver. Step: 420000. Time Elapsed: 677.191 s. Mean Reward: -3.593. Std of Reward: 1.652. Training.
+[INFO] CarDriver. Step: 430000. Time Elapsed: 691.329 s. Mean Reward: -4.496. Std of Reward: 1.972. Training.
+[INFO] CarDriver. Step: 440000. Time Elapsed: 709.164 s. Mean Reward: -5.076. Std of Reward: 2.611. Training.
+[INFO] CarDriver. Step: 450000. Time Elapsed: 723.504 s. Mean Reward: -3.769. Std of Reward: 1.765. Training.
+[INFO] CarDriver. Step: 460000. Time Elapsed: 740.986 s. Mean Reward: -4.196. Std of Reward: 1.913. Training.
+[INFO] CarDriver. Step: 470000. Time Elapsed: 754.113 s. Mean Reward: -4.403. Std of Reward: 2.026. Training.
+[INFO] CarDriver. Step: 480000. Time Elapsed: 770.479 s. Mean Reward: -3.897. Std of Reward: 1.605. Training.
+[INFO] CarDriver. Step: 490000. Time Elapsed: 783.568 s. Mean Reward: -3.921. Std of Reward: 2.031. Training.
+[INFO] CarDriver. Step: 500000. Time Elapsed: 801.513 s. Mean Reward: -4.756. Std of Reward: 2.287. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-499932.onnx
+[INFO] CarDriver. Step: 510000. Time Elapsed: 815.590 s. Mean Reward: -4.182. Std of Reward: 1.942. Training.
+[INFO] CarDriver. Step: 520000. Time Elapsed: 835.128 s. Mean Reward: -3.501. Std of Reward: 1.655. Training.
+[INFO] CarDriver. Step: 530000. Time Elapsed: 849.438 s. Mean Reward: -4.509. Std of Reward: 2.281. Training.
+[INFO] CarDriver. Step: 540000. Time Elapsed: 869.352 s. Mean Reward: -4.067. Std of Reward: 2.469. Training.
+[INFO] CarDriver. Step: 550000. Time Elapsed: 882.461 s. Mean Reward: -4.245. Std of Reward: 1.951. Training.
+[INFO] CarDriver. Step: 560000. Time Elapsed: 899.762 s. Mean Reward: -3.764. Std of Reward: 2.206. Training.
+[INFO] CarDriver. Step: 570000. Time Elapsed: 913.478 s. Mean Reward: -4.492. Std of Reward: 2.296. Training.
+[INFO] CarDriver. Step: 580000. Time Elapsed: 930.001 s. Mean Reward: -3.714. Std of Reward: 1.877. Training.
+[INFO] CarDriver. Step: 590000. Time Elapsed: 944.105 s. Mean Reward: -5.188. Std of Reward: 3.058. Training.
+[INFO] CarDriver. Step: 600000. Time Elapsed: 962.937 s. Mean Reward: -4.491. Std of Reward: 2.299. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-599993.onnx
+[INFO] CarDriver. Step: 610000. Time Elapsed: 978.138 s. Mean Reward: -3.701. Std of Reward: 2.423. Training.
+[INFO] CarDriver. Step: 620000. Time Elapsed: 996.433 s. Mean Reward: -4.412. Std of Reward: 1.579. Training.
+[INFO] CarDriver. Step: 630000. Time Elapsed: 1011.060 s. Mean Reward: -3.686. Std of Reward: 1.840. Training.
+[INFO] CarDriver. Step: 640000. Time Elapsed: 1029.944 s. Mean Reward: -4.791. Std of Reward: 2.556. Training.
+[INFO] CarDriver. Step: 650000. Time Elapsed: 1044.768 s. Mean Reward: -4.614. Std of Reward: 1.893. Training.
+[INFO] CarDriver. Step: 660000. Time Elapsed: 1063.624 s. Mean Reward: -4.094. Std of Reward: 2.842. Training.
+[INFO] CarDriver. Step: 670000. Time Elapsed: 1078.450 s. Mean Reward: -4.445. Std of Reward: 2.262. Training.
+[INFO] CarDriver. Step: 680000. Time Elapsed: 1097.073 s. Mean Reward: -4.222. Std of Reward: 1.954. Training.
+[INFO] CarDriver. Step: 690000. Time Elapsed: 1112.457 s. Mean Reward: -4.629. Std of Reward: 2.139. Training.
+[INFO] CarDriver. Step: 700000. Time Elapsed: 1130.492 s. Mean Reward: -4.447. Std of Reward: 1.933. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-699925.onnx
+[INFO] CarDriver. Step: 710000. Time Elapsed: 1145.079 s. Mean Reward: -4.009. Std of Reward: 2.066. Training.
+[INFO] CarDriver. Step: 720000. Time Elapsed: 1164.614 s. Mean Reward: -4.504. Std of Reward: 2.697. Training.
+[INFO] CarDriver. Step: 730000. Time Elapsed: 1179.642 s. Mean Reward: -4.159. Std of Reward: 1.948. Training.
+[INFO] CarDriver. Step: 740000. Time Elapsed: 1193.634 s. Mean Reward: -4.346. Std of Reward: 2.164. Training.
+[INFO] CarDriver. Step: 750000. Time Elapsed: 1213.693 s. Mean Reward: -4.244. Std of Reward: 2.347. Training.
+[INFO] CarDriver. Step: 760000. Time Elapsed: 1228.637 s. Mean Reward: -4.282. Std of Reward: 2.535. Training.
+[INFO] CarDriver. Step: 770000. Time Elapsed: 1246.987 s. Mean Reward: -4.308. Std of Reward: 1.835. Training.
+[INFO] CarDriver. Step: 780000. Time Elapsed: 1261.911 s. Mean Reward: -4.288. Std of Reward: 1.724. Training.
+[INFO] CarDriver. Step: 790000. Time Elapsed: 1277.812 s. Mean Reward: -3.817. Std of Reward: 1.848. Training.
+[INFO] CarDriver. Step: 800000. Time Elapsed: 1291.272 s. Mean Reward: -3.619. Std of Reward: 2.574. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-799970.onnx
+[INFO] CarDriver. Step: 810000. Time Elapsed: 1307.731 s. Mean Reward: -4.920. Std of Reward: 2.896. Training.
+[INFO] CarDriver. Step: 820000. Time Elapsed: 1321.083 s. Mean Reward: -3.886. Std of Reward: 2.039. Training.
+[INFO] CarDriver. Step: 830000. Time Elapsed: 1336.723 s. Mean Reward: -4.152. Std of Reward: 2.312. Training.
+[INFO] CarDriver. Step: 840000. Time Elapsed: 1350.693 s. Mean Reward: -4.894. Std of Reward: 1.908. Training.
+[INFO] CarDriver. Step: 850000. Time Elapsed: 1367.197 s. Mean Reward: -4.732. Std of Reward: 2.918. Training.
+[INFO] CarDriver. Step: 860000. Time Elapsed: 1380.184 s. Mean Reward: -4.389. Std of Reward: 1.932. Training.
+[INFO] CarDriver. Step: 870000. Time Elapsed: 1397.118 s. Mean Reward: -4.194. Std of Reward: 2.301. Training.
+[INFO] CarDriver. Step: 880000. Time Elapsed: 1410.008 s. Mean Reward: -3.761. Std of Reward: 2.189. Training.
+[INFO] CarDriver. Step: 890000. Time Elapsed: 1426.562 s. Mean Reward: -4.687. Std of Reward: 2.815. Training.
+[INFO] CarDriver. Step: 900000. Time Elapsed: 1441.000 s. Mean Reward: -4.336. Std of Reward: 1.656. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-899923.onnx
+[INFO] CarDriver. Step: 910000. Time Elapsed: 1457.795 s. Mean Reward: -3.975. Std of Reward: 2.691. Training.
+[INFO] CarDriver. Step: 920000. Time Elapsed: 1470.511 s. Mean Reward: -5.140. Std of Reward: 2.989. Training.
+[INFO] CarDriver. Step: 930000. Time Elapsed: 1490.879 s. Mean Reward: -4.039. Std of Reward: 1.964. Training.
+[INFO] CarDriver. Step: 940000. Time Elapsed: 1504.598 s. Mean Reward: -4.039. Std of Reward: 2.360. Training.
+[INFO] CarDriver. Step: 950000. Time Elapsed: 1522.218 s. Mean Reward: -3.939. Std of Reward: 1.539. Training.
+[INFO] CarDriver. Step: 960000. Time Elapsed: 1536.205 s. Mean Reward: -3.728. Std of Reward: 1.908. Training.
+[INFO] CarDriver. Step: 970000. Time Elapsed: 1552.102 s. Mean Reward: -3.915. Std of Reward: 1.215. Training.
+[INFO] CarDriver. Step: 980000. Time Elapsed: 1565.805 s. Mean Reward: -3.703. Std of Reward: 2.594. Training.
+[INFO] CarDriver. Step: 990000. Time Elapsed: 1582.967 s. Mean Reward: -4.025. Std of Reward: 2.093. Training.
+[INFO] CarDriver. Step: 1000000. Time Elapsed: 1595.527 s. Mean Reward: -4.015. Std of Reward: 1.509. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-999929.onnx
+[INFO] CarDriver. Step: 1010000. Time Elapsed: 1612.541 s. Mean Reward: -4.120. Std of Reward: 1.765. Training.
+[INFO] CarDriver. Step: 1020000. Time Elapsed: 1627.269 s. Mean Reward: -4.163. Std of Reward: 2.440. Training.
+[INFO] CarDriver. Step: 1030000. Time Elapsed: 1643.363 s. Mean Reward: -4.029. Std of Reward: 2.018. Training.
+[INFO] CarDriver. Step: 1040000. Time Elapsed: 1656.489 s. Mean Reward: -3.580. Std of Reward: 1.191. Training.
+[INFO] CarDriver. Step: 1050000. Time Elapsed: 1674.241 s. Mean Reward: -4.928. Std of Reward: 2.805. Training.
+[INFO] CarDriver. Step: 1060000. Time Elapsed: 1687.121 s. Mean Reward: -3.653. Std of Reward: 1.098. Training.
+[INFO] CarDriver. Step: 1070000. Time Elapsed: 1703.914 s. Mean Reward: -3.610. Std of Reward: 1.488. Training.
+[INFO] CarDriver. Step: 1080000. Time Elapsed: 1717.440 s. Mean Reward: -4.556. Std of Reward: 1.644. Training.
+[INFO] CarDriver. Step: 1090000. Time Elapsed: 1733.364 s. Mean Reward: -3.908. Std of Reward: 1.671. Training.
+[INFO] CarDriver. Step: 1100000. Time Elapsed: 1747.203 s. Mean Reward: -4.016. Std of Reward: 2.484. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1099975.onnx
+[INFO] CarDriver. Step: 1110000. Time Elapsed: 1763.109 s. Mean Reward: -4.396. Std of Reward: 2.316. Training.
+[INFO] CarDriver. Step: 1120000. Time Elapsed: 1776.725 s. Mean Reward: -4.076. Std of Reward: 2.475. Training.
+[INFO] CarDriver. Step: 1130000. Time Elapsed: 1788.955 s. Mean Reward: -3.711. Std of Reward: 1.601. Training.
+[INFO] CarDriver. Step: 1140000. Time Elapsed: 1805.395 s. Mean Reward: -3.816. Std of Reward: 2.425. Training.
+[INFO] CarDriver. Step: 1150000. Time Elapsed: 1818.271 s. Mean Reward: -4.843. Std of Reward: 1.484. Training.
+[INFO] CarDriver. Step: 1160000. Time Elapsed: 1835.366 s. Mean Reward: -3.964. Std of Reward: 2.878. Training.
+[INFO] CarDriver. Step: 1170000. Time Elapsed: 1848.107 s. Mean Reward: -3.985. Std of Reward: 1.881. Training.
+[INFO] CarDriver. Step: 1180000. Time Elapsed: 1864.222 s. Mean Reward: -4.533. Std of Reward: 1.343. Training.
+[INFO] CarDriver. Step: 1190000. Time Elapsed: 1877.111 s. Mean Reward: -3.730. Std of Reward: 1.960. Training.
+[INFO] CarDriver. Step: 1200000. Time Elapsed: 1893.921 s. Mean Reward: -4.553. Std of Reward: 2.695. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1199885.onnx
+[INFO] CarDriver. Step: 1210000. Time Elapsed: 1907.007 s. Mean Reward: -3.954. Std of Reward: 1.860. Training.
+[INFO] CarDriver. Step: 1220000. Time Elapsed: 1923.329 s. Mean Reward: -3.847. Std of Reward: 0.748. Training.
+[INFO] CarDriver. Step: 1230000. Time Elapsed: 1936.308 s. Mean Reward: -3.691. Std of Reward: 2.130. Training.
+[INFO] CarDriver. Step: 1240000. Time Elapsed: 1952.969 s. Mean Reward: -4.111. Std of Reward: 2.212. Training.
+[INFO] CarDriver. Step: 1250000. Time Elapsed: 1966.523 s. Mean Reward: -5.301. Std of Reward: 3.099. Training.
+[INFO] CarDriver. Step: 1260000. Time Elapsed: 1982.724 s. Mean Reward: -4.100. Std of Reward: 1.905. Training.
+[INFO] CarDriver. Step: 1270000. Time Elapsed: 1995.522 s. Mean Reward: -4.739. Std of Reward: 2.694. Training.
+[INFO] CarDriver. Step: 1280000. Time Elapsed: 2012.788 s. Mean Reward: -4.210. Std of Reward: 2.301. Training.
+[INFO] CarDriver. Step: 1290000. Time Elapsed: 2026.837 s. Mean Reward: -4.242. Std of Reward: 2.379. Training.
+[INFO] CarDriver. Step: 1300000. Time Elapsed: 2043.513 s. Mean Reward: -4.270. Std of Reward: 2.111. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1299904.onnx
+[INFO] CarDriver. Step: 1310000. Time Elapsed: 2057.774 s. Mean Reward: -3.907. Std of Reward: 1.489. Training.
+[INFO] CarDriver. Step: 1320000. Time Elapsed: 2074.550 s. Mean Reward: -4.445. Std of Reward: 1.917. Training.
+[INFO] CarDriver. Step: 1330000. Time Elapsed: 2088.742 s. Mean Reward: -5.276. Std of Reward: 2.837. Training.
+[INFO] CarDriver. Step: 1340000. Time Elapsed: 2106.332 s. Mean Reward: -3.964. Std of Reward: 1.617. Training.
+[INFO] CarDriver. Step: 1350000. Time Elapsed: 2120.240 s. Mean Reward: -3.397. Std of Reward: 2.106. Training.
+[INFO] CarDriver. Step: 1360000. Time Elapsed: 2139.938 s. Mean Reward: -4.429. Std of Reward: 2.160. Training.
+[INFO] CarDriver. Step: 1370000. Time Elapsed: 2154.453 s. Mean Reward: -4.676. Std of Reward: 2.752. Training.
+[INFO] CarDriver. Step: 1380000. Time Elapsed: 2171.873 s. Mean Reward: -3.953. Std of Reward: 1.999. Training.
+[INFO] CarDriver. Step: 1390000. Time Elapsed: 2187.347 s. Mean Reward: -4.547. Std of Reward: 2.014. Training.
+[INFO] CarDriver. Step: 1400000. Time Elapsed: 2207.414 s. Mean Reward: -4.331. Std of Reward: 2.225. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1399904.onnx
+[INFO] CarDriver. Step: 1410000. Time Elapsed: 2222.938 s. Mean Reward: -4.080. Std of Reward: 2.551. Training.
+[INFO] CarDriver. Step: 1420000. Time Elapsed: 2242.814 s. Mean Reward: -3.849. Std of Reward: 1.839. Training.
+[INFO] CarDriver. Step: 1430000. Time Elapsed: 2257.753 s. Mean Reward: -4.012. Std of Reward: 2.068. Training.
+[INFO] CarDriver. Step: 1440000. Time Elapsed: 2276.210 s. Mean Reward: -4.008. Std of Reward: 1.827. Training.
+[INFO] CarDriver. Step: 1450000. Time Elapsed: 2290.001 s. Mean Reward: -4.142. Std of Reward: 1.948. Training.
+[INFO] CarDriver. Step: 1460000. Time Elapsed: 2307.231 s. Mean Reward: -4.029. Std of Reward: 2.814. Training.
+[INFO] CarDriver. Step: 1470000. Time Elapsed: 2320.441 s. Mean Reward: -4.761. Std of Reward: 2.711. Training.
+[INFO] CarDriver. Step: 1480000. Time Elapsed: 2338.285 s. Mean Reward: -4.295. Std of Reward: 2.141. Training.
+[INFO] CarDriver. Step: 1490000. Time Elapsed: 2351.390 s. Mean Reward: -4.203. Std of Reward: 1.618. Training.
+[INFO] CarDriver. Step: 1500000. Time Elapsed: 2365.028 s. Mean Reward: -4.389. Std of Reward: 2.176. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1499938.onnx
+[INFO] CarDriver. Step: 1510000. Time Elapsed: 2382.166 s. Mean Reward: -3.758. Std of Reward: 2.233. Training.
+[INFO] CarDriver. Step: 1520000. Time Elapsed: 2395.570 s. Mean Reward: -4.662. Std of Reward: 1.586. Training.
+[INFO] CarDriver. Step: 1530000. Time Elapsed: 2412.634 s. Mean Reward: -3.254. Std of Reward: 1.650. Training.
+[INFO] CarDriver. Step: 1540000. Time Elapsed: 2426.273 s. Mean Reward: -3.731. Std of Reward: 2.103. Training.
+[INFO] CarDriver. Step: 1550000. Time Elapsed: 2443.622 s. Mean Reward: -4.238. Std of Reward: 2.289. Training.
+[INFO] CarDriver. Step: 1560000. Time Elapsed: 2457.555 s. Mean Reward: -3.880. Std of Reward: 1.827. Training.
+[INFO] CarDriver. Step: 1570000. Time Elapsed: 2473.784 s. Mean Reward: -4.012. Std of Reward: 1.220. Training.
+[INFO] CarDriver. Step: 1580000. Time Elapsed: 2487.013 s. Mean Reward: -3.590. Std of Reward: 1.706. Training.
+[INFO] CarDriver. Step: 1590000. Time Elapsed: 2502.450 s. Mean Reward: -4.550. Std of Reward: 2.283. Training.
+[INFO] CarDriver. Step: 1600000. Time Elapsed: 2516.459 s. Mean Reward: -4.434. Std of Reward: 2.396. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1599954.onnx
+[INFO] CarDriver. Step: 1610000. Time Elapsed: 2532.324 s. Mean Reward: -4.101. Std of Reward: 2.256. Training.
+[INFO] CarDriver. Step: 1620000. Time Elapsed: 2546.946 s. Mean Reward: -4.023. Std of Reward: 2.358. Training.
+[INFO] CarDriver. Step: 1630000. Time Elapsed: 2565.455 s. Mean Reward: -3.878. Std of Reward: 2.029. Training.
+[INFO] CarDriver. Step: 1640000. Time Elapsed: 2581.399 s. Mean Reward: -4.638. Std of Reward: 2.223. Training.
+[INFO] CarDriver. Step: 1650000. Time Elapsed: 2601.203 s. Mean Reward: -4.721. Std of Reward: 2.019. Training.
+[INFO] CarDriver. Step: 1660000. Time Elapsed: 2615.596 s. Mean Reward: -4.471. Std of Reward: 2.290. Training.
+[INFO] CarDriver. Step: 1670000. Time Elapsed: 2635.372 s. Mean Reward: -4.400. Std of Reward: 2.445. Training.
+[INFO] CarDriver. Step: 1680000. Time Elapsed: 2649.927 s. Mean Reward: -4.411. Std of Reward: 1.931. Training.
+[INFO] CarDriver. Step: 1690000. Time Elapsed: 2669.600 s. Mean Reward: -3.435. Std of Reward: 2.072. Training.
+[INFO] CarDriver. Step: 1700000. Time Elapsed: 2684.802 s. Mean Reward: -4.606. Std of Reward: 2.418. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1699929.onnx
+[INFO] CarDriver. Step: 1710000. Time Elapsed: 2703.724 s. Mean Reward: -4.048. Std of Reward: 1.814. Training.
+[INFO] CarDriver. Step: 1720000. Time Elapsed: 2718.666 s. Mean Reward: -4.840. Std of Reward: 2.882. Training.
+[INFO] CarDriver. Step: 1730000. Time Elapsed: 2737.067 s. Mean Reward: -5.003. Std of Reward: 2.289. Training.
+[INFO] CarDriver. Step: 1740000. Time Elapsed: 2752.647 s. Mean Reward: -3.573. Std of Reward: 2.350. Training.
+[INFO] CarDriver. Step: 1750000. Time Elapsed: 2770.898 s. Mean Reward: -3.297. Std of Reward: 1.505. Training.
+[INFO] CarDriver. Step: 1760000. Time Elapsed: 2785.642 s. Mean Reward: -4.769. Std of Reward: 2.277. Training.
+[INFO] CarDriver. Step: 1770000. Time Elapsed: 2804.149 s. Mean Reward: -4.874. Std of Reward: 2.970. Training.
+[INFO] CarDriver. Step: 1780000. Time Elapsed: 2819.662 s. Mean Reward: -4.302. Std of Reward: 1.854. Training.
+[INFO] CarDriver. Step: 1790000. Time Elapsed: 2838.551 s. Mean Reward: -3.431. Std of Reward: 1.700. Training.
+[INFO] CarDriver. Step: 1800000. Time Elapsed: 2853.681 s. Mean Reward: -4.352. Std of Reward: 2.172. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1799899.onnx
+[INFO] CarDriver. Step: 1810000. Time Elapsed: 2872.374 s. Mean Reward: -3.490. Std of Reward: 1.672. Training.
+[INFO] CarDriver. Step: 1820000. Time Elapsed: 2886.273 s. Mean Reward: -3.979. Std of Reward: 2.022. Training.
+[INFO] CarDriver. Step: 1830000. Time Elapsed: 2902.288 s. Mean Reward: -4.659. Std of Reward: 2.808. Training.
+[INFO] CarDriver. Step: 1840000. Time Elapsed: 2914.953 s. Mean Reward: -4.093. Std of Reward: 2.342. Training.
+[INFO] CarDriver. Step: 1850000. Time Elapsed: 2931.519 s. Mean Reward: -3.766. Std of Reward: 2.023. Training.
+[INFO] CarDriver. Step: 1860000. Time Elapsed: 2944.324 s. Mean Reward: -4.732. Std of Reward: 2.538. Training.
+[INFO] CarDriver. Step: 1870000. Time Elapsed: 2957.964 s. Mean Reward: -3.710. Std of Reward: 2.286. Training.
+[INFO] CarDriver. Step: 1880000. Time Elapsed: 2973.905 s. Mean Reward: -4.105. Std of Reward: 2.180. Training.
+[INFO] CarDriver. Step: 1890000. Time Elapsed: 2986.575 s. Mean Reward: -3.924. Std of Reward: 1.576. Training.
+[INFO] CarDriver. Step: 1900000. Time Elapsed: 3002.587 s. Mean Reward: -4.283. Std of Reward: 2.398. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1899906.onnx
+[INFO] CarDriver. Step: 1910000. Time Elapsed: 3016.218 s. Mean Reward: -4.735. Std of Reward: 2.468. Training.
+[INFO] CarDriver. Step: 1920000. Time Elapsed: 3033.869 s. Mean Reward: -3.743. Std of Reward: 2.202. Training.
+[INFO] CarDriver. Step: 1930000. Time Elapsed: 3046.670 s. Mean Reward: -4.372. Std of Reward: 2.052. Training.
+[INFO] CarDriver. Step: 1940000. Time Elapsed: 3063.112 s. Mean Reward: -4.347. Std of Reward: 1.095. Training.
+[INFO] CarDriver. Step: 1950000. Time Elapsed: 3078.621 s. Mean Reward: -3.816. Std of Reward: 1.843. Training.
+[INFO] CarDriver. Step: 1960000. Time Elapsed: 3097.071 s. Mean Reward: -4.928. Std of Reward: 3.095. Training.
+[INFO] CarDriver. Step: 1970000. Time Elapsed: 3113.519 s. Mean Reward: -4.214. Std of Reward: 1.984. Training.
+[INFO] CarDriver. Step: 1980000. Time Elapsed: 3131.999 s. Mean Reward: -4.465. Std of Reward: 2.864. Training.
+[INFO] CarDriver. Step: 1990000. Time Elapsed: 3145.822 s. Mean Reward: -4.734. Std of Reward: 2.273. Training.
+[INFO] CarDriver. Step: 2000000. Time Elapsed: 3164.426 s. Mean Reward: -3.915. Std of Reward: 2.599. Training.
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-1999941.onnx
+[INFO] Exported results\ppo_car_jerk_lo\CarDriver\CarDriver-2000069.onnx
+[INFO] Copied results\ppo_car_jerk_lo\CarDriver\CarDriver-2000069.onnx to results\ppo_car_jerk_lo\CarDriver.onnx.
