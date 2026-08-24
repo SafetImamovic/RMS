@@ -63,6 +63,7 @@ Notes on the pair, since a table row cannot carry them:
 | 2026-08-19 | `ppo_car_spread_c` | Run c of three. Identical to a and b except `--seed=3` | **2,000,000 steps in 2,709.4 s**, 738 steps/s, uninterrupted. Cumulative reward mean **-4.6722, sd 0.5360** over 200 summaries. Over 4,866 episodes, 47.0 per cent wall contact, 39.8 per cent stalled, 13.2 per cent track-swapped, zero laps. Late-phase checkpoint reward 0.3212, the highest of the three, and still an eighth of one marker against the 24 a lap needs | Not a candidate model. Completes the set T047 measures. **No run in the set completed a lap**, and the end-reason mix is the same to within two points across all three seeds |
 | 2026-08-20 | `ppo_car_jerk_lo` | One thing: `RewardModel.JerkPenalty`, -0.005 to **-0.001**. Same `config/ppo_car_spread.yaml` at 2M, same `--seed=1` as `ppo_car_spread_a`, same twelve areas, every other weight untouched. T048's first candidate, asking whether the smoothness charge was suppressing the steering exploration needed to reach a marker | **2,000,000 steps in 3,164.4 s**, 632 steps/s, uninterrupted. Cumulative reward mean **-4.2757, sd 0.4996** over 200 summaries. **Against the baseline rescored to this candidate's own table (-4.3310) the difference is +0.0553, which does not clear the 0.19 gate**, and on `reward/checkpoint`, which this candidate does not touch, it is **-0.0415 against a 0.0631 gate**, also not clearing. The jerk term fell -0.3531 to -0.0775 where an unchanged policy would give exactly -0.0706, so the wheel is thrashed slightly *more* once it is cheaper. Nothing else moved: 5,162 episodes at 48.0 per cent wall, 38.6 per cent stalled, 13.3 per cent track-swapped against the baseline's 46.8 / 39.9 / 13.3, **zero laps**, and checkpoint reward *fell again* across the run, 0.2793 to 0.2005 | Not a candidate model, and the weight is **not kept**. Recorded as a change that made no measurable difference, which is a result and not a gap: the jerk penalty was not what stopped this policy driving |
 | 2026-08-20 | `ppo_car_wall_lo` | One thing: `RewardModel.WallPenalty`, -5.0 to **-1.0**. The jerk scale is back at the pinned -0.005, so this run differs from the baseline in the wall terminal alone. Same `config/ppo_car_spread.yaml` at 2M, same `--seed=1`. T048's second candidate, aiming at the ordering the spread runs exposed: stalling out costs about -3.0 and a wall cost -5.0, so doing nothing was the cheaper option | **2,000,000 steps in 2,598.0 s**, 770 steps/s, uninterrupted. Cumulative reward mean **-3.1479, sd 0.5592**. Against the baseline rescored to this candidate's table (-2.8294) the difference is **-0.3185, which clears the 0.19 gate in the worse direction**. **The mechanism did work**: over 5,350 episodes the end-reason mix is 51.4 per cent wall and 35.4 per cent stalled against the baseline's 46.8 and 39.9, a shift of about 4.5 points that holds across all four quarters rather than fading. `reward/checkpoint` is +0.0318, inside its 0.0631 gate, but its quarter trend runs 0.286, 0.237, 0.269, **0.339** where every baseline is flat near 0.25 and every earlier run fell. **Zero laps**, as in every run of this feature | Not a candidate model, and the weight is **not kept**: it made the return measurably worse. Kept as the run that shows the wall terminal is load-bearing on *which* failure the policy chooses without being what stops it driving, and as the first curve in M3 whose checkpoint reward rises late |
+| 2026-08-24 | `ppo_car_speed_hi` | One thing: `RewardModel.SpeedReward`, 0.001 to **0.002**, with the jerk scale and the wall terminal both back at their pinned values, so this run differs from the baseline in the speed scale alone. Same `config/ppo_car_spread.yaml` at 2M, same `--seed=1`. T048's third candidate, added after the first two came back negative, aimed at the imbalance the spread decomposition exposed: a step cost of -1.676 a run against a speed reward of +0.0069 | **2,000,000 steps in 2,518.6 s**, 794 steps/s, uninterrupted. Cumulative reward mean **-4.6439, sd 0.5265**. Against the baseline rescored to this candidate's table (-4.6066) the difference is **-0.0373, which does not clear the 0.19 gate**; on `reward/checkpoint`, which this candidate does not touch, -0.0101 against 0.0631, also not clearing. **The term responded to the weight and the policy did not**: `reward/speed` went +0.0069 to +0.0150 where an unchanged policy would have given exactly +0.0138, so implied mean `v_norm` moved 0.00410 to 0.00459, a **12 per cent** change in speed for a doubled payment. End reasons 49.2 / 37.7 / 13.1 against 46.8 / 39.9 / 13.3 over 5,153 episodes, **zero laps**, and checkpoint reward fell across the run again, 0.276 to 0.232 by quarter | Not a candidate model, and the weight is **not kept**. The pre-registered negative reading: the reward table cannot be fixed by scaling the step and speed weights, so what stops this policy driving is exploration rather than the numbers in the table |
 
 Notes on the first full run:
 
@@ -310,3 +311,62 @@ decomposition made suspicious: **step cost at -1.676 a run against a speed rewar
 which is a car that is charged 240 times more for existing than it is paid for moving. That is a
 hypothesis for the next design change rather than a result from these runs, and it belongs in
 `DESIGN.md` before it belongs in a trainer.
+
+### Paying twice as much for speed bought twelve per cent more speed
+
+`ppo_car_speed_hi`, 2026-08-24, is T048's third candidate, added on the user's decision after the
+first two came back negative and T050 had no winner to promote. One change: `SpeedReward` from
+0.001 to 0.002, seed 1 at the T045 budget.
+
+**The candidate was capped by the table's own invariant, and that cap is the first result.**
+`Idle` was written so that at full speed the step cost and the speed reward cancel *exactly*, which
+is the design's defence against a policy circling on open surface to farm the speed term. That
+identity is also precisely what prevents the speed term from offering a gradient anywhere below
+full speed: before this run, the break-even speed was `v_norm = 1.0`, so a car had to be at maximum
+speed merely to stop losing money. Raising the weight trades the identity for a margin, and the
+margin bounds the change:
+
+```
+(SpeedReward - |StepCost|) x 6000  <  24 markers / 3
+(SpeedReward - 0.001)      x 6000  <  8          =>  SpeedReward < 0.002333
+```
+
+**So the imbalance is 240x and the largest correction the table permits is 2x.** 0.002 was chosen a
+little under the ceiling because it puts break-even at exactly `v_norm = 0.5` and leaves the float
+arithmetic away from the boundary. This bound was written into `DESIGN.md` 4.5 before the run, and
+the run was pre-registered in both directions.
+
+**It did not clear, and the interesting part is why.**
+
+| metric | baseline | candidate | difference | gate | verdict |
+|---|---|---|---|---|---|
+| cumulative reward, rescored | -4.6066 | -4.6439 | **-0.0373** | 0.19 | does not clear |
+| `reward/checkpoint` | 0.2510 | 0.2409 | -0.0101 | 0.0631 | does not clear |
+| cumulative reward, raw | -4.6135 | -4.6439 | -0.0304 | 0.19 | confounded, not read as an effect |
+
+The rescoring is the same exact correction T049 used on the first two candidates, and here it is
+small: only +0.0069 of the raw difference is bookkeeping, because the speed term is tiny to begin
+with. That is itself the point.
+
+**The term responded to the weight; the policy did not respond to the term.** `reward/speed` went
+from +0.0069 to +0.0150. A policy that changed *not at all* would have given exactly +0.0138, since
+the weight doubled. The entire behavioural response is the remaining +0.0012: implied mean `v_norm`
+moved from 0.00410 to 0.00459, **twelve per cent more speed for twice the payment**. Nothing else
+moved either. End reasons went 46.8 / 39.9 / 13.3 to 49.2 / 37.7 / 13.1 over 5,153 episodes, no run
+completed a lap, and `reward/checkpoint` fell across the run by quarter, 0.276, 0.244, 0.212, 0.232,
+against baselines flat near 0.25.
+
+**What the three candidates together establish.** The jerk penalty changed nothing, the wall
+terminal changed which failure the policy picks and made the return worse, and the speed scale
+changed the accounting more than the driving. None of the three cleared the gate in the better
+direction and none completed a lap in 2M steps. **The conclusion is the one the third run was
+pre-registered to license: this reward table cannot be fixed by scaling its weights.** A policy that
+is paid double for moving and moves twelve per cent more is not being held back by the size of the
+payment; it has not found the behaviour the payment is for. That is an exploration problem, and the
+remedies are of a different kind from a weight - a curriculum that starts the car nearer a marker,
+a denser progress signal than one marker in twenty-four, or a warm start from the behavioural
+cloning policy that M4 produces anyway.
+
+**T050 has no winner at any budget, and is recorded as unsatisfiable at this reward table** rather
+than left open. Phase 5's outcome is negative and specific: three one-change candidates, a measured
+noise floor, and a named reason none of them worked.

@@ -504,6 +504,21 @@ koraka, dakle 20 s pri 50 Hz, da zaradi koliko nosi jedan marker. Pod starom tab
 količina vožnje u krug nije dostizala marker, jer je zarada bila tačno nula. To je cijena gradijenta
 i zapisana je ovdje da se kasnije ne pročita kao previd.
 
+**Ishod, upisan nakon runa (2026-08-24).** Težina se **ne zadržava**, pa gornja tabela ostaje ta
+koju kod nosi. `ppo_car_speed_hi` daje -0.0373 naspram praga 0.19, dakle nema mjerljive razlike.
+Odlučujući broj nije prag nego mehanizam: `reward/speed` je otišao sa +0.0069 na +0.0150, a politika
+koja se **nije nimalo promijenila** dala bi tačno +0.0138, jer je težina udvostručena. Cijeli odgovor
+u ponašanju je +0.0012, odnosno prosječni `v_norm` sa 0.00410 na 0.00459: **dvanaest posto više
+brzine za dvostruko veću platu.**
+
+**Zaključak za koji je run bio pre-registrovan.** Ova tabela se ne može popraviti skaliranjem svojih
+težina. Sva tri kandidata su promašila prag u boljem smjeru i nijedan nije završio krug. Vozilo koje
+je plaćeno dvostruko za kretanje a kreće se dvanaest posto više nije ograničeno visinom plate - nije
+pronašlo ponašanje koje se plaća. To je problem istraživanja prostora, a njegovi lijekovi su druge
+vrste od težine: kurikulum koji startuje bliže markeru, gušći signal napretka od jednog markera u
+dvadeset četiri, ili topli start iz BC politike koju M4 ionako proizvodi. Svaki od njih je izmjena
+dizajna po Principu V i nova feature, ne tjuning run faze 5.
+
 **Posljedica koju treba reći naglas: ovo je promjena od svega dva puta, a nesrazmjer je 240 puta.**
 Prag isplativosti pada sa `v_norm = 1.0`, dakle vozilo je moralo voziti punom brzinom samo da ne
 gubi, na `v_norm = 0.5`. To je pomak u pravu stranu, ali invarijanta protiv farmanja ne dozvoljava
