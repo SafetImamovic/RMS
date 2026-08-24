@@ -162,7 +162,7 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 323 prolaza, 3 preskočena (bc moduli traže torch)
+pytest python/tests                  # 347 prolaza, 3 preskočena (bc moduli traže torch)
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
 #   Ne skraćivati izlaz sa | tail: -q ispisuje samo tačke dok ne dođe do sažetka,
 #   pa odsječen izlaz izgleda kao manji ukupan broj (izmjereno u 005/T046).
@@ -172,12 +172,34 @@ python -m python.track.export --batch all
 
 # ---- M3: RL trening (.venv-mlagents) ----
 .venv-mlagents\Scripts\Activate.ps1
-mlagents-learn config/ppo_car.yaml --run-id=ppo_car_v01   # pa Play u Unity Editoru
+
+# 1. Trening. Pokrenuti IZ KORIJENA repozitorija, da trenerov results/ bude projektov results/.
+#    Trener prvo osluskuje, pa se onda pritisne Play u Unity Editoru sa otvorenom
+#    Assets/Scenes/Training.unity. Ako je otvorena neka druga scena, trener ceka i istekne.
+mlagents-learn config/ppo_car.yaml --run-id=ppo_car_v01 --seed=1 --torch-device=cuda
+#    Smanjeni budzet za spread i tjuning runove (2M umjesto 5M):
+mlagents-learn config/ppo_car_spread.yaml --run-id=ppo_car_spread_a --seed=1 --torch-device=cuda
+
+# 2. Zaustavljanje: JEDAN Ctrl+C i cekati red "Exported ... .onnx".
+#    Drugi Ctrl+C preskace izvoz i noc treninga ostaje samo kao checkpoint fajl.
+
+# 3. Kriva kao podatak: destilovani CSV po runu, to je ono sto se commituje.
+python -m python.rl.export_curves results/ppo_car_spread_a
+
+# 4. Evaluacija: Assets/Scenes/Evaluation.unity, pa Play. SweepRunner sam prolazi
+#    10 izdvojenih seedova i pise redove u results/rl/ i trag po runu u results/drive_logs/.
+#    Model i deterministicka inferenca se biraju na BehaviorParameters u toj sceni.
+
+# 5. Izvjestaj za M5 (u .venv, ne u .venv-mlagents):
+python -m python.rl.report results/rl/eval_ppo_car_spread_a_deterministic.csv `
+    --traces results/rl/traces/deterministic --name spread_a_deterministic `
+    --dataset dataset/dataset/dataset/driving_log.csv
+
 tensorboard --logdir results
 
 # ---- M4: BC trening (.venv-bc) ----
 .venv-bc\Scripts\Activate.ps1
-pytest python/tests                  # 377 prolaza (ništa se ne preskače, torch je tu)
+pytest python/tests                  # 401 prolaz (ništa se ne preskače, torch je tu)
 
 # 1. Podjela train/val: blokovski holdout sa 8 s zaštitnim pojasom.
 #    Piše results/bc/split.json. Deterministična - isti fajl bajt po bajt.

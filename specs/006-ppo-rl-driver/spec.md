@@ -294,6 +294,40 @@ held-out seeds and confirm they use the same measures as the columns already rec
 - **SC-008**: The evaluation seeds appear in no training configuration, demonstrable from the
   recorded configuration files alone
 
+
+## Closeout (feature 006, 2026-08-24)
+
+Every criterion with the number that decides it. Two are not met, and they are stated as not met
+rather than restated to fit the result, which is what SC-001's own wording requires.
+
+| criterion | verdict | the number |
+|---|---|---|
+| SC-001 | **NOT MET** | 0.0 per cent of evaluation episodes completed 3 laps without wall contact, against 95 per cent. No episode reached any of the 24 checkpoints |
+| SC-002 | **NOT MET** | 0.0 per cent of the 10 held-out seeds saw one lap, against 80 per cent |
+| SC-003 | met | Spread reported from three identical runs before any comparison: sd 0.0924, gate 0.19. T047 preceded T048, and all three tuning candidates are stated against that gate |
+| SC-004 | met | Nine runs, each with an `EXPERIMENTS.md` row naming its one change and its outcome; `rl_steering.md` resolves every figure to run id, config, curve, model, rows, traces and scene |
+| SC-005 | met | The exported model drove 10 held-out seeds with no trainer attached (`Couldn't connect to trainer on port 5004. Will perform inference instead.`), and the training-to-export difference is a number: steering variance 0.00055 deterministic against 0.04557 sampling, a factor of 83 |
+| SC-006 | met | 5M in 2.0 hours, 2M in 42 to 52 minutes, against the 12-hour envelope |
+| SC-007 | met | `results/rl/rl_steering.md` puts lap completion and both smoothness measures beside the scripted and human columns, and names the losses: 0 of 10 laps against 34 of 34, and the steering-variance coincidence |
+| SC-008 | met | `SweepRunner` reads the eval half of `results/tracks/seed_split.json`; no training config names a seed, and `AreaScheduler` draws only from `SeedSplit.TrainSeeds()`. The eval sweep logs a warning naming R5 whenever it touches the held-out half |
+
+**What this feature could not reach, and why.** SC-001 and SC-002 both depend on the policy driving,
+and it never did. The cause is identified rather than left open: the reward table cannot be fixed by
+scaling its weights. Three one-change candidates were run against a measured noise floor and none
+cleared it in the better direction; the clearest doubled the payment for moving and bought twelve
+per cent more speed. That is a policy which has not found the behaviour, not one underpaid for it,
+so the remedy is exploration - a curriculum starting nearer a marker, a denser progress signal than
+one marker in twenty-four, or a warm start from the M4 behavioural-cloning policy. Each is a design
+change under Principle V and a new feature, not a Phase 5 tuning run. T050 is closed as
+unsatisfiable at this reward table for the same reason.
+
+**One measurement question is left open and is recorded rather than buried.** The trainer's
+`episode_length` (~530) and the number of times the step term is actually charged
+(`reward/step` over `StepCost`, ~1676) disagree by about 3.16x, and the ratio is not constant
+(1.95 to 4.01 across summaries). The reward analysis does not depend on it, because the step and
+speed terms accrue at the same call site and their ratio is unaffected, but any statement about
+episode length **in seconds** does. It belongs to the FR-008 family and is noted under T050.
+
 ## Assumptions
 
 - The sensing, the vehicle, the checkpoint ring, the start placement and the track loading all

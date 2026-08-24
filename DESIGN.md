@@ -728,6 +728,47 @@ citira mora biti provjerljiv iz repozitorija, a slika sa nečijeg ekrana to nije
 vozača. Evaluacija za M5 se radi **deterministički**, jer su i heuristika i BC deterministični, a
 razlika između dva načina se mjeri i zapisuje umjesto da se pretpostavi.
 
+
+### 5.1 Izmjereno (M3, feature 006, upisano nakon runova)
+
+Sve gore je bilo **odlučeno prije koda**. Ovdje su brojevi koji su na kraju izmjereni, uključujući
+i one koji obaraju kriterij iz gornje liste.
+
+**Propusnost.** Izmjereno **660 koraka/s** na `ppo_car_smoke` (500k u 814.9 s) i **632 do 794
+koraka/s** kroz pet runova od 2M. Gornja granica od 700 koraka/s koju je `ENVIRONMENT.md` upisao
+kao optimističnu za 3DBall se pokazala tačnom i za ovo okruženje, uprkos WheelCollider fizici i 13
+raycastova. Run od 5M staje u **2.0 sata**, run od 2M u **42 do 52 minute**, dakle SC-006 (ispod 12
+sati) je zadovoljen sa velikom rezervom.
+
+**Šum između runova.** Tri identična runa na seedovima 1, 2 i 3 daju srednje vrijednosti -4.5070,
+-4.6613 i -4.6722, dakle **uzoračka sd 0.0924** i prag za poređenje **0.19**. Za
+`reward/checkpoint` sd je 0.0315 i prag 0.0631. Nalaz koji vrijedi pamtiti: **rasap između runova
+je pet puta manji od rasapa unutar runa** (0.0924 naspram ~0.51), pa je srednja vrijednost runa
+stabilna dok pojedinačni sažetak nije.
+
+**Kriterij iz gornje liste nije ispunjen, i to je rezultat.** "Agent stabilno završava 3 kruga bez
+sudara u 95%+ epizoda" je izmjereno kao **0.0 posto**. Nijedna evaluaciona epizoda nije prošla
+nijedan od 24 markera, ni u determinističkoj ni u uzorkujućoj inferenci, ni na jednom od 10
+izdvojenih seedova; sve su završile kao `Stalled` na 60 s. Nijedan run u M3 nije završio krug ni
+tokom treninga.
+
+**Zašto, rečeno brojem.** Tri kandidata za tjuniranje, svaki sa po jednom izmijenjenom težinom, nisu
+prešli prag u boljem smjeru: `ppo_car_jerk_lo` +0.0553, `ppo_car_wall_lo` -0.3185 (prelazi, ali na
+lošiju stranu), `ppo_car_speed_hi` -0.0373. Najjasniji od njih je udvostručio platu za kretanje i
+kupio **dvanaest posto veću brzinu**. Ova tabela rewarda se ne može popraviti skaliranjem svojih
+težina; problem je istraživanje prostora. Puni zapis je u `results/EXPERIMENTS.md` 4.5.
+
+**Determinizam inference je izmjeren, ne pretpostavljen (FR-026).** Ista težina, dva vozača:
+ishodi identični (0 krugova, 0 markera, 0 dodira zida, sve `Stalled`), a upravljanje potpuno
+različito - varijansa 0.00055 naspram 0.04557, dakle **faktor 83**, i srednji |delta steer| 0.0005
+naspram 0.1452, **faktor 290**. Odluka iz gornjeg pasusa da se evaluacija radi deterministički
+ostaje, ali sada sa izmjerenom razlikom umjesto sa pretpostavkom.
+
+**Jedan nalaz koji mijenja kako se čita poređenje u M5.** Uzorkujuća politika ima varijansu
+upravljanja **0.04557 naspram 0.04994 skriptiranog vozača**, dakle devet posto razlike, a završava
+**0 od 10 krugova naspram 34 od 34**. Varijansa upravljanja sama ne razlikuje vozača koji vozi krug
+od vozača koji se ne pomjeri sa starta. Detalji u `results/rl/rl_steering.md`.
+
 ## 6. BC pipeline (PyTorch, CUDA)
 
 ### 6.1 Format dataseta i referenciranje slika
