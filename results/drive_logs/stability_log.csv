@@ -21,3 +21,5 @@ run,timestamp,condition,at_second,detail
 91,2026-08-16_13-32-29,IdleDrift,42.46,"drifted 9.895 m in 3.4 s with no input"
 96,2026-08-16_15-18-45,IdleDrift,1985.52,"drifted 11.470 m in 0.1 s with no input"
 98,2026-08-16_17-26-50,IdleDrift,65.14,"drifted 9.893 m in 6.1 s with no input"
+116,2026-08-19_14-13-06,FellThrough,1.44,"car dropped below the world, fall reset #1"
+116,2026-08-19_14-13-06,IdleDrift,1.58,"drifted 0.110 m in 0.1 s with no input"
