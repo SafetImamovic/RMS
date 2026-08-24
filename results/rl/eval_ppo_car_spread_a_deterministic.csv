@@ -2,10 +2,10 @@ seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,chec
 1001,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0008,0.0000,4.00,60.001
 1002,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0007,0.0000,4.00,60.001
 1003,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0007,0.0000,4.00,60.001
-1004,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0009,0.0000,4.00,60.001
-1005,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0009,0.0000,4.00,60.001
-1006,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0017,0.0000,4.00,60.001
-1007,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0006,0.0000,4.00,60.001
+1004,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0008,0.0000,4.00,60.001
+1005,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0011,0.0000,4.00,60.001
+1006,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0018,0.0000,4.00,60.001
+1007,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0005,0.0000,4.00,60.001
 1008,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0009,0.0000,4.00,60.001
 1009,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0008,0.0000,4.00,60.001
 1010,ppo_car_spread_a,13,180.00,20.00,false,,0,24,0,0,Stalled,0.0012,0.0000,4.00,60.001

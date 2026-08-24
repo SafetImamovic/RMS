@@ -148,6 +148,10 @@ PrefabInstance:
       value: ppo_car_spread_a
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      propertyPath: trace
+      value: 
+      objectReference: {fileID: 1632542837}
+    - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: track
       value: 
       objectReference: {fileID: 682781366}
@@ -203,14 +207,17 @@ PrefabInstance:
     - {fileID: 8537505032932795138, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542837}
   m_SourcePrefab: {fileID: 100100000, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
 --- !u!114 &682781362 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6719471001443121455, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
   m_PrefabInstance: {fileID: 682781361}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a46789c6df865cf4093852ad1e39c586, type: 3}
@@ -221,7 +228,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6364114072882863484, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
   m_PrefabInstance: {fileID: 682781361}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9874e3c6c4ca95d43b9fc2ee1795acca, type: 3}
@@ -243,7 +250,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
   m_PrefabInstance: {fileID: 682781361}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9aa5015ddb754968b47f90db19aa5aa9, type: 3}
@@ -408,6 +415,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1632542836 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+  m_PrefabInstance: {fileID: 682781361}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1632542837
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15baccccfe95a8349b1e39052d52f2d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveLogger
+  sourceLabel: ppo_car_spread_a_sampling
+  minKeepSeconds: 2
+  flushEveryRows: 256
 --- !u!1 &2072435264
 GameObject:
   m_ObjectHideFlags: 0

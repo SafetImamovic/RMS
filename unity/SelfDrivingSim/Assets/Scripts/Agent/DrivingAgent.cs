@@ -66,6 +66,15 @@ namespace SelfDrivingSim.Agent
                  "by eye.")]
         [SerializeField] private string runId = "";
 
+        [Tooltip("Per-step trace for the M5 steering comparison, one file per run. " +
+                 "Optional: leave empty and the sweep still records its RunRecord rows. " +
+                 "It is driven per run rather than left to its own OnEnable, which would write " +
+                 "one file for the whole Play session. That file would be a single monotonic t " +
+                 "spanning ten runs with no way to find the seams, and differencing across a seam " +
+                 "invents a steering jump no driver made. `python/rl/report.py` takes a directory " +
+                 "of traces for exactly this reason.")]
+        [SerializeField] private DriveLogger trace;
+
         [Header("Episode (DESIGN 4.6)")]
         [Tooltip("Laps that count as success. DESIGN 4.6 says three.")]
         [SerializeField] private int lapsToComplete = 3;
@@ -270,6 +279,14 @@ namespace SelfDrivingSim.Agent
             // runner asks for the next one.
             _runActive = !evaluationMode || _restartRequested;
             _restartRequested = false;
+
+            // Only for a run the sweep asked for. In evaluation mode ML-Agents still cycles
+            // episodes between runs, and opening a trace for those would fill the directory with
+            // files for drives that never happened.
+            if (evaluationMode && _runActive && trace != null)
+            {
+                trace.BeginRun();
+            }
 
             _reward = default;
             ElapsedS = 0f;
@@ -485,6 +502,13 @@ namespace SelfDrivingSim.Agent
             if (!evaluationMode)
             {
                 return;
+            }
+
+            // Closed before the row is written, so a reader that finds the row can rely on the
+            // trace beside it being complete rather than still buffered.
+            if (trace != null)
+            {
+                trace.EndRun();
             }
 
             // Set before the first Append, which is what RunRecordWriter.Folder requires: the file
