@@ -626,8 +626,18 @@ Ono što ni ovaj red tabele sam ne rješava:
 - **Vožnja unazad se sada naplaćuje dva puta, i to je namjerno.** Pogrešan smjer se prijavljuje
   nakon 3.43 m unazad; na nominalnom lancu tih 3.43 m nosi i oko **-0.204** napretka, povrh -1.0 za
   pogrešan smjer. Broj stoji ovdje da se kasnije ne pročita kao previd.
-- **Pomak po koraku se računa lokalno**, iz promjene projekcije na tekućem segmentu, a ne
-  oduzimanjem dva velika zbira. Zbirovi se drže u `double` samo za izvještaj i za test skraćivanja.
+- **Pozicija se drži u `double`, i razlika se uzima u `double`.** Na `float` bi ovo bio problem:
+  `float` nosi oko sedam značajnih cifara, pa je pri ukupno pređenih 1000 m najmanji predstavljiv
+  pomak oko 0.00006 m, a zbir hiljada malih članova naspram jedne velike razlike je tačno mjesto
+  gdje se nakupljena greška vidi. U `double` je ulp na 1024 oko `2.3e-13` m, dakle dvanaest redova
+  veličine ispod pomaka od 0.2 m po koraku, i oduzimanje dva velika zbira nema šta da izgubi. Na
+  `float` se prelazi tek na kraju, kad razlika postane reward.
+  **Ispravka, upisana pri implementaciji (T004, 2026-08-25).** Prva verzija ovog pasusa je tražila
+  da se pomak računa lokalno, iz promjene projekcije na tekućem segmentu, umjesto oduzimanjem
+  zbirova. To je odbačeno jer je lošije, ne samo složenije: reward je razlika **ograničene**
+  pozicije, a ne sirove, pa bi lokalni račun morao pratiti i da li je prethodni korak stajao na
+  plafonu. Time bi se logika plafona duplirala na dva mjesta, a plafon je upravo dio u kojem bi
+  greška bila najskuplja.
 - **Prethodna pozicija se briše na svakom početku epizode**, uključujući i zamjenu staze u trening
   kopiji. Feature 006 je već našao da `TrainingArea.SwapTo` zaobilazi prijavu rewarda; isti put ne
   smije zaobići ni ovo brisanje, jer bi ustajala pozicija sa druge staze u jednom koraku naplatila
