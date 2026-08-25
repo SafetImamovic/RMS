@@ -68,13 +68,20 @@ against.
     read as a decision rather than as an oversight
   - The `DecisionPeriod: 4` finding from R6 is written into 4.5 as the closing paragraph, so the
     one item M3 left open is now explained in the design rather than only in this feature's research
-- [ ] T002 [P] Record the pre-feature test baseline in this file: full suite in `.venv` and in
+- [X] T002 [P] Record the pre-feature test baseline in this file: full suite in `.venv` and in
       `.venv-bc`, and the Unity EditMode count. Feature 006 closed at `.venv` 347 passed / 3
       skipped, `.venv-bc` 401 passed, EditMode 109 green. Confirm those still hold on this branch
       before changing anything. Do not pass a second `-q`; `pytest.ini` already sets `addopts = -q`
       and a second one suppresses the pass count
-- [ ] T003 [P] Record the pre-feature throughput baseline: feature 006 measured 684 steps/s at
-      2,000,000 steps. This is what T019's regression check compares against
+  - Measured 2026-08-25 on this branch: **`.venv` 347 passed, 3 skipped** in 212.5 s, and
+    **`.venv-bc` 401 passed** in 217.0 s. Both agree exactly with the counts feature 006 closed at,
+    so nothing regressed between the 006 merge and this branch and T047 compares against these
+  - Unity EditMode is **not** measured here. 006 closed at 109 green, and confirming that is the
+    owner's Test Runner step, not something this task can assert
+- [X] T003 [P] Record the pre-feature throughput baseline: feature 006 measured 684 steps/s at
+      2,000,000 steps. This is what T023's regression check compares against
+  - Recorded: **684 steps/s**, from feature 006's 5,000,000 steps in 7,308.3 s. A drop well below
+    about 600 at T023 means the chain is being remeasured per step instead of per track build
 
 **Checkpoint**: the design is written, the baselines are recorded.
 
@@ -86,27 +93,59 @@ against.
 
 **CRITICAL**: T001 must be complete before any task in this phase.
 
-- [ ] T004 Create `unity/SelfDrivingSim/Assets/Scripts/Track/TrackProgress.cs` with the derived
+- [X] T004 Create `unity/SelfDrivingSim/Assets/Scripts/Track/TrackProgress.cs` with the derived
       chain data from the data model: `SegmentLength[]`, `CumulativeLength[]` and `ChainLength`,
       computed once from `CheckpointRing.Markers` at track build and never per step. Fail loudly at
       build on a zero-length segment rather than dividing by zero in the weight derivation
-- [ ] T005 Add the projection to `TrackProgress`: given a world position and the ring's
+  - Written as a plain class, **not a MonoBehaviour**, taking `IReadOnlyList<Vector3>` rather than
+    transforms. That is what lets T012 and T013 run against a synthetic 24-gon with no track, no car
+    and no physics step
+- [X] T005 Add the projection to `TrackProgress`: given a world position and the ring's
       `NextIndex`, project onto the segment ending in that marker, clamped to the segment
       endpoints, and return `RawArc` as `CumulativeLength` at the segment start plus the projected
       length
-- [ ] T006 Add the unwrapping (R2): `Unwrapped = RawArc + LapCount * ChainLength`. There is no
+  - **This task found a real ordering trap before any code ran.** `CheckpointRing.StartAt(k)` puts
+    the car on marker `k` and then sets `StartIndex` to `k + 1`, because the ring's `StartIndex`
+    means "the first marker that was **expected**", not the marker the car is on. Measuring the arc
+    from the ring's value would put every episode's origin one marker ahead of the car, so the first
+    step of every episode would read as almost a whole lap already banked. `TrackProgress.Reset`
+    takes the ring's value and steps back one, in one place, and `OriginIndex` carries the
+    explanation so no caller has to remember it
+- [X] T006 Add the unwrapping (R2): `Unwrapped = RawArc + LapCount * ChainLength`. There is no
       special case at the finish line and there must not be one
-- [ ] T007 Add the clamp (R3): `Ceiling` is `CumulativeLength` at the end of the segment
+  - Verified against the ring rather than assumed: `Contact` increments `LapCount` in the **same
+    call** that wraps `NextIndex` back to `StartIndex`. Had they been one step apart there would be
+    a single step per lap where the lap term had not yet arrived and the position dropped by a whole
+    chain, which is exactly the -12.0 spike the unwrapping exists to prevent
+- [X] T007 Add the clamp (R3): `Ceiling` is `CumulativeLength` at the end of the segment
       terminating in `NextIndex`, and `Clamped = min(Unwrapped, Ceiling)`. This is the mechanism
       that makes a shortcut worth nothing (FR-008)
-- [ ] T008 Add the per-step advance (R4): compute the advance from the change in projection plus
+- [X] T008 Add the per-step advance (R4): compute the advance from the change in projection plus
       any whole segment crossed, not by differencing the running totals. Keep the totals in
       `double` for reporting and for the telescoping test only
-- [ ] T009 Add `HasPrevious` and `Previous` to `TrackProgress`, with a `Reset()` that clears both,
+  - **Done differently from how the task and R4 wrote it, and `DESIGN.md` 4.5 was amended first
+    rather than the code quietly deviating (Principle V).** The position is held in `double` and the
+    difference is taken in `double`. The local-advance version was rejected because it is worse, not
+    merely more code: the reward is the difference of the **clamped** position, so a local
+    computation would have to track whether the previous step was sitting at the ceiling, which
+    duplicates the clamp logic into the one place an error would cost most
+  - The number that settles it: `float` carries about seven significant digits, so at a kilometre
+    driven its ulp is about 0.00006 m, and the telescoping test sums thousands of small terms
+    against one large difference. In `double` the ulp there is about `2.3e-13` m, twelve orders of
+    magnitude below a 0.2 m step. The cast to `float` happens once, when the distance becomes a
+    reward
+- [X] T009 Add `HasPrevious` and `Previous` to `TrackProgress`, with a `Reset()` that clears both,
       so the first step of an episode charges nothing (FR-004)
-- [ ] T010 Add `ProgressWeight` to `TrackProgress`, computed at build as `0.5 * 24.0 / ChainLength`
+  - `Reset` also clears `Unwrapped`, `Ceiling`, `Clamped` and `AtCeiling`, so a swap to a different
+    chain cannot leave anything behind for the next episode to difference against (R7)
+- [X] T010 Add `ProgressWeight` to `TrackProgress`, computed at build as `0.5 * 24.0 / ChainLength`
       (R5). **Not a literal.** Generated tracks differ between seeds and a literal would pay
       different fractions of a lap on different tracks
+  - Signature is `Configure(markerPositions, checkpointReward)`. The lap payout is derived as
+    `LapPayoutFraction * Count * checkpointReward`, so the 24.0 is never written down: it is the
+    marker count times what a marker pays. Passing the reward in as a parameter also keeps
+    `SelfDrivingSim.Track` clear of `SelfDrivingSim.Agent`, which would otherwise be a layering
+    inversion
 
 **Checkpoint**: the geometry exists and is testable without a car, a scene or a physics step.
 
@@ -118,27 +157,60 @@ against.
 
 **Independent test**: one lap by the scripted driver, summed term against the endpoint difference.
 
-- [ ] T011 Create `unity/SelfDrivingSim/Assets/Tests/EditMode/TrackProgressTests.cs` with a
+- [X] T011 Create `unity/SelfDrivingSim/Assets/Tests/EditMode/TrackProgressTests.cs` with a
       synthetic polyline the tests hand in directly, so none of them needs a track, a car or a
       scene (FR-022)
-- [ ] T012 [US1] **The telescoping test.** Sum the term over a trajectory and assert it equals
+- [X] T012 [US1] **The telescoping test.** Sum the term over a trajectory and assert it equals
       `ProgressWeight * (Clamped_end - Clamped_start)` within R9's tolerance: 0.1 per cent relative,
       with an absolute floor of `ProgressWeight * 0.01 m`. This is FR-005 and SC-001, and it blocks
       every training run
-- [ ] T013 [US1] **The loop test.** A trajectory returning the car to a state it already occupied,
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+- [X] T013 [US1] **The loop test.** A trajectory returning the car to a state it already occupied,
       without crossing the finish forward, sums to zero within the same tolerance. This is FR-007
       and SC-002, and it is what preserves the anti-farming invariant
-- [ ] T014 [P] [US1] Test that the term shows no jump at the step a marker is taken beyond what
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+  - **The first EditMode run failed this one, and the failure was in the test.**
+    `Circling_for_a_whole_episode_earns_nothing_from_this_term` read 0.23211 against a tolerance of
+    0.00038306. The tolerance is the tell: it is `ProgressWeight * 0.01`, so the weight was 0.038306,
+    the chain 313.26 m, and the surplus divides out to **6.06 m** against a half-segment of 6.53 m.
+    The test seeded `Previous` at `markers[0]` and then teleported the car onto a circle centred
+    mid-segment, so it measured the jump, not the loop; it also stopped one step short of closing the
+    final turn. Now seeded on the circle itself, run over a whole number of 60-step turns, with the
+    angle taken modulo one turn so the closure is exact rather than dependent on `Mathf.Cos` at 628
+    radians
+  - Worth keeping: the loop property is stated over a path that **returns to where it started**, and
+    the first draft of its own test did not return. That is the same class of error the first-step
+    rule and the swap reset exist to prevent
+- [X] T014 [P] [US1] Test that the term shows no jump at the step a marker is taken beyond what
       that step's movement accounts for. This is the failure mode that R1 rejected the
       distance-to-next-marker potential to avoid, and the test exists so nobody reintroduces it
-- [ ] T015 [P] [US1] Test symmetry: driving a stretch backwards costs exactly what driving it
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+- [X] T015 [P] [US1] Test symmetry: driving a stretch backwards costs exactly what driving it
       forwards paid
-- [ ] T016 [P] [US1] Test the first step of an episode charges zero, and that `Reset()` restores
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+- [X] T016 [P] [US1] Test the first step of an episode charges zero, and that `Reset()` restores
       that state
-- [ ] T017 [P] [US1] Test the clamp: a position advanced past the due marker earns nothing further
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+- [X] T017 [P] [US1] Test the clamp: a position advanced past the due marker earns nothing further
       until the marker is taken
-- [ ] T018 [P] [US1] Test the degenerate chain: a zero-length segment fails at build rather than at
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
+- [X] T018 [P] [US1] Test the degenerate chain: a zero-length segment fails at build rather than at
       run time
+  - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
+    captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
+    against a number quoted from memory here
 - [ ] T019 [US1] Add the term to `RewardModel.cs`: one constant, one pure function
       `Progress(float advance, float weight)`, one `MarkerProgress` field in `Breakdown`, and
       `MarkerProgress` in `Total`. **The six existing terms keep their names, weights, firing
