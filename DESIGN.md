@@ -517,7 +517,9 @@ je plaćeno dvostruko za kretanje a kreće se dvanaest posto više nije ogranič
 pronašlo ponašanje koje se plaća. To je problem istraživanja prostora, a njegovi lijekovi su druge
 vrste od težine: kurikulum koji startuje bliže markeru, gušći signal napretka od jednog markera u
 dvadeset četiri, ili topli start iz BC politike koju M4 ionako proizvodi. Svaki od njih je izmjena
-dizajna po Principu V i nova feature, ne tjuning run faze 5.
+dizajna po Principu V i nova feature, ne tjuning run faze 5. **Feature 007 uzima drugi od ta tri
+lijeka**, gušći signal napretka, i odlučen je niže. Preostala dva ostaju otvorene feature i nisu
+dirana, da bi se pomjeren broj mogao pripisati jednom lijeku.
 
 **Posljedica koju treba reći naglas: ovo je promjena od svega dva puta, a nesrazmjer je 240 puta.**
 Prag isplativosti pada sa `v_norm = 1.0`, dakle vozilo je moralo voziti punom brzinom samo da ne
@@ -532,6 +534,124 @@ pozitivan.
 ga tvrdnja sa marginom: zarada od vožnje u krug kroz cijelu epizodu mora ostati manja od trećine
 onoga što nosi krug kroz markere. Tvrdnja da stajanje u mjestu gubi svaki korak ostaje netaknuta,
 jer `Idle(0)` i dalje zavisi samo od `StepCost`.
+
+**Odlučeno za feature 007 (gusti signal napretka), prije koda.** Tabela dobija **jedan član**, a
+šest postojećih ostaju nepromijenjena po imenu, težini, uslovu okidanja i ključu statistike. Ovaj
+feature dodaje član i ne tjunira tabelu koju je zatekao, da bi taj član bio jedina promjenljiva.
+
+| Događaj | Reward | Svrha |
+|---------|--------|-------|
+| Napredak po lancu markera | +`w × Δs` po koraku fizike, `w = 0.5 × 24.0 / dužina lanca` | gradijent između markera |
+
+**Zašto uopšte.** Jedini član koji je govorio „ideš u pravu stranu“ bio je +1.0, a plaćao se 24 puta
+po krugu, na markerima razmaknutim 8.43 m. Kroz devet runova politika je zaradila prosječno **0.249**
+markera po epizodi. Signal koji se vidi jednom u nekoliko stotina koraka, ako i tada, nije gradijent
+po kojem se može penjati. Svi ostali članovi su ili cijena postojanja ili kazna za umiranje, a oboje
+se minimizuju time da se vozi manje, što je tačno ono što je politika naučila.
+
+**Šta je potencijal, i zašto nije udaljenost do sljedećeg markera.** Član je razlika **pozicije po
+lancu markera** između dva uzastopna koraka fizike. Lanac je izlomljena linija kroz 24 markera, a
+pozicija je dužina lanca do segmenta na kojem je vozilo, plus projekcija vozila na taj segment.
+Očigledna alternativa, udaljenost do sljedećeg markera, nije lošija nego pogrešna: ta udaljenost
+skače sa oko nule na 8.43 m tačno u trenutku kad marker bude uzet, pa bi razlika naplatila cijeli
+razmak kao kaznu za korak u kojem je vozilo uradilo ono što se traži. Vozilo bi bilo plaćeno da
+prilazi markeru, a kažnjeno da ga dosegne.
+
+**Zbir se skraćuje do razlike krajeva, i to je cijeli dizajn.** Pošto je član razlika jedne
+veličine, njegov zbir po bilo kojoj putanji jednak je razlici te veličine na krajevima putanje i
+ničemu više. Posljedica koja se ovdje traži: **svaka putanja koja vrati vozilo u stanje u kojem je
+već bilo nosi tačno nulu**, bez obzira šta je radila između.
+
+**Invarijanta protiv farmanja ostaje, i ostaje istom aritmetikom.** Tvrdnja je da vožnja u krug po
+otvorenoj površini kroz cijelu epizodu mora zaraditi manje od trećine onoga što nosi krug kroz
+markere, dakle manje od 8.0. Novi član vožnji u krug donosi **tačno nulu**, po gornjem svojstvu, pa
+račun ostaje onaj koji već piše: pri `SpeedReward` 0.002 epizoda vožnje u krug punom brzinom nosi
+najviše +6.0, naspram +24 za krug kroz markere. Naivna verzija člana, ona koja plaća smanjenje
+udaljenosti do sljedećeg markera, srušila bi invarijantu u jednoj liniji, jer bi vozilo koje se
+ljulja prema markeru i nazad zarađivalo neograničeno. **Invarijantu čuva oblik člana, a ne dovoljno
+mala težina.**
+
+**Pozicija se ne resetuje na cilju, nego se odmotava.** Pamti se ukupan pređeni put po lancu od
+početka epizode, uvećan za `broj krugova × dužina lanca`. Verzija koja bi poziciju vratila na nulu
+na startnoj liniji naplatila bi cijeli krug kao kaznu u jednom koraku, jednom po krugu. Odmotavanje
+ne traži nikakav poseban slučaj, pa nema ni koraka u kojem bi se greška najteže primijetila.
+
+Ovdje ide i ograda. Odmotana pozicija je funkcija putanje, a ne trenutnog stanja, pa preko startne
+linije ovo strogo uzevši nije potencijal nad stanjem; unutar kruga jeste. Ono što odmotavanje čuva
+su dva svojstva koja se ovdje i traže i testiraju: zbir se skraćuje do razlike krajeva, i svaka
+petlja koja ne pređe startnu liniju u ispravnom smjeru nosi nulu. Prelazak startne linije naprijed
+je upravo ono ponašanje koje se plaća, i plaćen je najviše dužinom kruga. Besplatne petlje nema.
+
+**Pozicija ne smije preći marker koji je na redu.** Pravilo da se marker dodjeljuje samo ako je onaj
+koji je na redu postoji od M2 i sprečava da prečica bude nagrađena. Geometrijski računata pozicija
+bi tu prečicu ipak platila, jer bi skočila naprijed. Zato se pozicija ograničava plafonom na kraju
+segmenta koji se završava markerom `next_index`. Vozilo koje presiječe i uključi se dalje niz stazu
+stoji na plafonu, ne zarađuje ništa a i dalje plaća korak, i mora se vratiti po marker koji je
+preskočilo. Time je prečica **strogo lošija** od legalnog puta, a ne samo nenagrađena.
+
+**Težina se izvodi, ne bira.** Neka krug napretka plaća `alpha` puta ono što plaća krug markera:
+
+```
+napredak po krugu  =  alpha × 24.0
+težina po metru    =  alpha × 24.0 / dužina lanca
+```
+
+**Uzima se `alpha = 0.5`, dakle krug napretka nosi 12.0 naspram 24.0 koje nose markeri.** Tri
+razloga, po važnosti:
+
+- **Markeri moraju ostati veći signal.** Na njima je definisan milestone, a gusti član postoji da
+  politiku dovede do njih, ne da ih zamijeni. Pri `alpha = 0.5` krug kroz sve markere nosi 36.0, od
+  čega su dvije trećine i dalje ono što se mjeri.
+- **Član po koraku mora nadmašiti cijenu koraka dovoljno da bude gradijent.** Pri oko 0.2 m po
+  koraku fizike, koliko skriptirani vozač postiže, `alpha = 0.5` na lancu od 202.3 m daje oko
+  **0.0119 po koraku** naspram cijene koraka -0.001. To je red veličine razlike, a pod starom
+  tabelom je signal za napredovanje između markera bio tačno nula.
+- **Invarijanta ostaje netaknuta**, po računu iz prethodnog pasusa.
+
+`alpha = 1.0` je odbačeno: krug napretka jednak krugu markera čini dva signala ravnopravnim, pa
+svaka greška u geometriji lanca košta koliko i propušten marker. Biranje broja po koraku direktno je
+odbačeno iz principa: broj po koraku se ne može uporediti ni sa čim, a udio kruga se poredi sa 24.0
+koje već stoje u tabeli. **Težina se računa pri gradnji staze, a ne upisuje kao literal**, jer se
+generisane staze razlikuju po seedu i literal bi na različitim stazama plaćao različit udio kruga.
+Reprodukuje se izvod, ne broj (Princip VI).
+
+Ono što ni ovaj red tabele sam ne rješava:
+
+- **Prvi korak epizode nosi nulu.** Nema prethodne pozicije za razliku, a prirodna greška je
+  razlikovati od nule, čime bi se cijela pozicija po lancu randomizovanog starta isplatila u prvom
+  koraku svake epizode. To je najčešći događaj u treningu.
+- **Član je simetričan.** Vožnja unazad kroz istu dionicu košta tačno ono što je vožnja naprijed
+  platila. Odsijecanje negativnog dijela, po uzoru na ono što se radi sa brzinom, ovdje bi bilo
+  farmanje: ljuljanje naprijed-nazad zarađivalo bi po pola ciklusa.
+- **Vožnja unazad se sada naplaćuje dva puta, i to je namjerno.** Pogrešan smjer se prijavljuje
+  nakon 3.43 m unazad; na nominalnom lancu tih 3.43 m nosi i oko **-0.204** napretka, povrh -1.0 za
+  pogrešan smjer. Broj stoji ovdje da se kasnije ne pročita kao previd.
+- **Pomak po koraku se računa lokalno**, iz promjene projekcije na tekućem segmentu, a ne
+  oduzimanjem dva velika zbira. Zbirovi se drže u `double` samo za izvještaj i za test skraćivanja.
+- **Prethodna pozicija se briše na svakom početku epizode**, uključujući i zamjenu staze u trening
+  kopiji. Feature 006 je već našao da `TrainingArea.SwapTo` zaobilazi prijavu rewarda; isti put ne
+  smije zaobići ni ovo brisanje, jer bi ustajala pozicija sa druge staze u jednom koraku naplatila
+  stotine metara.
+- **Član ima svoj ključ statistike, `reward/progress`**, i zbir sada sedam članova mora biti jednak
+  povratu epizode. Nijedan drugi kod ne smije zvati `AddReward`.
+
+**Prag 0.19 iz T047 se ne smije ponovo upotrijebiti.** Izmjeren je na povratu, a dodavanje člana
+mijenja skalu povrata, pa povrat pod ovom tabelom nije uporediv sa povratom pod tabelom feature-a
+006. Feature 007 mjeri svoj prag ponovo, istim protokolom tri identična runa, ali na veličinama na
+kojima se i sudi: **markeri po epizodi, završeni krugovi i udio zaglavljenih epizoda.** Osnova koju
+treba nadmašiti je 0.249 markera po epizodi.
+
+**Run je pre-registrovan u oba ishoda.** Ako markeri po epizodi pređu novoizmjereni prag, rijetkost
+signala jeste bila ograničenje i M3 se premjerava. Ako ne pređu, onda ni gusti signal nije bio to,
+pa od tri imenovana lijeka ostaju dva, a jedan je uklonjen mjerenjem umjesto mišljenjem. Oba ishoda
+se objavljuju.
+
+**Uz ovo se zatvara i jedina otvorena stavka iz M3.** `episode_length` trenera (oko 530) i broj
+naplata člana po koraku (oko 1676) razilazili su se za oko 3.16, sa maksimumom 4.01.
+`TrainingArea.prefab` postavlja `DecisionPeriod: 4`, a trener broji odluke dok se reward naplaćuje
+po koraku fizike, pa je **4 očekivani odnos** i maksimum ga potvrđuje. Ostaje objasniti manjak ispod
+plafona, za šta feature 007 instrumentira oba brojača u istom runu. Svaka tvrdnja o trajanju epizode
+u sekundama izvodi se iz broja koraka fizike na 50 Hz, i to kaže.
 
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili

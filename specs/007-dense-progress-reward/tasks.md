@@ -45,7 +45,7 @@ Quoting 0.19 anywhere in this feature's results is a defect, not a shortcut.
 **Purpose**: the design decision, written down, plus the baseline a later regression is measured
 against.
 
-- [ ] T001 Rewrite `DESIGN.md` 4.5 in a `docs:` commit before any code exists: the potential as the
+- [X] T001 Rewrite `DESIGN.md` 4.5 in a `docs:` commit before any code exists: the potential as the
       arc position along the marker chain (R1), the unwrapping across the finish (R2), the clamp at
       the ring's due marker (R3), the weight derivation `0.5 * 24.0 / ChainLength` with its three
       reasons (R5), and the anti-farming invariant **restated rather than deleted**, showing that
@@ -53,9 +53,21 @@ against.
       `SpeedReward` 0.002 is untouched. **Principle V requires this first and this task blocks every
       code task below**
   - Written as an amendment to 4.5, not a new section. Section numbers are cited from every spec
-    and renumbering breaks those references silently
-  - The existing M3 closeout paragraph in 4.5, which names the three remedies, gains a line saying
-    which one this feature takes and that the other two remain open features
+    and renumbering breaks those references silently. 121 lines added, one line changed
+  - The existing M3 closeout paragraph, which names the three remedies, gained the line saying
+    feature 007 takes the second of them and that the other two stay open and untouched, so a moved
+    number is attributable to one remedy
+  - **The nominal numbers are now literal rather than approximate.** 4.5 already carried the T060
+    and T061 measurement: chain 202.3 m, 24 markers, spacing 8.43 m. So the derived weight is
+    `0.5 x 24.0 / 202.3`, about 0.0594 per metre, and at the scripted driver's roughly 0.2 m per
+    physics step that is about **0.0119 per step** against a step cost of -0.001. The research
+    document had written the chain as "about 202 m"; the design now uses the measured figure
+  - **The double charge on reversing is now a number.** 4.5 already fixed wrong-way detection at
+    3.43 m of reversing (T061). At the derived weight those 3.43 m also cost about **-0.204** of
+    progress on top of the -1.0 wrong-way penalty. Written into the design so the double charge is
+    read as a decision rather than as an oversight
+  - The `DecisionPeriod: 4` finding from R6 is written into 4.5 as the closing paragraph, so the
+    one item M3 left open is now explained in the design rather than only in this feature's research
 - [ ] T002 [P] Record the pre-feature test baseline in this file: full suite in `.venv` and in
       `.venv-bc`, and the Unity EditMode count. Feature 006 closed at `.venv` 347 passed / 3
       skipped, `.venv-bc` 401 passed, EditMode 109 green. Confirm those still hold on this branch
