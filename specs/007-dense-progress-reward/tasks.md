@@ -352,27 +352,82 @@ a gate measured on that metric.
     `_physicsStepsCharged` counts in `AccrueStepTerms`, the one place the per-step terms are
     charged, and is reported as a mean so it is the same kind of number as the trainer's own
     `Environment/Episode Length` and their ratio is the one R6 asks for
-- [ ] T025 [P] [US2] Spread run a: reduced budget, seed 1, the new table, nothing else different.
+- [X] T025 [P] [US2] Spread run a: reduced budget, seed 1, the new table, nothing else different.
       Row in `results/EXPERIMENTS.md` in the same session
-- [ ] T026 [P] [US2] Spread run b: identical, seed 2
-- [ ] T027 [P] [US2] Spread run c: identical, seed 3
-- [ ] T028 [US2] **Write `results/rl/progress_spread.md` before looking at any candidate.** Sample
+  - 2M in 2,540.7 s, 787 steps/s. Markers per episode 0.2608, zero laps, step ratio 3.1652
+  - **An earlier attempt was killed at 1,440,000 steps** when the background task holding the
+    trainer was stopped, and a killed run is discarded rather than resumed. Kept as
+    `results/rl/ppo_car_007_spread_a.killed_at_1440k.log`. Every run after it was launched detached
+    through `Start-Process`, so stopping a watcher no longer stops training
+- [X] T026 [P] [US2] Spread run b: identical, seed 2
+  - 2M in 2,597.9 s, 770 steps/s. Markers per episode 0.2290, zero laps, step ratio 3.1536
+- [X] T027 [P] [US2] Spread run c: identical, seed 3
+  - 2M in 2,649.4 s, 755 steps/s. Markers per episode 0.2576, zero laps, step ratio 3.1627
+- [X] T028 [US2] **Write `results/rl/progress_spread.md` before looking at any candidate.** Sample
       standard deviation and gate for markers per episode, laps completed and stalled share, over
       T025 to T027. This is the gate this feature uses, and the 0.19 from feature 006 is not it
       (R8, FR-017)
-- [ ] T029 [US2] The candidate run: full 006 baseline budget, one change from 006, which is the
+  - **Written 2026-08-26, before the candidate run was launched.** Gates, two standard deviations
+    as in feature 006: markers per episode **0.035** on an sd of 0.0175, stalled share **0.019** on
+    an sd of 0.0095, and laps completed needs no arithmetic gate because the floor is exactly zero
+    and one lap is the signal. The baseline to beat is **0.249 markers per episode**
+  - **The 0.19 gate is retired in the document itself, with the reason.** It was measured on
+    cumulative reward, and 006's rescoring trick cannot rescue it here: rescoring works for a
+    changed weight and not for an added term, because the baseline runs never charged the term
+  - **`markers_per_episode` and `reward_checkpoint` are the same number exactly**, since
+    `CheckpointReward` is 1.0. Verified across all 600 rows of the set, largest absolute difference
+    0.0000000000, which makes 006's checkpoint figures comparable with no conversion
+  - **The warning the set carries:** markers per episode means 0.2491 against 006's 0.249, an order
+    of magnitude inside the gate. At 2M the term did not move the metric. Recorded before the
+    candidate rather than discovered after it
+- [X] T029 [US2] The candidate run: full 006 baseline budget, one change from 006, which is the
       reward table. `config/ppo_car.yaml` is reused unchanged and that is the point. Row in
       `results/EXPERIMENTS.md` in the same session
-- [ ] T030 [US2] Read markers per episode against 0.249 and against T028's gate (SC-003). Read the
+  - **`ppo_car_007_progress`, 5,000,000 steps in 5,395.4 s, 927 steps/s, uninterrupted.**
+    `config/ppo_car.yaml` reused unchanged, `--seed=42` to match `ppo_car_v01` exactly, so the
+    reward table is the only difference from feature 006's baseline. Seed confirmed from
+    `results/ppo_car_v01/configuration.yaml` rather than from the README, which shows a generic
+    `--seed=1`
+- [X] T030 [US2] Read markers per episode against 0.249 and against T028's gate (SC-003). Read the
       stall share and confirm any fall is not simply the wall share rising to replace it
-- [ ] T031 [US2] Read the lap counter over the run: did any episode complete a lap (SC-004)? No run
+  - **SC-003 clears by a factor of about 36.** Markers per episode 1.4987 run mean and 2.6975 over
+    the last 50, against a baseline of 0.2490 and a gate of 0.035. By quarter 0.3477, 0.9794,
+    2.1148, 2.5528, monotonic rather than a spike
+  - **The stall fall is not clean and the row says so.** Stalled 0.3903 to 0.2741, a fall of 11.6
+    points, against wall contact 0.4773 to 0.5907, a rise of 11.3 points. Close to a straight
+    trade. What the trade cannot explain is the six fold rise in markers and the eight completed
+    laps, so the reading is that the car now fails while driving rather than while sitting still
+- [X] T031 [US2] Read the lap counter over the run: did any episode complete a lap (SC-004)? No run
       in M3 ever did, across nine runs and more than 12,000,000 steps
-- [ ] T032 [US2] Verify FR-010 against this feature's own exported rows: the seven terms sum to the
+  - **Eight laps completed over 13,851 episodes.** Feature 006 completed zero across nine runs and
+    more than 12,000,000 steps, so against a floor of exactly zero this is the SC-004 signal. It is
+    a small number and is reported as one: 0.06 per cent of episodes
+- [X] T032 [US2] Verify FR-010 against this feature's own exported rows: the seven terms sum to the
       trainer's cumulative reward, reported as a percentage of rows that agree. **Do not inherit
       006's check.** Its per-term sum was wrong on 97.4 per cent of rows until the swap bug was
       found, and the reason the defect was found at all was that someone re-ran the check
-- [ ] T033 [US2] Write the FR-018 note into the run's `EXPERIMENTS.md` row: cumulative reward is
+  - **FR-010 does not hold on this run, and the cause is not identified.** The seven terms sum to
+    the trainer's cumulative reward on 4.8 per cent of 500 rows, residual mean +0.3030, sd 0.5110,
+    max absolute 4.6014. Re-run against this feature's own rows as the task required, not inherited
+  - **There is no eighth term.** All four `AddReward` sites in `DrivingAgent` are mirrored into
+    `RewardModel.Breakdown` and there is no lap bonus, so this is an aggregation mismatch rather
+    than a missing payment
+  - **Two hypotheses tested, neither survived.** Feature 006's straddling-summary idea gives a
+    correlation with episodes per summary of -0.002; the successor idea that `EndForTrackSwap`
+    reports an episode the trainer counts differently gives -0.097 against the swapped share,
+    despite our 13,851 end-reason count against a trainer count implied at about 11,219
+  - **What it does track** is activity: +0.643 against `reward/progress` and +0.645 against markers
+    per episode, growing by quarter -0.0462, +0.1474, +0.4806, +0.6303. The shape fits a fixed
+    disagreement about which episodes enter the two means, whose error scales with the spread of
+    episode rewards; testing that needs per-episode records, which this export does not carry
+  - **The behavioural results do not depend on it.** Markers, laps and the end-reason mix are counts
+    taken on the Unity side
+- [X] T033 [US2] Write the FR-018 note into the run's `EXPERIMENTS.md` row: cumulative reward is
       not compared against any 006 run, and the reason is that the table gained a term
+  - Written into the `ppo_car_007_progress` row: cumulative reward is not compared against any
+    feature 006 run, because the table gained a term and 006's rescoring trick cannot rescue it.
+    Rescoring works for a changed weight and not for an added one, since the baseline runs never
+    charged the term
 
 **Checkpoint**: the mechanism either worked or did not, against a gate that was fixed first.
 
@@ -381,7 +436,6 @@ a gate measured on that metric.
 ## Phase 5: User Story 3 - The exported model drives held-out track (P1)
 
 **Goal**: the M3 column, whatever it says.
-
 - [ ] T034 [US3] Export the model and promote it to `unity/SelfDrivingSim/Assets/Models/`. Confirm
       LFS routing with `git check-attr filter -- <path>.onnx` before the blob lands
 - [ ] T035 [US3] Run the evaluation sweep on the ten held-out seeds in
