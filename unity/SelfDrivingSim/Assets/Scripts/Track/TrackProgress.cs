@@ -147,11 +147,16 @@ namespace SelfDrivingSim.Track
             _cumulative = new double[n];
             ChainLength = 0.0;
 
+            // Cleared before the loop that can throw, so a chain that fails validation leaves the
+            // weight at zero rather than keeping the previous track's. Step treats a zero weight as
+            // "this chain is not usable" and pays nothing, which is what a caller that logged the
+            // failure and carried on should get.
+            ProgressWeight = 0f;
+
             if (n < 2)
             {
-                // Nothing to measure along. Leave the weight at zero so a misconfigured ring pays
+                // Nothing to measure along. The weight stays at zero so a misconfigured ring pays
                 // nothing rather than dividing by zero further down.
-                ProgressWeight = 0f;
                 Reset(1);
                 return;
             }
@@ -220,7 +225,7 @@ namespace SelfDrivingSim.Track
         /// keeps <see cref="Unwrapped"/> climbing across the finish line.</param>
         public float Step(Vector3 carPosition, int nextIndex, int lapCount)
         {
-            if (Count < 2)
+            if (Count < 2 || ProgressWeight <= 0f)
             {
                 LastAdvance = 0.0;
                 return 0f;

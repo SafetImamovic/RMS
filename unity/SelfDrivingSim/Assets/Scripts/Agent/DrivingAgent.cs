@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
@@ -161,6 +162,18 @@ namespace SelfDrivingSim.Agent
         }
 
         private RewardModel.Breakdown _reward;
+
+        /// <summary>
+        /// How far round the lap the car may claim, and what a metre of it is worth (feature 007).
+        ///
+        /// Owned here rather than on the ring, because it is reward input and the ring is
+        /// deliberately free of reward logic.
+        /// </summary>
+        private readonly TrackProgress _progress = new TrackProgress();
+
+        /// <summary>Reused so re-reading the chain each episode does not allocate.</summary>
+        private readonly List<Vector3> _chain = new List<Vector3>();
+
         private bool _engaged = true;
         private bool _runActive;
         private bool _restartRequested;
@@ -168,6 +181,17 @@ namespace SelfDrivingSim.Agent
         private bool _wrongWayLast;
         private float _steerLast;
         private int _stepsSinceAward;
+
+        /// <summary>
+        /// How many physics steps this episode charged reward on (feature 007, R6, US4).
+        ///
+        /// **The denominator for any statement about an episode in seconds.** Feature 006 could
+        /// not say why its ratio against the trainer's own episode length sat near 3.16 when
+        /// <c>DecisionPeriod: 4</c> puts the ceiling at 4, because only one of the two counts was
+        /// ever recorded. Counting here, at the one place the per-step terms are charged, makes
+        /// the ratio measurable rather than argued about.
+        /// </summary>
+        private int _physicsStepsCharged;
 
         private int StallSteps => Mathf.Max(1, Mathf.RoundToInt(stallSeconds / Time.fixedDeltaTime));
 
@@ -291,10 +315,12 @@ namespace SelfDrivingSim.Agent
             _reward = default;
             ElapsedS = 0f;
             Smoothness.Reset();
+            ResetProgress();
             _awardedLast = ring != null ? ring.AwardedCount : 0;
             _wrongWayLast = ring != null && ring.WrongWay;
             _steerLast = 0f;
             _stepsSinceAward = 0;
+            _physicsStepsCharged = 0;
             Outcome = EndReason.Running;
         }
 
@@ -325,6 +351,62 @@ namespace SelfDrivingSim.Agent
             _steerLast = steer;
         }
 
+        /// <summary>
+        /// Re-read the marker chain and start measuring progress from where the car actually is
+        /// (feature 007, FR-011, research R7).
+        ///
+        /// **Called from <see cref="OnEpisodeBegin"/> and nowhere else, which is the point.** Every
+        /// episode start reaches this, including the one a training-area swap causes, so no episode
+        /// can difference its first step against a position belonging to the previous episode or to
+        /// a different track. Feature 006 found <c>TrainingArea.SwapTo</c> ending episodes by a
+        /// route that bypassed the reward reporting; a stale chain position would be the same bug
+        /// with a worse signature, because it would charge hundreds of metres on one step and read
+        /// as noise.
+        ///
+        /// The chain is re-read per episode rather than once at startup. It is 24 distances against
+        /// an episode of several hundred steps, so it is not a per-step cost, and paying it makes
+        /// the swap case correct without a dirty flag that somebody has to remember to set.
+        /// </summary>
+        private void ResetProgress()
+        {
+            if (ring == null)
+            {
+                return;
+            }
+
+            _chain.Clear();
+            for (int i = 0; i < ring.Count; i++)
+            {
+                Transform marker = ring.Markers[i];
+                if (marker != null)
+                {
+                    _chain.Add(marker.position);
+                }
+            }
+
+            if (_chain.Count == ring.Count && _chain.Count > 1)
+            {
+                try
+                {
+                    _progress.Configure(_chain, RewardModel.CheckpointReward);
+                }
+                catch (System.ArgumentException e)
+                {
+                    // A degenerate chain is a generator fault, and TrackProgress throws so that an
+                    // EditMode test can assert it. Here it is caught and logged instead: an
+                    // exception raised out of OnEpisodeBegin fires once per episode for the rest of
+                    // the run, and the resulting wall of identical errors buries the first one.
+                    // The weight is left at zero by the failed Configure, so the term pays nothing
+                    // rather than paying something wrong.
+                    Debug.LogError($"[DrivingAgent] progress disabled for this track: {e.Message}", this);
+                }
+            }
+
+            // The ring's StartIndex is the first EXPECTED marker, one ahead of the car. TrackProgress
+            // takes it as given and steps back itself, so the correction lives in one place.
+            _progress.Reset(ring.StartIndex);
+        }
+
         /// <summary>The terms that are paid every step: existing, moving, and changing the wheel.</summary>
         private void AccrueStepTerms(float steer)
         {
@@ -332,9 +414,16 @@ namespace SelfDrivingSim.Agent
             float speed = RewardModel.Speed(sensing != null ? sensing.SpeedForwardNorm : 0f);
             float jerk = RewardModel.Jerk(steer - _steerLast);
 
+            // Charged at this call site with the step and speed terms, so all three advance on the
+            // same tick. That is what keeps the per-lap total predictable from geometry: the term
+            // is a distance, and it does not care how often it is sampled, only that it is sampled
+            // on the ticks the car actually moves between.
+            float progress = AccrueProgress();
+
             _reward.StepCostTotal += step;
             _reward.ForwardSpeed += speed;
             _reward.SteeringJerk += jerk;
+            _reward.MarkerProgress += progress;
 
             // Here rather than in FixedUpdate, so the clock and the steering samples advance on
             // exactly the ticks the reward terms are charged on. Two different notions of "a step"
@@ -342,8 +431,30 @@ namespace SelfDrivingSim.Agent
             ElapsedS += Time.fixedDeltaTime;
             Smoothness.Sample(steer, ElapsedS);
 
-            AddReward(step + speed + jerk);
+            AddReward(step + speed + jerk + progress);
             _stepsSinceAward++;
+            _physicsStepsCharged++;
+        }
+
+        /// <summary>
+        /// Advance the chain position to where the car is now and price the movement.
+        ///
+        /// Zero on the first step of an episode, whatever the car's position, because there is
+        /// nothing to difference against yet.
+        /// </summary>
+        private float AccrueProgress()
+        {
+            if (ring == null || car == null || _progress.Count < 2)
+            {
+                return 0f;
+            }
+
+            // Step returns the priced value directly, but the term is taken from LastAdvance and
+            // priced here so that every reward in this table goes through RewardModel and the
+            // breakdown has exactly one place it can be wrong.
+            _progress.Step(car.transform.position, ring.NextIndex, ring.LapCount);
+
+            return RewardModel.Progress(_progress.LastAdvance, _progress.ProgressWeight);
         }
 
         /// <summary>
@@ -472,6 +583,16 @@ namespace SelfDrivingSim.Agent
             stats.Add("reward/step", _reward.StepCostTotal);
             stats.Add("reward/speed", _reward.ForwardSpeed);
             stats.Add("reward/jerk", _reward.SteeringJerk);
+            stats.Add("reward/progress", _reward.MarkerProgress);
+
+            // Markers taken, not reward earned for them. SC-003 is read on this rather than on
+            // reward/checkpoint, because adding a term to the table changes what a reward number
+            // means and does not change what reaching a marker means (FR-018).
+            stats.Add("episode/markers", ring != null ? ring.AwardedCount : 0f);
+
+            // Averaged, like the trainer's own Environment/Episode Length, so the two are the same
+            // kind of number and their ratio is the one R6 asks for.
+            stats.Add("episode/physics_steps", _physicsStepsCharged);
 
             // Summed, not averaged. The default aggregation takes the mean, and the mean of a
             // value that is always 1.0 is 1.0 however often it was written: `ppo_car_v01` reported

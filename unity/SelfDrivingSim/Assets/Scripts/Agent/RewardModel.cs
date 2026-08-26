@@ -79,15 +79,29 @@ namespace SelfDrivingSim.Agent
             public float SteeringJerk;
 
             /// <summary>
-            /// The sum of the six terms.
+            /// Metres of claimable progress along the marker chain, priced (feature 007).
+            ///
+            /// The seventh term, and the only one that is nonzero on almost every step. The six
+            /// above are what the policy learned to minimise by driving less; this is the one that
+            /// pays for going somewhere.
+            /// </summary>
+            public float MarkerProgress;
+
+            /// <summary>
+            /// The sum of the seven terms.
             ///
             /// It must equal the agent's cumulative reward. If it does not, something is calling
             /// <c>AddReward</c> outside this table, which makes the breakdown a lie and FR-008
             /// unverifiable.
+            ///
+            /// **Feature 007 made this seven rather than six**, and the check that it still holds
+            /// is re-run against this feature's own exported rows rather than inherited. Feature
+            /// 006's version of this sum was wrong on 97.4 per cent of rows until a swap-ended
+            /// episode path was found, and it was found because somebody re-ran the check.
             /// </summary>
             public float Total =>
                 CheckpointProgress + WrongDirection + WallContact +
-                StepCostTotal + ForwardSpeed + SteeringJerk;
+                StepCostTotal + ForwardSpeed + SteeringJerk + MarkerProgress;
         }
 
         /// <summary>
@@ -183,6 +197,32 @@ namespace SelfDrivingSim.Agent
         public static float Idle(float speedForwardNorm)
         {
             return Step() + Speed(speedForwardNorm);
+        }
+
+        /// <summary>
+        /// Payment for metres of progress along the marker chain (feature 007, DESIGN 4.5).
+        ///
+        /// **There is no weight constant here, and its absence is the design.** Every other term
+        /// in this table is a fixed number because it prices an event; this one prices a distance,
+        /// and the distance a lap is worth differs between generated tracks. The weight is derived
+        /// per track by <see cref="SelfDrivingSim.Track.TrackProgress.ProgressWeight"/> as
+        /// <c>LapPayoutFraction * markers * CheckpointReward / chainLength</c>, so what reproduces
+        /// is the derivation rather than a literal. A constant here would silently pay a different
+        /// fraction of a lap on every seed.
+        ///
+        /// **Symmetric on purpose.** A negative advance costs exactly what the same advance
+        /// forwards would pay. Clamping the negative half, the way <see cref="Speed"/> does, would
+        /// turn this into the one farmable term in the table: a car rocking towards a marker and
+        /// back would collect on every half cycle. The symmetry is what makes the sum over a closed
+        /// loop zero, which is what keeps <see cref="Idle"/>'s anti-farming margin intact.
+        /// </summary>
+        /// <param name="advanceMetres">Change in the clamped chain position since the last step,
+        /// signed. Held in <c>double</c> upstream; the cast to <c>float</c> happens here, once,
+        /// where the distance becomes a reward.</param>
+        /// <param name="weightPerMetre"><see cref="SelfDrivingSim.Track.TrackProgress.ProgressWeight"/>.</param>
+        public static float Progress(double advanceMetres, float weightPerMetre)
+        {
+            return (float)(advanceMetres * weightPerMetre);
         }
     }
 }

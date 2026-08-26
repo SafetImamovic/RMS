@@ -164,6 +164,26 @@ namespace SelfDrivingSim.Tests
             Assert.Throws<ArgumentException>(() => new TrackProgress().Configure(markers, CheckpointReward));
         }
 
+        [Test]
+        public void A_chain_that_failed_validation_pays_nothing_rather_than_paying_the_old_weight()
+        {
+            // The agent catches the throw and logs it rather than letting an exception out of
+            // OnEpisodeBegin once per episode. That only helps if the failed Configure leaves the
+            // term inert: keeping the previous track's weight while carrying the new track's
+            // geometry would pay a wrong number quietly, which is worse than paying none.
+            var p = Configured(out var good);
+            Assert.That(p.ProgressWeight, Is.GreaterThan(0f));
+
+            var broken = Ring();
+            broken[7] = broken[6];
+            Assert.Throws<ArgumentException>(() => p.Configure(broken, CheckpointReward));
+
+            Assert.That(p.ProgressWeight, Is.EqualTo(0f));
+            p.Reset(1);
+            p.Step(good[0], 1, 0);
+            Assert.That(p.Step(Vector3.Lerp(good[0], good[1], 0.5f), 1, 0), Is.EqualTo(0f));
+        }
+
         // --- T016: the first step -------------------------------------------------------------
 
         [Test]

@@ -167,6 +167,11 @@ against.
   - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
     captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
     against a number quoted from memory here
+  - **Counted on 2026-08-26 through `TestRunnerApi`: 132 passed, 0 failed, 0 skipped, in 2.52 s.**
+    That is feature 006's closing 109 plus this feature's 23, and it was measured after the
+    `episode/markers` and `episode/physics_steps` changes rather than before them. This is the
+    Phase 4 gate: T012 telescoping and T013 the loop property are both inside that green run, so
+    training may start
 - [X] T013 [US1] **The loop test.** A trajectory returning the car to a state it already occupied,
       without crossing the finish forward, sums to zero within the same tolerance. This is FR-007
       and SC-002, and it is what preserves the anti-farming invariant
@@ -211,25 +216,101 @@ against.
   - **Green.** Owner-run in the EditMode Test Runner, 2026-08-25. The exact suite count was not
     captured at the time, so T047 re-measures it against feature 006's closing 109 rather than
     against a number quoted from memory here
-- [ ] T019 [US1] Add the term to `RewardModel.cs`: one constant, one pure function
+- [X] T019 [US1] Add the term to `RewardModel.cs`: one constant, one pure function
       `Progress(float advance, float weight)`, one `MarkerProgress` field in `Breakdown`, and
       `MarkerProgress` in `Total`. **The six existing terms keep their names, weights, firing
       conditions and stats keys.** Update `RewardModelTests.cs` for the seven-term sum and for the
       restated anti-farming invariant
-- [ ] T020 [US1] Wire the term into `DrivingAgent.cs`: hold the `TrackProgress` instance, charge
+  - `RewardModel.Progress(double advanceMetres, float weightPerMetre)`, plus `MarkerProgress` in
+    `Breakdown` and in `Total`, which is now a sum of **seven**. The six existing terms are
+    untouched
+  - **There is deliberately no weight constant in `RewardModel`.** Every other term prices an
+    event and is a fixed number; this one prices a distance, and a lap's distance differs between
+    generated tracks. The weight is derived per track by `TrackProgress.ProgressWeight`, and a
+    constant here would silently pay a different fraction of a lap on every seed
+  - Three cases added to `RewardModelTests`: the term adds nothing to a closed loop, it is
+    symmetric rather than one-sided, and a lap of it pays half of what its markers pay. The
+    existing `Circling_on_open_surface_earns_nothing_per_step` is left as it stands, because the
+    new term contributes zero to circling and so the margin it asserts is unchanged
+- [X] T020 [US1] Wire the term into `DrivingAgent.cs`: hold the `TrackProgress` instance, charge
       `reward/progress` every physics step after the first, clear it on episode begin, and report
       the term to the trainer statistics with `StatsAggregationMethod` matching the six existing
       terms
-- [ ] T021 [US1] Route `TrainingArea.SwapTo` through the episode-begin reset (R7, FR-011), and add
+  - Charged in `AccrueStepTerms`, the same call site as the step and speed terms, which is reached
+    from `OnActionReceived` every physics step because `TakeActionsBetweenDecisions` is on
+  - `ResetProgress` re-reads the marker chain **every episode** rather than once at startup. It is
+    24 distances against an episode of several hundred steps, so it is not a per-step cost, and
+    paying it makes the track-swap case correct without a dirty flag somebody has to remember
+  - A degenerate chain throws from `Configure`, which an EditMode test asserts, but the agent
+    catches and logs it: an exception out of `OnEpisodeBegin` fires once per episode for the rest
+    of the run and buries the first occurrence. `Configure` now clears the weight **before** the
+    loop that can throw, and `Step` pays nothing at a zero weight, so a failed chain is inert
+    rather than priced with the previous track's weight. That last part is its own test
+- [X] T021 [US1] Route `TrainingArea.SwapTo` through the episode-begin reset (R7, FR-011), and add
       the EditMode assertion that a swap leaves no stale previous position. Feature 006 found this
       exact path bypassing the reward reporting; it must not also bypass the reset
-- [ ] T022 [US1] **The scripted-driver lap check.** Drive one seed in `Assets/Scenes/Evaluation.unity`
+  - **No code change needed, and that was checked rather than assumed.** Feature 006's fix already
+    has `SwapTo` end the episode through `agent.EndForTrackSwap()`, which calls `ReportEpisode`
+    then `EpisodeInterrupted`, so `OnEpisodeBegin` runs and the reset with it. The assertion is
+    `A_swap_to_a_different_chain_cannot_leave_a_stale_position_behind` in `TrackProgressTests`
+- [X] T022 [US1] **The scripted-driver lap check.** Drive one seed in `Assets/Scenes/Evaluation.unity`
       with the scripted driver and the instrumentation on, and confirm the `reward/progress` total
       for a full lap is **12.0** within tolerance, from any start marker. Record the seed and the
       measured total here. Scene note from 006: the `TrainingArea` component stays removed from that
       instance or the car parks in `Awake`
-- [ ] T023 [US1] Confirm the throughput has not regressed against T003's 684 steps/s. A drop well
+  - **Measured on seed 1, three consecutive laps, each paying exactly 12.0.** Chain 24 markers,
+    201.017 m, weight 0.0597 per metre. Run ended `LapComplete` in 80.7 s with 0 wall contacts and
+    72 markers taken, which is 3 x 24
+
+    | lap | steps | progress total | this lap | unwrapped |
+    |---|---|---|---|---|
+    | 1 | 1365 | 12.0 | 12.0 | 351.82 m |
+    | 2 | 2699 | 24.0 | 12.0 | 552.84 m |
+    | 3 | 4034 | 36.0 | 12.0 | 753.86 m |
+
+  - **The unwrapping is what the middle column proves.** `Unwrapped` climbs by 201.02 m per lap,
+    which is `ChainLength` to the centimetre, so the finish line costs no special case and the one
+    step per lap where a reset would charge a whole lap of penalty does not exist. The start was at
+    marker 17 of 24, not marker 0, which is the "from any start marker" half of the requirement
+  - **Not run in `Evaluation.unity`, and the reason is a defect in this task rather than in the
+    code.** That scene was created by feature 006 for the learned driver and has never contained a
+    `HeuristicDriver`; the scripted sweeps have always lived in `HeuristicTrack` and
+    `HeuristicWeighted`, and neither of those contains a `DrivingAgent`. Composing the two failed
+    four times over: the scripted driver commanded zero steering for 1.4 s and hit a wall, with
+    `dsteer p95 0.0000`. Ruled out along the way, each with evidence rather than argument: the two
+    drivers contending for `CarController.ScriptedMove` (`SetEngaged(false)` did not fix it, and
+    the first failure predates any probe), the sensing configuration (identical in both scenes at
+    13 rays, 180 degrees, 20 m, mask -1), missing barrier colliders (2 present, a raw cast hits one
+    at 12.08 m), and ML-Agents cycling episodes underneath the sweep (`MaxStep` is 0)
+  - **What was run instead, and what it is worth.** A probe carrying its own `TrackProgress`,
+    driven from the car's position in `HeuristicWeighted.unity`, where the scripted driver already
+    completes laps. It makes the same two calls `AccrueStepTerms` makes, in the same order, so it
+    measures the real chain off a real generated track and the real `CheckpointRing.LapCount`
+    across the finish. What it does not cover is that `DrivingAgent` calls `Step` exactly once per
+    physics step, and that is measured by T040's `PhysicsStepsCharged` in the candidate run, which
+    was always going to measure it. The probe was deleted after the reading was taken
+- [X] T023 [US1] Confirm the throughput has not regressed against T003's 684 steps/s. A drop well
       below about 600 means segment lengths are being recomputed per step instead of per build
+  - **No regression. 1,046 steps/s against the 684 baseline**, measured on a throwaway probe run
+    against `Training.unity` with the full `config/ppo_car.yaml`, killed after 80,000 steps and its
+    `results/` directory deleted. The run id was `ppo_car_007_throughput` and it appears in no
+    table, because a killed run is not a result
+
+    | window | steps | seconds | steps/s |
+    |---|---|---|---|
+    | 10k to 80k, steady state | 70,000 | 66.93 | **1,046** |
+    | slowest 10k interval | 10,000 | 11.44 | 874 |
+    | fastest 10k interval | 10,000 | 7.87 | 1,271 |
+
+  - **The first summary is excluded and that is not cherry-picking.** Step 0 to 10,000 took 42.96 s
+    against a steady-state 9.56 s, because it carries the editor connecting, the first track build
+    and the trainer's own warm up. Including it would report 745 steps/s and understate the
+    steady rate the check is about
+  - **The margin says the chain is measured per build, which is what the check exists to detect.**
+    The failure mode is 24 segment lengths recomputed on every physics step; at 50 Hz that is the
+    kind of cost that shows as a collapse toward 600, and the rate went up rather than down. The
+    per-episode re-read in `ResetProgress` costs 24 distances against several hundred steps, and it
+    does not show at this resolution
 
 **Checkpoint**: the term is correct and cheap, demonstrated rather than asserted. Training may
 start.
@@ -245,9 +326,32 @@ a gate measured on that metric.
 
 **CRITICAL**: T012 and T013 must be green before any task in this phase.
 
-- [ ] T024 [US2] Extend `python/rl/export_curves.py` for the `reward/progress` key and for the
+- [X] T024 [US2] Extend `python/rl/export_curves.py` for the `reward/progress` key and for the
       behavioural metrics the data model names: `MarkersPerEpisode`, `LapsCompleted`,
       `StalledShare`. Extend `python/tests/test_rl_curves.py` to cover them
+  - Columns added: `reward_progress`, `markers_per_episode`, `physics_steps_charged`, and a
+    derived `stalled_share`. Seven new cases in `test_rl_curves.py`, 22 in the file, full suite
+    green
+  - **`LapsCompleted` is the existing `end_lapscompleted` column and is not duplicated under a
+    second name.** Two columns holding one measurement is two things to keep in step, and a test
+    asserts the second name stays absent
+  - **`stalled_share` is derived in the export rather than left to each reader**, over every end
+    reason as the denominator. SC-003's second acceptance scenario is that the stall share falls
+    without the wall share rising to replace it, which is a question about proportions; a share
+    recomputed in three notebooks is three chances to pick a different denominator. Empty rather
+    than zero when no episode ended at that summary, and zero when episodes ended and none stalled,
+    which are different facts and have separate tests
+  - **This task also needed a Unity change, because the trainer was never emitting the metric.**
+    `episode/markers` is `CheckpointRing.AwardedCount` at episode end. SC-003 is read on markers
+    taken rather than on `reward/checkpoint`, because adding a term changes what a reward number
+    means and does not change what reaching a marker means (FR-018)
+  - **T040's counter was pulled forward into this task and that was the point.** `episode/markers`
+    and `episode/physics_steps` both land before T025, so all four runs share one build. T040 asks
+    for `PhysicsStepsCharged` *from the candidate run*; the counter did not exist, and had it
+    stayed missing until Phase 6, T029 would have had to be re-run at a cost of about two hours.
+    `_physicsStepsCharged` counts in `AccrueStepTerms`, the one place the per-step terms are
+    charged, and is reported as a mean so it is the same kind of number as the trainer's own
+    `Environment/Episode Length` and their ratio is the one R6 asks for
 - [ ] T025 [P] [US2] Spread run a: reduced budget, seed 1, the new table, nothing else different.
       Row in `results/EXPERIMENTS.md` in the same session
 - [ ] T026 [P] [US2] Spread run b: identical, seed 2

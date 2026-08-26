@@ -173,3 +173,100 @@ def test_write_creates_the_target_directory(tmp_path):
 @pytest.mark.parametrize("column", ["run_id", "step"])
 def test_identity_columns_come_first(column):
     assert column in export_curves.HEADER[:2]
+
+
+# --- feature 007: the progress term and the behavioural columns ------------------------------
+
+
+def test_the_progress_term_is_exported_under_its_own_column():
+    # The seventh reward term. A run whose total moved without this column moving is a run whose
+    # total moved for some other reason, and that distinction is the whole point of the export.
+    data = {
+        REFERENCE: {10000: -4.0, 20000: -1.5},
+        "reward/progress": {10000: 0.8, 20000: 3.2},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert [row["reward_progress"] for row in rows] == [0.8, 3.2]
+
+
+def test_markers_per_episode_is_exported_for_sc_003():
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/markers": {10000: 0.249},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert rows[0]["markers_per_episode"] == 0.249
+
+
+def test_a_run_without_the_new_series_exports_them_empty():
+    # Every feature 006 run is one of these. Exporting a zero would put those runs on this
+    # feature's axes as though they had scored nothing, rather than as though they never played.
+    data = {REFERENCE: {10000: -4.0}}
+
+    rows = export_curves.to_rows(data, "ppo_car_v01")
+
+    assert rows[0]["reward_progress"] == ""
+    assert rows[0]["markers_per_episode"] == ""
+    assert rows[0]["stalled_share"] == ""
+
+
+def test_stalled_share_is_taken_over_every_end_reason():
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/end_stalled": {10000: 30.0},
+        "episode/end_wallcontact": {10000: 60.0},
+        "episode/end_steplimit": {10000: 10.0},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert rows[0]["stalled_share"] == pytest.approx(0.3)
+
+
+def test_a_stall_traded_for_a_wall_contact_moves_both_shares():
+    # SC-003's second acceptance scenario. A stall share that falls because the wall share rose is
+    # not the mechanism working, and reading it over a fixed denominator is what makes the two
+    # movements visible at once rather than one summary number improving.
+    before = export_curves.to_rows(
+        {
+            REFERENCE: {10000: -4.0},
+            "episode/end_stalled": {10000: 80.0},
+            "episode/end_wallcontact": {10000: 20.0},
+        },
+        "run",
+    )
+    after = export_curves.to_rows(
+        {
+            REFERENCE: {10000: -4.0},
+            "episode/end_stalled": {10000: 40.0},
+            "episode/end_wallcontact": {10000: 60.0},
+        },
+        "run",
+    )
+
+    assert before[0]["stalled_share"] == pytest.approx(0.8)
+    assert after[0]["stalled_share"] == pytest.approx(0.4)
+
+
+def test_stalled_share_is_zero_when_ends_were_recorded_but_none_stalled():
+    # Distinct from the empty case above: here episodes ended and none of them stalled, which is a
+    # share of zero and a real measurement.
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/end_wallcontact": {10000: 100.0},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert rows[0]["stalled_share"] == 0.0
+
+
+def test_laps_completed_is_not_duplicated_under_a_second_name():
+    # The data model's LapsCompleted is the existing end_lapscompleted count. Two columns holding
+    # one measurement is two things to keep in step.
+    assert "end_lapscompleted" in export_curves.HEADER
+    assert "laps_completed" not in export_curves.HEADER
