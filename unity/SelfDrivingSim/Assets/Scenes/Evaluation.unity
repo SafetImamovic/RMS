@@ -141,11 +141,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_DeterministicInference
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: runId
-      value: ppo_car_007_progress_sampling
+      value: ppo_car_007_progress_deterministic
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: trace
