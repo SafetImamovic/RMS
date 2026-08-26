@@ -191,20 +191,59 @@ a reason.
 
 ## Phase 5: User Story 2 - The policy reaches more markers (P1)
 
-- [ ] T017 [US2] The candidate run: `config/ppo_car.yaml` unchanged at 5,000,000 steps,
+- [X] T017 [US2] The candidate run: `config/ppo_car.yaml` unchanged at 5,000,000 steps,
       `--seed=42`, one change from `ppo_car_007_progress`, which is the terminal. Row in
       `results/EXPERIMENTS.md` in the same session. **Launch the trainer detached** (quickstart)
-- [ ] T018 [US2] Read markers per episode against **1.4987** and the **0.035** gate, and name the
+  - **`ppo_car_008_budget`, 5,000,000 steps in 5,534.6 s, 903 steps/s, uninterrupted.** Budget 3,
+    `MaxStep` 6000, seed 42, `config/ppo_car.yaml` unchanged. Prefab values were verified before
+    launch rather than assumed: a newly added serialized field could have deserialized to 0 on the
+    existing prefab and silently reproduced feature 007 for an hour and a half
+- [X] T018 [US2] Read markers per episode against **1.4987** and the **0.035** gate, and name the
       gate's caveat in the same sentence. A result landing near the gate earns a fresh three-run
       spread rather than a verdict
-- [ ] T019 [US2] Read wall contacts per episode and lateral clearance together. **If clearance falls
+  - **Markers per episode 0.5297 against 1.4987, a difference of -0.9689.** That clears the 0.035
+    gate roughly 28 times over, **in the worse direction**. The gate's caveat, that a candidate
+    which starts to learn may be noisier than the runs the gate came from, does not rescue this: the
+    caveat softens a failure to clear, and this cleared
+  - Still monotonic by quarter, 0.3832, 0.4376, 0.5630, 0.7351, so the policy is learning something,
+    just far more slowly than the baseline's 0.3477 to 2.5528. Nothing near the gate, so no fresh
+    three-run spread is owed
+- [X] T019 [US2] Read wall contacts per episode and lateral clearance together. **If clearance falls
       sharply while contacts stay flat, the policy is grinding** and that is the finding, whatever
       the marker number says (R8, FR-010)
-- [ ] T020 [US2] Read the end-reason mix. A fall in the wall share that appears as a rise in the
+  - **Contacts per episode 1.218 against a budget of 3.** The typical episode never came close to
+    spending the budget. The change did not fail because the budget was too small; it failed because
+    the policy stopped putting itself in a position to use it
+  - **Lateral clearance 0.6331, flat across quarters at 0.6367, 0.6454, 0.6218, 0.6284, minimum
+    0.3231. No grinding.** A policy riding a barrier would hold this near zero
+  - **The grinding risk is closed with a number.** It agrees with what T004 measured directly, that
+    a car pressed against a barrier moves 0.47 m in 5 s, so grinding is not competitive because the
+    vehicle cannot slide along a wall at speed. **The clearance measure still has not been validated
+    against a real parallel slide**, so this is consistent evidence rather than proof; but with
+    contacts low, stalls high and clearance flat, there is no grinding signature to explain away
+- [X] T020 [US2] Read the end-reason mix. A fall in the wall share that appears as a rise in the
       stall share is a traded failure and is reported as one
-- [ ] T021 [US2] Report throughput and mean episode length against 927 steps/s, since episodes are
+  - **The mix inverted, and this is the finding.** Wall contact 59.1 to **23.2** per cent, stalled
+    27.4 to **53.8** per cent, step limit 0.0 to 6.9 per cent. **The policy went back to stalling**,
+    which is the degenerate solution M3 identified at the start: driving less is a cheaper way to
+    stop paying -5.0 than driving better
+  - The first contact ending the episode had been suppressing that option, and lifting the terminal
+    handed it back. **The terminal was load bearing**, in the opposite direction to the hypothesis
+- [X] T021 [US2] Report throughput and mean episode length against 927 steps/s, since episodes are
       expected to lengthen (R6, SC-009)
-- [ ] T022 [US2] Write the inherited-defect note into the run's `EXPERIMENTS.md` row: feature 007's
+  - Throughput **903 steps/s** against 927, so the run cost about the same wall clock
+  - **Episodes ran 612.0 trainer steps against 485.4**, and 2,505.5 physics charges against 1,561.3,
+    so only **8,843** episodes fitted into 5M steps against 13,851. Fewer, longer episodes is less
+    diverse experience for the same budget, and is part of why this run learned less
+  - **The step limit fired on 608 episodes, 6.9 per cent** (SC-009a satisfied, and not by a silent
+    zero). Without T004a those episodes would have run unbounded: `_stepsSinceAward` resets on every
+    marker, so a slow policy collecting one marker per 60 s never trips the stall rule either
+  - **The physics-to-decision ratio is 4.0870, with a single summary at 5.0224, so the ceiling of 4
+    is not a ceiling.** Feature 007 read 4 as confirmed from a maximum of 4.0063 and that reading was
+    wrong. The episode-set account predicts 3.7993 here against a measured 4.0870, so it no longer
+    explains all of it either. The step limit is a fourth end path and the likeliest suspect, stated
+    as a hypothesis. Settling it needs the per-episode records feature 007 named as its own feature
+- [X] T022 [US2] Write the inherited-defect note into the run's `EXPERIMENTS.md` row: feature 007's
       SC-007 accounting defect is not fixed here, behavioural counts are Unity-side and unaffected,
       and no claim rests on the reward decomposition
 
@@ -214,6 +253,10 @@ a reason.
 
 ## Phase 6: User Story 3 - A lap on held-out track (P1)
 
+  - Written into the row: feature 007's SC-007 accounting defect is inherited and not fixed, the
+    behavioural counts are Unity-side and unaffected, and no claim here rests on the reward
+    decomposition. Cumulative reward is **especially** unreadable on this run, because a budget of 3
+    lets one episode absorb four -5.0 penalties where only one could ever land before
 - [ ] T023 [US3] Export and promote the model to `Assets/Models/`, confirming LFS routing with
       `git check-attr filter` before the blob lands
 - [ ] T024 [US3] Evaluation sweep, ten held-out seeds, deterministic, no trainer. Confirm the
