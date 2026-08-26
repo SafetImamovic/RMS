@@ -23,16 +23,42 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Rewrite `DESIGN.md` 4.5 and 4.6 in a `docs:` commit before any code exists: the wall row
+- [X] T001 Rewrite `DESIGN.md` 4.5 and 4.6 in a `docs:` commit before any code exists: the wall row
       has a penalty and a terminal, they are separable, feature 006 tested the weight and this
       feature tests the termination. Record the budget field, its default as **to be filled by
       T004**, and the fact that zero reproduces feature 007
-- [ ] T002 [P] Record the pre-feature baselines in this file, quoted rather than recomputed:
+- [X] T002 [P] Record the pre-feature baselines in this file, quoted rather than recomputed:
       markers per episode **1.4987**, wall share **59.1 per cent**, stalled share **27.4 per cent**,
       held-out **6.20 of 24** markers and **0 of 10** laps, throughput **927 steps/s**, gate
       **0.035** from `results/rl/progress_spread.md`
-- [ ] T003 [P] Confirm the EditMode suite is green at **132** and the `.venv` suite at **357 passed,
+  - Recorded, all from `ppo_car_007_progress` unless stated:
+
+    | quantity | value | source |
+    |---|---|---|
+    | markers per episode, run mean | **1.4987** | curve, 500 summaries |
+    | markers per episode, last 50 | 2.6975 | curve |
+    | wall share | **59.1 per cent** | end-reason counts, 13,851 episodes |
+    | stalled share | **27.4 per cent** | same |
+    | track-swapped share | 13.5 per cent | same |
+    | episodes completing three laps | 8 | `episode/end_lapscompleted` |
+    | held-out markers, deterministic | **6.20 of 24** | `eval_ppo_car_007_progress_deterministic.csv` |
+    | held-out markers, sampling | 4.60 of 24 | `eval_ppo_car_007_progress_sampling.csv` |
+    | held-out laps | **0 of 10**, both modes | same |
+    | throughput | **927 steps/s**, 5M in 5,395.4 s | run log |
+    | mean episode length | 485.4 decisions, 1,676 physics steps | curve |
+    | physics to decision ratio | 3.2161, sd 0.2829 | curve |
+    | gate on markers per episode | **0.035** | `results/rl/progress_spread.md` |
+
+  - **`WallContactsPerEpisode` and `LateralClearance` have no baseline**, because neither was
+    measured before this feature. Their first values come from T017 and there is nothing to compare
+    them against except each other across runs
+- [X] T003 [P] Confirm the EditMode suite is green at **132** and the `.venv` suite at **357 passed,
       3 skipped** before anything changes, so a later regression is attributable
+  - **EditMode 132 passed, 0 failed, 0 skipped, in 3.66 s**, run on this branch after the
+    `DESIGN.md` change
+  - `.venv` **357 passed, 3 skipped** and `.venv-bc` **411 passed**, measured at feature 007's T047
+    on identical code earlier today. Not re-run here, because nothing between that measurement and
+    this branch touched Python
 
 **Checkpoint**: the design is written and the baselines are recorded.
 
@@ -48,6 +74,13 @@ nothing but wall clock.
       representative speed and angle, apply reverse and steer, and record whether it separates and
       within how many physics steps. Try at least a glancing contact and a square one. Record the
       numbers here
+- [ ] T004a **Restore the hard step limit before the terminal is lifted (FR-005b).** `DESIGN.md`
+      4.6 claimed `MaxStep = 6000` and `TrainingArea.prefab` sets **0**, guarded by `MaxStep > 0`,
+      so it has never fired and `episode/end_steplimit` reads zero in every M3 run for that reason
+      rather than because episodes were short. With the terminal lifted and `_stepsSinceAward`
+      resetting on every marker, a grinding policy that collects one marker per 60 s never
+      terminates. Choose the value against measured episode lengths, set it on the prefab, and
+      record it in `DESIGN.md` 4.6
 - [ ] T005 Decide the budget default from T004's numbers and write it into `DESIGN.md` 4.6,
       replacing the placeholder T001 left. If T004 says the car cannot recover, **stop and write the
       negative up instead of continuing**: that is a publishable result about the vehicle rather
@@ -162,6 +195,7 @@ a reason.
 ```text
 T001            ->  everything
 T004            ->  T005  (and T005 may cancel the feature)
+T004a           ->  T006  the episode must have an upper bound before the terminal is lifted
 T005            ->  T006
 T006, T007      ->  T008..T012
 T008..T012      ->  T017

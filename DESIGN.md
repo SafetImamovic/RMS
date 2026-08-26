@@ -704,14 +704,46 @@ oduzeti najviše `1.5 / d`, a epizode traju oko 485 odluka, pa taj mehanizam nos
 manjka od 0.78. Sve ostalo nosi neslaganje skupova epizoda iznad. Stavka koju je M3 ostavio
 otvorenom je time zatvorena.
 
-### 4.6 Kraj epizode
-- Sudar sa zidom, ili
-- 60 s bez novog checkpointa (zaglavljen), ili
-- 3 kompletirana kruga (uspjeh).
+**Red za zid ima dva dijela, i oni se mogu mijenjati odvojeno (feature 008).** Kazna je -5.0, a
+terminal je to što epizoda staje na kontaktu. Feature 006 je runom `ppo_car_wall_lo` mijenjao
+**kaznu** sa -5.0 na -1.0 i dobio mjerljivo lošiji povrat uz pomak u raspodjeli razloga kraja od oko
+4.5 procentna poena; to je dokaz o težini. **Terminal nikad nije testiran**: u svakom runu M3
+epizoda se završavala na prvom kontaktu, u obje grane svakog poređenja.
 
-**Dodano za M3 (feature 006).** Uz pravilo zaglavljivanja stoji i tvrda granica `MaxStep = 6000`
-koraka, dakle 120 s na 50 Hz. Heuristički vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri
-kruga oko 80 s, a 120 s ostavlja pola toga kao rezervu za politiku koja je sporija od heuristike.
+Feature 008 mijenja terminal i drži kaznu na -5.0, pa je pomjeren broj pripisiv jednom od ta dva.
+Uvodi se `wallContactBudget`, broj **kontakata** koje epizoda preživi prije nego terminal proradi.
+**Budžet broji događaje, ne korake i ne sekunde**: `WallSensor` ima samo `OnCollisionEnter`, pa
+vozilo koje se vuče uz ogradu bez odvajanja potroši **jedan** kontakt na cijelo to vučenje. Nula
+reprodukuje feature 007 tačno, i to je ono što poređenje čini poštenim.
+
+**Rizik koji taj potez otvara** je da napredak plaća položaj po luku i ne mari kako je vozilo tamo
+stiglo, pa je vučenje uz ogradu prema sljedećem markeru isplativo kao i čista vožnja. Danas ta
+strategija ne postoji jer prvi kontakt završava epizodu. Mjeri se srednjim minimalnim bočnim
+odstojanjem iz postojećeg snopa zraka, a ne brojem kontakata, iz razloga u prethodnom pasusu.
+
+### 4.6 Kraj epizode
+- Sudar sa zidom **kad se potroši budžet kontakata** (feature 008), ili
+- 60 s bez novog checkpointa (zaglavljen), ili
+- 3 kompletirana kruga (uspjeh), ili
+- tvrda granica koraka.
+
+**Ispravka, upisana pri planiranju feature-a 008 (2026-08-26).** Prethodna verzija ovog pasusa je
+tvrdila da uz pravilo zaglavljivanja stoji i tvrda granica `MaxStep = 6000` koraka. **Ta granica ne
+postoji.** `TrainingArea.prefab` postavlja `MaxStep: 0`, a grana u `CheckTermination` je čuvana sa
+`MaxStep > 0`, pa se nikad ne pali. Zato `episode/end_steplimit` čita nulu u svakom runu M3, i to
+nije zato što epizode nikad nisu bile dovoljno duge nego zato što granice nema. Broj 6000 je bio
+namjera koja nije prenesena u prefab.
+
+**Zašto je to sad važno, a do sad nije bilo.** Dok sudar završava epizodu na prvi kontakt, epizode
+su ograničene odozgo time što vozilo prije ili kasnije udari. Feature 008 podiže taj terminal, a
+`_stepsSinceAward` se resetuje na **svakom** osvojenom markeru, pa politika koja se vuče uz ogradu i
+pokupi marker bar jednom u 60 s **nikad ne završi epizodu**. Dužina epizode postaje neograničena, i
+to je istovremeno problem za trening, jer bafer puni jedna ogromna epizoda, i za zidni sat.
+
+**Pravilo: tvrda granica koraka mora postojati prije nego se terminal podigne.** Vrijednost se
+upisuje ovdje kad je feature 008 izabere, a ne prije, jer zavisi od toga koliko epizode narastu.
+Referenca za izbor: heuristički vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri kruga oko
+80 s, a 120 s ostavlja pola toga kao rezervu za politiku koja je sporija od heuristike.
 
 **Razlika između kraja i presjecanja nije kozmetička.** Sudar i tri kruga su terminalni; obje
 vremenske granice su presjecanje. Trener drugačije procjenjuje vrijednost presječene epizode, pa bi

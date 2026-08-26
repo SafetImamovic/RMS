@@ -109,6 +109,13 @@ The exported model completes at least one lap on the ten held-out seeds.
 - **Episodes get much longer.** Surviving contacts raises episode length, which lowers episodes per
   summary and interacts with the episode-set mismatch feature 007 measured. Throughput must be
   re-measured rather than assumed.
+- **Episodes may never end at all, and the documented backstop does not exist.** `DESIGN.md` 4.6
+  claimed a hard limit of `MaxStep = 6000`; `TrainingArea.prefab` sets **`MaxStep: 0`** and the
+  branch is guarded by `MaxStep > 0`, so it has never fired. That is why `episode/end_steplimit`
+  reads zero in every M3 run. While the first contact ends the episode this is harmless, because a
+  moving car eventually hits something. **Lifting the terminal removes that bound**, and
+  `_stepsSinceAward` resets on every marker, so a policy grinding a barrier that collects one marker
+  per 60 seconds never terminates. A hard step limit has to exist before the terminal is lifted.
 
 ## Requirements *(mandatory)*
 
@@ -128,7 +135,12 @@ The exported model completes at least one lap on the ten held-out seeds.
 - **FR-005a**: A measure of sustained barrier use that does not depend on the contact count MUST be
   reported, because R2 shows a whole grind registers as one contact. Research R5 selects mean
   minimum lateral ray clearance, taken from the existing fan.
-- **FR-006**: The wall penalty weight MUST NOT change in this feature. One change per run.
+- **FR-005b**: A hard step limit MUST be in force before the terminal is lifted, and its value MUST
+  be recorded in `DESIGN.md` 4.6. The documented `MaxStep = 6000` was never applied to the prefab,
+  which sets 0, so this is restoring a stated rule rather than adding a new one.
+- **FR-006**: The wall penalty weight MUST NOT change in this feature. One change per run. The step
+  limit of FR-005b is not an exception to this: it is a bound that the design already claimed to
+  have, and without it the terminal cannot be lifted safely at all.
 - **FR-007**: The six other reward terms, their weights, their firing conditions and their stats
   keys MUST NOT change.
 - **FR-008**: The scripted, keyboard and heuristic driving paths MUST be unaffected.
@@ -158,6 +170,9 @@ The exported model completes at least one lap on the ten held-out seeds.
 - **SC-007**: The 80 per cent milestone bar is recorded met or not met with its number.
 - **SC-008**: The wall-grinding check is reported with a number, whichever way it comes out.
 - **SC-009**: Throughput is re-measured and reported, since episodes are expected to lengthen.
+- **SC-009a**: `episode/end_steplimit` is non-zero somewhere in this feature's runs, or the step
+  limit is shown to be comfortably above the longest episode. Either answer is fine; a silent zero
+  is not, because that is what hid the missing limit for the whole of M3.
 - **SC-010**: Every run has an `EXPERIMENTS.md` row naming its one change.
 
 ## Assumptions
