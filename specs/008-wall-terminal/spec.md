@@ -100,8 +100,12 @@ The exported model completes at least one lap on the ten held-out seeds.
   current terminal this is impossible because the first contact ends the episode; lifting it makes
   the strategy available. **This is the main risk the feature carries** and it needs a named check
   rather than a hope.
-- **Contacts charged per step rather than per contact.** `WallSensor.TakeNewContact` is edge
-  triggered today, and it has to stay that way, or a resting car pays the terminal penalty at 50 Hz.
+- **A sustained grind registers as one contact.** `WallSensor` implements `OnCollisionEnter` and
+  no `OnCollisionStay`, so a car that touches a barrier and slides along it without separating
+  counts **one** contact for the whole grind. The first draft of this section worried about the
+  opposite, a resting car charged at 50 Hz, and that cannot happen. The consequence is worse: the
+  contact count is a weak measure of how much barrier a policy is using, and cannot by itself
+  answer FR-010. Research R5 adds a separate measure that needs no change to the sensor.
 - **Episodes get much longer.** Surviving contacts raises episode length, which lowers episodes per
   summary and interacts with the episode-set mismatch feature 007 measured. Throughput must be
   re-measured rather than assumed.
@@ -110,7 +114,9 @@ The exported model completes at least one lap on the ten held-out seeds.
 
 ### Functional Requirements
 
-- **FR-001**: A wall contact MUST charge the pinned penalty once per contact event.
+- **FR-001**: A wall contact MUST charge the pinned penalty once per contact event. This already
+  holds, because `OnCollisionEnter` is edge triggered, and the requirement exists so a later change
+  to the sensor cannot quietly break it.
 - **FR-002**: The episode MUST NOT end on a contact until a configured budget is exhausted.
 - **FR-003**: The budget MUST be a serialized field with its default recorded in `DESIGN.md`, and it
   MUST be expressible as "terminate on first contact" so the feature 007 behaviour remains
@@ -119,6 +125,9 @@ The exported model completes at least one lap on the ten held-out seeds.
   downstream reader learns a new end reason.
 - **FR-005**: Wall contacts per episode MUST be reported to the trainer as a new statistic and
   exported, because markers per episode cannot be read without it.
+- **FR-005a**: A measure of sustained barrier use that does not depend on the contact count MUST be
+  reported, because R2 shows a whole grind registers as one contact. Research R5 selects mean
+  minimum lateral ray clearance, taken from the existing fan.
 - **FR-006**: The wall penalty weight MUST NOT change in this feature. One change per run.
 - **FR-007**: The six other reward terms, their weights, their firing conditions and their stats
   keys MUST NOT change.

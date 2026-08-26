@@ -1,0 +1,188 @@
+# Tasks: The wall terminal
+
+**Feature**: `008-wall-terminal` | **Spec**: `spec.md` | **Plan**: `plan.md`
+**Created**: 2026-08-26
+
+## Format: `[ID] [P?] [Story] Description`
+
+`[P]` marks tasks that touch no shared file and may be done in any order relative to each other.
+`[US1]` and so on name the user story a task serves.
+
+## Four orderings this feature must not violate
+
+1. **`DESIGN.md` before code.** Principle V. The terminal is part of the reward table's contract.
+2. **The recovery probe before the budget is chosen.** R4. If the car cannot reverse off a barrier
+   the feature buys a slower failure, and that is a reason to stop rather than to continue.
+3. **The EditMode properties before any training run.** A run against a budget that does not behave
+   as described measures something other than what the spec claims.
+4. **The two measures before the candidate run**, not after. Feature 007 learned this the expensive
+   way: T040 wanted a counter from the candidate run and the counter did not exist yet, which would
+   have cost a two hour re-run had it not been caught.
+
+---
+
+## Phase 1: Setup
+
+- [ ] T001 Rewrite `DESIGN.md` 4.5 and 4.6 in a `docs:` commit before any code exists: the wall row
+      has a penalty and a terminal, they are separable, feature 006 tested the weight and this
+      feature tests the termination. Record the budget field, its default as **to be filled by
+      T004**, and the fact that zero reproduces feature 007
+- [ ] T002 [P] Record the pre-feature baselines in this file, quoted rather than recomputed:
+      markers per episode **1.4987**, wall share **59.1 per cent**, stalled share **27.4 per cent**,
+      held-out **6.20 of 24** markers and **0 of 10** laps, throughput **927 steps/s**, gate
+      **0.035** from `results/rl/progress_spread.md`
+- [ ] T003 [P] Confirm the EditMode suite is green at **132** and the `.venv` suite at **357 passed,
+      3 skipped** before anything changes, so a later regression is attributable
+
+**Checkpoint**: the design is written and the baselines are recorded.
+
+---
+
+## Phase 2: The gate that can cancel the feature (R4)
+
+**This phase exists to be allowed to fail.** If the car cannot recover from a barrier, a contact
+budget converts a seven second `WallContact` ending into a sixty second `Stalled` one and buys
+nothing but wall clock.
+
+- [ ] T004 **The recovery probe.** In the editor, no training: place the car against a barrier at a
+      representative speed and angle, apply reverse and steer, and record whether it separates and
+      within how many physics steps. Try at least a glancing contact and a square one. Record the
+      numbers here
+- [ ] T005 Decide the budget default from T004's numbers and write it into `DESIGN.md` 4.6,
+      replacing the placeholder T001 left. If T004 says the car cannot recover, **stop and write the
+      negative up instead of continuing**: that is a publishable result about the vehicle rather
+      than about the reward
+
+**Checkpoint**: either the premise holds and the budget has a number, or the feature stops here with
+a reason.
+
+---
+
+## Phase 3: User Story 1 - The car survives a graze (P1)
+
+- [ ] T006 [US1] Add `wallContactBudget` to `DrivingAgent` as a serialized `int`, defaulting to
+      T005's number, with the comment saying what zero means and why the field counts events rather
+      than steps (R2)
+- [ ] T007 [US1] Change the branch in `CheckTermination`: charge the penalty as it does today, then
+      end the episode with `EndReason.WallContact` only when `wall.Contacts` exceeds the budget.
+      **The end-reason vocabulary does not change** (FR-004)
+- [ ] T008 [P] [US1] **The property test.** A contact under budget charges the pinned penalty and
+      leaves the episode live
+- [ ] T009 [P] [US1] **The property test.** The contact that exhausts the budget ends the episode
+      with `EndReason.WallContact`, so no downstream reader sees a new reason
+- [ ] T010 [P] [US1] **The property test.** A budget of zero reproduces feature 007 exactly: the
+      first contact ends the episode. This is the test that keeps the comparison honest
+- [ ] T011 [P] [US1] Test that the penalty is charged once per contact event and not once per
+      physics step. It already holds because `OnCollisionEnter` is edge triggered; the test exists
+      so a later change to `WallSensor` cannot break it silently (FR-001)
+- [ ] T012 [US1] Confirm the EditMode suite is green and report the new count against T003's 132
+
+**Checkpoint**: an episode can outlive a contact, and zero still reproduces feature 007.
+
+---
+
+## Phase 4: The two measures (blocking the candidate run)
+
+**These land before T017, not after.** The reason is written into the orderings above.
+
+- [ ] T013 Add `WallContactsPerEpisode` to the episode report as `episode/wall_contacts`, taken from
+      `WallSensor.Contacts` at episode end, reset on episode begin
+- [ ] T014 Add `LateralClearance` as `episode/lateral_clearance`: the mean over the episode of the
+      minimum normalised ray distance in the side of the fan, from `CarAgent.RayDistancesNorm`,
+      accumulated on the same ticks the per-step reward terms are charged. **No change to
+      `WallSensor`** (R5)
+- [ ] T015 [P] Extend `python/rl/export_curves.py` with `wall_contacts` and `lateral_clearance`, and
+      `python/tests/test_rl_curves.py` to cover them
+- [ ] T016 [P] Extend `python/rl/report.py` and `python/tests/test_rl_report.py` so the held-out
+      column carries both, beside the markers column feature 007 added
+
+**Checkpoint**: the run can be read when it finishes.
+
+---
+
+## Phase 5: User Story 2 - The policy reaches more markers (P1)
+
+- [ ] T017 [US2] The candidate run: `config/ppo_car.yaml` unchanged at 5,000,000 steps,
+      `--seed=42`, one change from `ppo_car_007_progress`, which is the terminal. Row in
+      `results/EXPERIMENTS.md` in the same session. **Launch the trainer detached** (quickstart)
+- [ ] T018 [US2] Read markers per episode against **1.4987** and the **0.035** gate, and name the
+      gate's caveat in the same sentence. A result landing near the gate earns a fresh three-run
+      spread rather than a verdict
+- [ ] T019 [US2] Read wall contacts per episode and lateral clearance together. **If clearance falls
+      sharply while contacts stay flat, the policy is grinding** and that is the finding, whatever
+      the marker number says (R8, FR-010)
+- [ ] T020 [US2] Read the end-reason mix. A fall in the wall share that appears as a rise in the
+      stall share is a traded failure and is reported as one
+- [ ] T021 [US2] Report throughput and mean episode length against 927 steps/s, since episodes are
+      expected to lengthen (R6, SC-009)
+- [ ] T022 [US2] Write the inherited-defect note into the run's `EXPERIMENTS.md` row: feature 007's
+      SC-007 accounting defect is not fixed here, behavioural counts are Unity-side and unaffected,
+      and no claim rests on the reward decomposition
+
+**Checkpoint**: the mechanism either worked or did not, against a gate that was fixed first.
+
+---
+
+## Phase 6: User Story 3 - A lap on held-out track (P1)
+
+- [ ] T023 [US3] Export and promote the model to `Assets/Models/`, confirming LFS routing with
+      `git check-attr filter` before the blob lands
+- [ ] T024 [US3] Evaluation sweep, ten held-out seeds, deterministic, no trainer. Confirm the
+      `Couldn't connect to trainer` line, which is what makes the no-trainer claim checkable
+- [ ] T025 [US3] Repeat in sampling inference. Reported separately, never averaged. **Do not quote
+      feature 006's factor of 83**, which feature 007 showed was a ratio over a near-zero
+      denominator; the honest figure on a driving policy was 2.86
+- [ ] T026 [US3] Record lap completion per seed and the 80 per cent bar, met or not met with the
+      number. State that `lapsToComplete` is 3, so a recorded lap is three laps
+- [ ] T027 [US3] Regenerate `results/rl/rl_steering.md` with this feature's column beside the
+      scripted driver's 34 of 34, feature 007's, and the human reference
+
+**Checkpoint**: the milestone is answered with a number.
+
+---
+
+## Phase 7: Closeout
+
+- [ ] T028 Write the closeout table into `spec.md`, every criterion with the number that decides it
+- [ ] T029 [P] Update `DESIGN.md` 4.5 and 4.6 with the outcome in the house pattern: the decision,
+      the reason, the measured number, and the milestone half stated in the same section so it
+      cannot be read as a success on its own
+- [ ] T030 [P] Update `README.md` only if a command, a scene or a file name changed. The plan
+      expects none did, and confirming it is the task
+- [ ] T031 Run `.venv`, `.venv-bc` and the Unity EditMode suite and compare against T003
+- [ ] T032 Merge checklist: no em dashes in any file this feature touched
+- [ ] T033 State the next feature. **If the terminal was not the constraint either**, then two
+      one-change candidates have now been exonerated and the next question is whether the vehicle or
+      the observation is what limits this policy, rather than the reward. Say so plainly
+
+---
+
+## Dependencies
+
+```text
+T001            ->  everything
+T004            ->  T005  (and T005 may cancel the feature)
+T005            ->  T006
+T006, T007      ->  T008..T012
+T008..T012      ->  T017
+T013..T016      ->  T017          the measures land before the run, not after
+T017            ->  T018..T023
+T023..T026      ->  T027
+everything      ->  T028..T033
+```
+
+## Parallel opportunities
+
+- T002 and T003 are independent.
+- T008 to T011 are four independent EditMode cases.
+- T015 and T016 touch different Python modules.
+- **T017 is one 5,000,000 step run of about 1.5 hours and the machine must be left alone for it.**
+  Feature 007 lost a run to a background task being stopped; launch detached.
+
+## Notes carried from feature 007 that apply unchanged
+
+- Launch training through `Start-Process`, never as a child of a shell task.
+- The real editor log is `unity/SelfDrivingSim/Logs/Editor.log`.
+- Unity stalls on a pending asset refresh while unfocused; `AppActivate` on the editor PID clears it.
+- `AssetDatabase.Refresh()` and `EnterPlaymode()` in one command deadlock. Split them.
+- Watch for `Step: 5000000`, not "Exported", which matches every checkpoint export.
