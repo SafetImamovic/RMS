@@ -405,7 +405,7 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 0
+  MaxStep: 6000
   sensing: {fileID: 6719471001443121455}
   car: {fileID: 6364114072882863484}
   ring: {fileID: 1942290961503588355}

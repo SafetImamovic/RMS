@@ -740,10 +740,13 @@ su ograničene odozgo time što vozilo prije ili kasnije udari. Feature 008 podi
 pokupi marker bar jednom u 60 s **nikad ne završi epizodu**. Dužina epizode postaje neograničena, i
 to je istovremeno problem za trening, jer bafer puni jedna ogromna epizoda, i za zidni sat.
 
-**Pravilo: tvrda granica koraka mora postojati prije nego se terminal podigne.** Vrijednost se
-upisuje ovdje kad je feature 008 izabere, a ne prije, jer zavisi od toga koliko epizode narastu.
-Referenca za izbor: heuristički vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri kruga oko
-80 s, a 120 s ostavlja pola toga kao rezervu za politiku koja je sporija od heuristike.
+**Pravilo: tvrda granica koraka mora postojati prije nego se terminal podigne.** Postavljena je na
+**`MaxStep: 6000`** u `TrainingArea.prefab` (feature 008, T004a), dakle 120 s na 50 Hz, što je
+vrijednost koju je ovaj dokument i ranije tvrdio a prefab je nikad nije nosio. Izbor: heuristički
+vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri kruga oko 80 s, a 120 s ostavlja pola toga
+kao rezervu za politiku koja je sporija od heuristike. Prosječna epizoda feature-a 007 je bila oko
+1.676 koraka fizike, pa granica stoji oko tri i po puta iznad nje i ne bi trebalo da se pali često;
+`episode/end_steplimit` sad ima priliku da bude različit od nule, i ako nije, to se kaže.
 
 **Razlika između kraja i presjecanja nije kozmetička.** Sudar i tri kruga su terminalni; obje
 vremenske granice su presjecanje. Trener drugačije procjenjuje vrijednost presječene epizode, pa bi

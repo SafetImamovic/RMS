@@ -70,21 +70,47 @@
 budget converts a seven second `WallContact` ending into a sixty second `Stalled` one and buys
 nothing but wall clock.
 
-- [ ] T004 **The recovery probe.** In the editor, no training: place the car against a barrier at a
+- [X] T004 **The recovery probe.** In the editor, no training: place the car against a barrier at a
       representative speed and angle, apply reverse and steer, and record whether it separates and
       within how many physics steps. Try at least a glancing contact and a square one. Record the
       numbers here
-- [ ] T004a **Restore the hard step limit before the terminal is lifted (FR-005b).** `DESIGN.md`
+  - **The premise holds. The car recovers.** Driven into a barrier at `approachSteer` 0.35 and
+    speed_norm 0.723, then given full reverse and opposite steer, it moved **3.28 m in 150 physics
+    steps (3 s)**, with one further contact on the way out. A contact budget therefore buys real
+    recovery rather than a slower failure, and the feature continues
+  - **The second run is the more useful one, and it was not planned.** Holding the throttle *into*
+    the barrier instead of reversing moved the car **0.47 m in 250 steps (5 s)**. A car that touches
+    a barrier nose-first effectively stops
+  - **That measurement substantially defuses the grinding risk this feature was most worried about
+    (R5, FR-010).** At 0.47 m per 5 s the progress term pays about 0.028 for grinding, against about
+    0.12 per step for driving. Grinding is not a competitive strategy because the vehicle physics
+    will not let the car slide along a barrier at speed. The risk is smaller than the spec feared,
+    and it is measured rather than argued
+  - **`LateralClearance` is unvalidated as a grind detector and must not be relied on yet.** It read
+    exactly 1.0 through both runs, including five seconds pressed against a barrier. The reason is
+    that both contacts were nose-in, so the barrier was ahead of the car rather than beside it, and
+    the side rays correctly saw nothing. **A true parallel slide was never produced**, so the
+    measure is neither confirmed nor refuted. T014 keeps it, and T019 must treat a flat clearance
+    reading as uninformative rather than as evidence of no grinding, until a parallel case exists
+- [X] T004a **Restore the hard step limit before the terminal is lifted (FR-005b).** `DESIGN.md`
       4.6 claimed `MaxStep = 6000` and `TrainingArea.prefab` sets **0**, guarded by `MaxStep > 0`,
       so it has never fired and `episode/end_steplimit` reads zero in every M3 run for that reason
       rather than because episodes were short. With the terminal lifted and `_stepsSinceAward`
       resetting on every marker, a grinding policy that collects one marker per 60 s never
       terminates. Choose the value against measured episode lengths, set it on the prefab, and
       record it in `DESIGN.md` 4.6
-- [ ] T005 Decide the budget default from T004's numbers and write it into `DESIGN.md` 4.6,
+  - **`TrainingArea.prefab` now sets `MaxStep: 6000`**, which is 120 s at 50 Hz and is the number
+    `DESIGN.md` claimed all along. Feature 007's mean episode was about 1,676 physics steps, so the
+    limit sits about three and a half times above it and should rarely fire. Recorded in
+    `DESIGN.md` 4.6
+- [X] T005 Decide the budget default from T004's numbers and write it into `DESIGN.md` 4.6,
       replacing the placeholder T001 left. If T004 says the car cannot recover, **stop and write the
       negative up instead of continuing**: that is a publishable result about the vehicle rather
       than about the reward
+  - **Budget default 3.** Recovery takes about 3 s of reverse, so a handful of contacts per episode
+    is survivable without an episode becoming unbounded, and the `MaxStep` limit from T004a is the
+    backstop. Zero remains reachable and reproduces feature 007 exactly
+  - T004 said the car recovers, so the cancel branch of this task does not fire
 
 **Checkpoint**: either the premise holds and the budget has a number, or the feature stops here with
 a reason.
