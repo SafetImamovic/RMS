@@ -86,6 +86,14 @@ namespace SelfDrivingSim.Agent
                  "merely slow.")]
         [SerializeField] private float stallSeconds = 60f;
 
+        [Tooltip("How many barrier contacts an episode survives before the episode ends. " +
+                 "Zero reproduces feature 007 exactly: the first contact ends the episode. " +
+                 "It counts contact EVENTS, not steps and not seconds, because WallSensor " +
+                 "raises OnCollisionEnter once when the colliders begin touching and not " +
+                 "again until they separate, so a car that slides along a barrier without " +
+                 "separating spends one unit of budget on the whole slide.")]
+        [SerializeField] private int wallContactBudget = 3;
+
         /// <summary>Why the last episode ended. Recorded, and distinct per reason (FR-011).</summary>
         public enum EndReason
         {
@@ -523,7 +531,25 @@ namespace SelfDrivingSim.Agent
                 // Before EndEpisode, never after: the penalty has to land in the episode the
                 // trainer attributes it to.
                 AddReward(penalty);
-                Finish(EndReason.WallContact);
+
+                // Feature 008. The penalty is charged on every contact, exactly as before; what
+                // changed is that the episode only ends once the budget is spent.
+                //
+                // **The two halves of this row are separable and only one of them has ever been
+                // tested.** Feature 006's `ppo_car_wall_lo` moved the penalty from -5.0 to -1.0 and
+                // left the terminal alone, so it is evidence about the weight. In every M3 run the
+                // episode still ended at the first contact, in both arms of every comparison.
+                //
+                // A policy cannot learn to recover from a mistake it is never allowed to survive:
+                // with the terminal at the first contact, every trajectory in the buffer that
+                // touches a barrier ends there, and the value function has no data about what
+                // follows a graze. Feature 007 made that bind, by producing the first policy that
+                // drives far enough to hit anything.
+                if (WallTerminal.EndsEpisode(wall.Contacts, wallContactBudget))
+                {
+                    Finish(EndReason.WallContact);
+                }
+
                 return;
             }
 

@@ -119,22 +119,35 @@ a reason.
 
 ## Phase 3: User Story 1 - The car survives a graze (P1)
 
-- [ ] T006 [US1] Add `wallContactBudget` to `DrivingAgent` as a serialized `int`, defaulting to
+- [X] T006 [US1] Add `wallContactBudget` to `DrivingAgent` as a serialized `int`, defaulting to
       T005's number, with the comment saying what zero means and why the field counts events rather
       than steps (R2)
-- [ ] T007 [US1] Change the branch in `CheckTermination`: charge the penalty as it does today, then
+- [X] T007 [US1] Change the branch in `CheckTermination`: charge the penalty as it does today, then
       end the episode with `EndReason.WallContact` only when `wall.Contacts` exceeds the budget.
       **The end-reason vocabulary does not change** (FR-004)
-- [ ] T008 [P] [US1] **The property test.** A contact under budget charges the pinned penalty and
+- [X] T008 [P] [US1] **The property test.** A contact under budget charges the pinned penalty and
       leaves the episode live
-- [ ] T009 [P] [US1] **The property test.** The contact that exhausts the budget ends the episode
+- [X] T009 [P] [US1] **The property test.** The contact that exhausts the budget ends the episode
       with `EndReason.WallContact`, so no downstream reader sees a new reason
-- [ ] T010 [P] [US1] **The property test.** A budget of zero reproduces feature 007 exactly: the
+- [X] T010 [P] [US1] **The property test.** A budget of zero reproduces feature 007 exactly: the
       first contact ends the episode. This is the test that keeps the comparison honest
-- [ ] T011 [P] [US1] Test that the penalty is charged once per contact event and not once per
+- [X] T011 [P] [US1] Test that the penalty is charged once per contact event and not once per
       physics step. It already holds because `OnCollisionEnter` is edge triggered; the test exists
       so a later change to `WallSensor` cannot break it silently (FR-001)
-- [ ] T012 [US1] Confirm the EditMode suite is green and report the new count against T003's 132
+- [X] T012 [US1] Confirm the EditMode suite is green and report the new count against T003's 132
+  - **137 passed, 0 failed, 0 skipped, in 2.49 s**, against T003's baseline of 132. The five new
+    cases are the whole difference
+  - **The predicate lives in a new plain static class, `WallTerminal`, rather than on
+    `DrivingAgent`.** The first attempt put it on the agent and the test assembly would not compile:
+    `DrivingAgent` derives from ML-Agents' `Agent`, and `SelfDrivingSim.EditModeTests` deliberately
+    does not reference ML-Agents. The same reasoning already put the reward arithmetic in
+    `RewardModel`, so this follows the existing pattern rather than inventing one, and it needed no
+    change to the test assembly's references
+  - **These tests pin semantics, not wiring**, and the file says so. Whether `CheckTermination`
+    calls the predicate on the right contact with the right count needs a scene, and is verified by
+    the end-reason counts the candidate run produces
+  - The case that matters most is `A_budget_of_zero_ends_the_episode_on_the_first_contact`. The
+    whole comparison against `ppo_car_007_progress` rests on zero reproducing feature 007 exactly
 
 **Checkpoint**: an episode can outlive a contact, and zero still reproduces feature 007.
 
