@@ -663,6 +663,47 @@ po koraku fizike, pa je **4 očekivani odnos** i maksimum ga potvrđuje. Ostaje 
 plafona, za šta feature 007 instrumentira oba brojača u istom runu. Svaka tvrdnja o trajanju epizode
 u sekundama izvodi se iz broja koraka fizike na 50 Hz, i to kaže.
 
+**Ishod, upisan nakon runova (feature 007, 2026-08-26). Član se zadržava.**
+
+Mjereno je oba ishoda koja je pre-registracija imenovala, i pokazao se prvi.
+
+- **Geometrija je potvrđena mjerenjem, ne tvrdnjom.** Skriptirani vozač na seedu 1, tri uzastopna
+  kruga, svaki plaća **tačno 12.0**. `Unwrapped` raste za 201.02 m po krugu na lancu od 201.017 m,
+  pa odmotavanje preko cilja ne košta nijedan poseban slučaj. Start je bio na markeru 17 od 24,
+  dakle ne na nuli.
+- **Markeri po epizodi: 0.2490 osnova naspram 1.4987 na kandidatu**, uz prag od 0.035 izmjeren na
+  tri identična runa. Po četvrtinama runa 0.3477, 0.9794, 2.1148, 2.5528, dakle monotono, a ne
+  skok. **Rijetkost signala jeste bila ograničenje.**
+- **Osam epizoda je odvozilo puni zahtjev od tri kruga.** `episode/end_lapscompleted` se pali tek
+  na `LapCount >= lapsToComplete`, a `TrainingArea.prefab` to postavlja na 3, pa je svaka od tih
+  osam odvozila tri uzastopna kruga, a ne jedan. Nijedan run u M3 nije završio nijedan krug, kroz
+  devet runova i preko 12.000.000 koraka.
+- **Član plaća onoliko koliko je i projektovan.** U spread setu 0.1324 po epizodi, što je 2.2 m
+  neto napretka; na kandidatu kasno 1.3843, što je 23.2 m ili oko 11.5 posto kruga.
+
+**Milestone i dalje nije ispunjen, i to je druga polovina rezultata.** Na deset izdvojenih seedova,
+u obje inference varijante, **nijedan krug nije završen**. Ono što se promijenilo je vrsta pada:
+politika feature-a 006 je stajala na startu do isteka od 60 s i nije dosegla nijedan marker, dok
+ova vozi oko četvrtine kruga i udari u ogradu, uz **6.20 od 24 markera**. Nula naprema 6.20 je prvi
+rezultat na izdvojenim stazama koji nije nula, i nije krug.
+
+**Zaglavljivanje je zamijenjeno udarom u ogradu, skoro jedan za jedan.** Udio zaglavljenih 0.3903
+na 0.2741, udio udara 0.4773 na 0.5907. Sam po sebi taj par brojeva bi bio zamjena jednog pada
+drugim; ono što zamjena ne objašnjava su šestostruko veći markeri i osam krugova.
+
+**Zbir sedam članova ne odgovara povratu trenera, i to je defekt u instrumentaciji a ne u
+nagradi.** Slaganje na **4.8 posto** redova, srednji ostatak +0.3030. Nema osmog člana: sva četiri
+poziva `AddReward` su preslikana u razbijanje. Uzrok je da razbijanje rewarda i povrat trenera
+prosjekuju preko skupova epizoda koji se razlikuju za oko **19 posto**, što istovremeno objašnjava
+i manjak u odnosu koraka: `4 x 11219 / 13851 = 3.2398` naspram izmjerenih **3.2161**. Isti defekt
+viđen dva puta. Koje se epizode razlikuju traži zapis po epizodi, i to je iskrena granica ovog
+feature-a.
+
+**Manjak ispod plafona od 4 je razdvojen.** Epizoda koja se završi usred prozora od 4 koraka može
+oduzeti najviše `1.5 / d`, a epizode traju oko 485 odluka, pa taj mehanizam nosi **0.0031** od
+manjka od 0.78. Sve ostalo nosi neslaganje skupova epizoda iznad. Stavka koju je M3 ostavio
+otvorenom je time zatvorena.
+
 ### 4.6 Kraj epizode
 - Sudar sa zidom, ili
 - 60 s bez novog checkpointa (zaglavljen), ili

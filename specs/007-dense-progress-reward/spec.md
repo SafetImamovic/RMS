@@ -323,6 +323,47 @@ count is the correct denominator.
   reported as either an explanation or a measured ratio with its range, closing the item feature 006
   left open.
 
+### The closeout, with the number that decides each criterion
+
+Written 2026-08-26, after every run this feature made.
+
+| criterion | bar | measured | verdict |
+|---|---|---|---|
+| SC-001 sum equals endpoint difference | agree within tolerance | 3 laps on seed 1, each paying exactly 12.0; `Unwrapped` climbs 201.02 m per lap against a 201.017 m chain | **met** |
+| SC-002 a loop earns zero | zero within tolerance | T013, green in the EditMode suite | **met** |
+| SC-003 markers per episode | beat 0.249 by more than 0.035 | **1.4987** run mean, 2.6975 over the last 50 | **met**, by about 36 times the gate |
+| SC-004 a lap during training | at least one, ever | **8 episodes completed three laps each**, over 13,851 episodes | **met**, and by more than the criterion asked |
+| SC-005 a lap on held-out seeds | at least one | **0**, both inference modes, all ten seeds | **not met** |
+| SC-006 the milestone bar | 80 per cent of seeds | **0 per cent** | **not met** |
+| SC-007 the breakdown sums to the total | reported as a percentage | **4.8 per cent** of 500 rows, residual mean +0.3030 | **not met** |
+| SC-008 spread reported before comparison | written first | `results/rl/progress_spread.md`, written before the candidate run existed | **met** |
+| SC-009 the other driving paths unchanged | demonstrated | 132 EditMode green, 357 passed and 3 skipped in `.venv`, 411 passed in `.venv-bc`; the scripted driver completed 3 laps with 0 wall contacts during T022 | **met** |
+| SC-010 throughput inside the envelope | reported and inside 12 h | **927 steps/s**, 5,000,000 steps in 5,395.4 s, which is 1.5 h | **met** |
+| SC-011 every figure resolves to a run | every run has a row | four runs, four rows, models and curves committed | **met** |
+| SC-012 the step accounting | explanation or ratio with range | **3.2161**, sd 0.2829, range 2.1453 to 4.0063, against a ceiling of 4, with the shortfall separated | **met** |
+
+**Nine met, three not.** The three that failed are SC-005, SC-006 and SC-007, and they are not the
+same kind of failure.
+
+**SC-005 and SC-006 are the milestone, and the milestone is still not met.** No lap was completed on
+held-out track in either inference mode. What changed is the failure: feature 006's policy sat at
+the start line until the 60 second stall cap and reached no marker at all, while this one drives a
+quarter of the lap and hits a barrier, taking 6.20 of 24 markers on the way. Zero to 6.20 is the
+first non-zero held-out result the RL side of this project has produced, and it is not a lap.
+
+**SC-007 is a defect in the instrumentation rather than in the reward.** The behavioural results are
+counts taken on the Unity side and do not depend on the decomposition. The cause is identified in
+`results/EXPERIMENTS.md` and in T042: the reward breakdown and the trainer's cumulative reward
+average over episode sets differing by about 19 per cent. That same mismatch quantitatively explains
+the step-ratio shortfall SC-012 reports, so the two are one defect seen twice. Which episodes differ
+still needs per-episode records, and naming that is this feature's honest limit.
+
+**The mechanism worked and the milestone did not follow.** The dense progress signal was aimed at
+the exploration failure M3 identified, and on its own terms it hit: markers per episode moved for
+the first time in M3, and eight episodes drove three consecutive laps during training where the
+project had never completed one. It
+was not sufficient to produce a lap on unseen track.
+
 ## Assumptions
 
 - The 24 markers are ordered and roughly evenly spaced, so the distance along the chain is a usable

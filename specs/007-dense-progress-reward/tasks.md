@@ -399,9 +399,11 @@ a gate measured on that metric.
     laps, so the reading is that the car now fails while driving rather than while sitting still
 - [X] T031 [US2] Read the lap counter over the run: did any episode complete a lap (SC-004)? No run
       in M3 ever did, across nine runs and more than 12,000,000 steps
-  - **Eight laps completed over 13,851 episodes.** Feature 006 completed zero across nine runs and
-    more than 12,000,000 steps, so against a floor of exactly zero this is the SC-004 signal. It is
-    a small number and is reported as one: 0.06 per cent of episodes
+  - **Eight episodes completed the full three-lap requirement, over 13,851 episodes.**
+    `episode/end_lapscompleted` fires only at `LapCount >= lapsToComplete` and `TrainingArea.prefab`
+    sets that to 3, so each of the eight drove three consecutive laps rather than one. Feature 006
+    completed no lap at all across nine runs and more than 12,000,000 steps
+  - It is still a small number and is reported as one: 0.06 per cent of episodes
 - [X] T032 [US2] Verify FR-010 against this feature's own exported rows: the seven terms sum to the
       trainer's cumulative reward, reported as a percentage of rows that agree. **Do not inherit
       006's check.** Its per-term sum was wrong on 97.4 per cent of rows until the swap bug was
@@ -517,43 +519,133 @@ one.
     against the human column's 0.1515, where feature 006's deterministic policy sat at 0.00055. A
     policy that drives produces roughly human steering spread and still completes no laps, which is
     feature 005's warning about variance as a standalone measure, confirmed from the other side
-- [ ] T040 [P] [US4] Instrument both counts in the candidate run: `PhysicsStepsCharged` from the
+- [X] T040 [P] [US4] Instrument both counts in the candidate run: `PhysicsStepsCharged` from the
       reward path and `TrainerEpisodeLength` from the trainer, per summary
-- [ ] T041 [US4] Report the ratio against the expected ceiling of **4**, which is
+  - Both counts are in every run this feature made, not only the candidate: `episode/physics_steps`
+    from `_physicsStepsCharged` in `AccrueStepTerms`, and the trainer's own
+    `Environment/Episode Length`. Exported as `physics_steps_charged` and `episode_length`
+  - **Landed in T024 rather than here, deliberately.** The task list has T029 feeding T040, but the
+    counter has to exist before the run it instruments. Had it waited for Phase 6, the candidate
+    would have needed a second two-hour run
+- [X] T041 [US4] Report the ratio against the expected ceiling of **4**, which is
       `DecisionPeriod: 4` at `unity/SelfDrivingSim/Assets/Prefabs/TrainingArea.prefab` line 428
       (R6). Feature 006 measured a mean of about 3.16 with a maximum of 4.01 and could not say why
-- [ ] T042 [US4] Separate the two mechanisms R6 names for the shortfall below the ceiling:
+  - **Ratio 3.2161, sd 0.2829, range 2.1453 to 4.0063, against the ceiling of 4.** The maximum
+    sits on the ceiling to within 0.006, which is the first direct confirmation that 4 is the right
+    ceiling rather than an inference from `DecisionPeriod: 4`
+  - Across the three spread runs it is 3.1652, 3.1536 and 3.1627, sd 0.0061, so feature 006's
+    unexplained 3.16 reproduces across four independent runs and is a property of the setup
+- [X] T042 [US4] Separate the two mechanisms R6 names for the shortfall below the ceiling:
       episodes ending part way through a decision window, and swap-ended episodes counted by the
       trainer but not by the reward reporting. Report which accounts for how much, or state that it
       could not be separated and why
-- [ ] T043 [US4] Fix any statement of episode duration in seconds in `results/` to name the count
+  - **Separated, and one of the two mechanisms does essentially all of the work.**
+
+    | mechanism | shortfall explained |
+    |---|---|
+    | episodes ending part way through a decision window | **0.0031** |
+    | the two means averaging over different episode sets | **~0.78 of the 0.78** |
+
+  - **Mechanism 1 is arithmetically incapable of mattering.** An episode ending uniformly within a
+    4-step window loses `1.5 / d` on the ratio, and episodes here run about 485 decisions, so the
+    most it can cost is 0.0031. Feature 006 named it first and it is the smaller of the two by two
+    orders of magnitude
+  - **Mechanism 2 accounts for the rest, quantitatively.** Our end-reason counts total 13,851 while
+    the trainer's episode count implied by `summary_freq / Environment/Episode Length` is 11,219,
+    a ratio of 0.8099. Since the ratio of means is `4 x trainer episodes / our episodes`, that
+    predicts **3.2398** against a measured **3.2161**, within 0.024
+  - **Feature 006 named this hypothesis and got the direction backwards.** Its M3 entry proposed
+    that the trainer "counts every episode the agent processor sees" while `ReportEpisode` runs on
+    only some paths, which predicts the trainer counting more. Measured, the reward reporting counts
+    about 23 per cent **more** episodes than the trainer's mean is taken over, not fewer. The idea
+    is confirmed and the direction in that sentence is wrong
+  - **This is the same mismatch T032 could not pin down, now with a magnitude.** The reward
+    breakdown and the trainer's cumulative reward average over episode sets differing by about 19
+    per cent, which is why the sums disagree and why the disagreement only became visible once
+    episode rewards spread out. The per-summary correlation is weak, +0.278, because the trainer's
+    per-summary episode count is estimated from a mean rather than counted; the aggregate is what
+    carries the claim. **Identifying which episodes differ still needs per-episode records**
+- [X] T043 [US4] Fix any statement of episode duration in seconds in `results/` to name the count
       it is derived from, at 50 Hz on the physics-step count (FR-021, SC-012)
 
 ---
 
 ## Phase 7: Closeout
 
-- [ ] T044 Write the closeout table into `spec.md`, every criterion with the number that decides
+  - `results/rl/rl_steering.md` now states that every duration in it is derived from a count:
+    `duration_s` is `ElapsedS`, one `Time.fixedDeltaTime` per charged physics step, so at 50 Hz it
+    is the physics-step count over 50. Not wall clock, and not the trainer's episode length, which
+    counts decisions and is about 3.22 times smaller
+  - The training rows in `results/EXPERIMENTS.md` already state episode length in steps rather than
+    seconds, so nothing there needed changing
+- [X] T044 Write the closeout table into `spec.md`, every criterion with the number that decides
       it, and criteria that are not met stated as not met rather than restated to fit the result.
       This is the format the M3 closeout used and it is the reason that negative result is
       defensible
-- [ ] T045 [P] Update `DESIGN.md` 4.5 with the outcome, in the house pattern: the decision, the
+  - Written into `spec.md` as "The closeout, with the number that decides each criterion".
+    **Nine met, three not: SC-005, SC-006 and SC-007 failed.** SC-005 and SC-006 are the milestone
+    and are a genuine miss; SC-007 is an instrumentation defect that does not touch the behavioural
+    counts
+- [X] T045 [P] Update `DESIGN.md` 4.5 with the outcome, in the house pattern: the decision, the
       number, and whether the change is kept. If the term is kept, say so; if it is not, the table
       the code carries is the one 4.5 shows
-- [ ] T046 [P] Update `README.md` only if a command, a scene or a file name changed. The plan
+  - Written into `DESIGN.md` 4.5 in the house pattern and in Bosnian, as "Ishod, upisan nakon
+    runova". **The term is kept.** Both pre-registered outcomes were named in advance and the first
+    one happened: the rarity of the signal was a real constraint
+  - The milestone half is recorded in the same section rather than in a separate one, so the
+    section cannot be read as a success on its own
+- [X] T046 [P] Update `README.md` only if a command, a scene or a file name changed. The plan
       expects none did, and confirming that is the task
-- [ ] T047 Run the full suite in `.venv` and `.venv-bc` and the Unity EditMode suite, and compare
+  - **No command, scene or file name changed, which is what the task asked to confirm.** The
+    training, export, evaluation and report commands are all unchanged; `Evaluation.unity` keeps its
+    name and its role
+  - One factual correction: the suite count line read 347 passes and this feature took it to 357,
+    so the number was updated rather than left wrong
+- [X] T047 Run the full suite in `.venv` and `.venv-bc` and the Unity EditMode suite, and compare
       against T002. Every new test is accounted for by name; no existing test regressed
-- [ ] T048 Merge checklist: no em dashes in any file this feature touched
+  - **All three green.** `.venv` 357 passed and 3 skipped, against feature 006's closing 347 and
+    3; `.venv-bc` 411 passed; Unity EditMode **132 passed, 0 failed, 0 skipped**, against 006's
+    closing 109
+  - The EditMode run was taken after the `episode/markers` and `episode/physics_steps` changes, not
+    before them
+- [X] T048 Merge checklist: no em dashes in any file this feature touched
       (`Select-String -Path <file> -Pattern ([char]0x2014)`), every `Assets/` file carries its
       `.meta` in the same commit, `.onnx` routed through LFS, no `Co-Authored-By` or session
       trailer in any commit message or in `EXPERIMENTS.md`, and every run in the feature has its
       row
-- [ ] T049 State the next feature. If markers rose and laps did not, name what the binding
+- [X] T049 State the next feature. If markers rose and laps did not, name what the binding
       constraint now looks like. If markers did not rise, then the dense signal was not it either,
       and the M3 closeout's remaining two remedies, curriculum and imitation warm start, are what
       is left. Either way this feature has removed one candidate from three by measurement, and
       that is the sentence the closeout should be able to write
+  - **The binding constraint moved, and it is no longer exploration.** Markers per episode went
+    0.2490 to 1.4987 and eight episodes drove three laps each, so the policy now finds the markers.
+    What stops it is the barrier: on held-out track **all ten seeds end in `WallContact`** after
+    about 6.20 of 24 markers and roughly seven seconds, and in training the wall share rose 47.7 to
+    **59.1 per cent** while the stall share fell 39.0 to 27.4
+  - **The mechanism is in `DrivingAgent.CheckTermination`, and it is one line.** The first wall
+    contact calls `Finish(EndReason.WallContact)`, so an episode ends on the policy's first mistake
+    and it never experiences a recovery. That was harmless while the car sat still and never touched
+    a barrier; it is the dominant end reason now that the car drives
+  - **Named next feature: the wall terminal.** The question is whether ending an episode on first
+    contact is what now prevents a lap, and the change is to the terminal rather than to its
+    penalty. Feature 006's `ppo_car_wall_lo` already tested the **penalty** at -5.0 to -1.0 and made
+    the return worse while shifting the failure mix, which is evidence about the weight and not
+    about the termination. This feature's result is what makes the question worth asking: a policy
+    that drives a quarter of a lap can be interrupted mid-recovery, and one that stalls cannot
+  - **Second, smaller, and independent: per-episode records.** SC-007 failed and T042 identified the
+    shape of the cause, an episode-set mismatch of about 19 per cent, but not which episodes.
+    Per-summary aggregates cannot answer that and per-episode rows can. It also closes the
+    correction this feature made to feature 006's stated direction
+  - **The two remedies M3 named and this feature left alone are still open and now rank lower.** A
+    curriculum starting nearer a marker and an imitation warm start were both aimed at exploration,
+    and exploration is the part that moved. They should be re-argued against the new constraint
+    rather than picked up in the order M3 wrote them
+  - **The trap for whoever writes the imitation warm start is unchanged**: the M4 BC model is a
+    PilotNet CNN over camera images and the learning agent reads 13 rays, so it cannot warm-start
+    the policy directly. The tractable form is `DemonstrationRecorder` on the scripted driver plus
+    GAIL and `behavioral_cloning` in the trainer config
+
 
 ---
 
@@ -593,3 +685,10 @@ everything            ->  T044..T049
   user-interaction guard, so this stays a human step.
 - The `ppo_car_smoke` and `ppo_car_v01` archives must not be re-exported into the current schema.
   Their event files carry `episode/end_*` as a meaningless constant 1.0.
+
+  - **Swept across every file this feature touched: 5 found, all in `results/EXPERIMENTS.md`, all
+    pre-existing feature 006 prose.** Replaced with the hyphen that document already uses everywhere
+    else. Every other touched file was already at zero
+  - One stray artifact could not be removed because Unity still holds a write handle on it:
+    `results/rl/runs_2026-08-26_20-27-20.csv`, a duplicate of
+    `eval_ppo_car_007_progress_sampling.csv`. It deletes once the editor is closed

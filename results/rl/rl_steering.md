@@ -35,6 +35,12 @@ repeated.
 | `ppo_car_007_progress`, deterministic | 0 of 10 | **6.20** (25.8 per cent of a lap) | WallContact x10 | 7.24 s |
 | `ppo_car_007_progress`, sampling | 0 of 10 | **4.60** (19.2 per cent of a lap) | WallContact x10 | 5.92 s |
 
+**Every duration in this document is derived from a count, not from a clock** (FR-021). `duration_s`
+is `DrivingAgent.ElapsedS`, accumulated as one `Time.fixedDeltaTime` per physics step on exactly the
+ticks the reward terms are charged, so at 50 Hz it is the physics-step count divided by 50. It is
+not wall clock and it is not the trainer's episode length, which counts decisions and runs a factor
+of about 3.22 smaller.
+
 Feature 006's policy sat at the start line until the 60 second stall cap on every held-out seed.
 Feature 007's drives a quarter of the lap and hits a barrier. Both are a loss against the scripted
 driver's 34 of 34, and a report that carried only the lap count would have called them the same

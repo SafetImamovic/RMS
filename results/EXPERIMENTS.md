@@ -67,7 +67,7 @@ Notes on the pair, since a table row cannot carry them:
 | 2026-08-26 | `ppo_car_007_spread_a` | **Feature 007's reward table**, which is feature 006's six terms plus a seventh: the weighted change per physics step in the car's clamped, unwrapped arc position along the 24 markers. Weight derived per track as `0.5 * 24 / ChainLength`, so a lap pays 12.0. Also new: `episode/markers` and `episode/physics_steps` instrumentation. `config/ppo_car_spread.yaml` at 2M, `--seed=1`, twelve areas, everything else untouched. First of the three T025 to T027 spread runs | **2,000,000 steps in 2,540.7 s**, 787 steps/s, uninterrupted. Markers per episode **0.2608** run mean, 0.2541 over the last 50 summaries. `reward/progress` **0.1379** per episode, which at 0.05970 per metre is **2.31 m of net progress per episode**, about 1.15 per cent of a lap. Over 5,046 episodes: 47.2 per cent wall, 39.6 per cent stalled, 13.2 per cent track-swapped, **zero laps**. `episode/physics_steps` over `Environment/Episode Length` is **3.1652** against the ceiling of 4 | Not a candidate model. Run a of the three T028 needs. **An earlier attempt at this run was killed at 1,440,000 steps** and is discarded, kept only as `results/rl/ppo_car_007_spread_a.killed_at_1440k.log` |
 | 2026-08-26 | `ppo_car_007_spread_b` | Run b of three. Identical to `ppo_car_007_spread_a` except `--seed=2` | **2,000,000 steps in 2,597.9 s**, 770 steps/s, uninterrupted. Markers per episode **0.2290** run mean, 0.2326 over the last 50. `reward/progress` 0.1238, which is 2.07 m net per episode. Over 5,181 episodes: 48.9 per cent wall, 37.9 per cent stalled, 13.2 per cent swapped, **zero laps**. Step ratio **3.1536** | Not a candidate model. Run b of three. The lowest marker count of the set and still within 0.032 of the highest, which is what makes the gate small |
 | 2026-08-26 | `ppo_car_007_spread_c` | Run c of three. Identical to a and b except `--seed=3` | **2,000,000 steps in 2,649.4 s**, 755 steps/s, uninterrupted. Markers per episode **0.2576** run mean, 0.2714 over the last 50, the highest late-phase figure of the set. `reward/progress` 0.1356, which is 2.27 m net per episode. Over 4,993 episodes: 47.2 per cent wall, 39.5 per cent stalled, 13.3 per cent swapped, **zero laps**. Step ratio **3.1627** | Not a candidate model. Completes the set T028 measures. **No run in the set completed a lap**, and markers per episode means 0.2491 across the three against feature 006's 0.249, so the term did not move the metric at this budget. The gates are in `results/rl/progress_spread.md`, written before any candidate run existed |
-| 2026-08-26 | `ppo_car_007_progress` | **The T029 candidate.** One change from feature 006's `ppo_car_v01`: the reward table gains the dense progress term. Full baseline budget, `config/ppo_car.yaml` reused unchanged at 5,000,000 steps, `--seed=42` to match v01 exactly, same twelve areas, same seeds, every existing weight untouched | **5,000,000 steps in 5,395.4 s**, 927 steps/s, uninterrupted. **Markers per episode 1.4987 run mean and 2.6975 over the last 50, against a baseline of 0.2490 and a gate of 0.035.** By quarter 0.3477, 0.9794, 2.1148, 2.5528, which rises monotonically rather than spiking. **Eight laps completed** over 13,851 episodes, where feature 006 completed zero across nine runs and more than 12,000,000 steps. `reward/progress` reaches 1.3843 per episode late, which is 23.2 m of net progress, about 11.5 per cent of a lap, against 2.2 m in the spread set. End reasons 59.1 per cent wall, 27.4 per cent stalled, 13.5 per cent swapped, against the spread set's 47.7 / 39.0 / 13.2. **FR-010 does not hold on this run**: the seven terms sum to the trainer's cumulative reward on 4.8 per cent of rows, residual mean +0.3030 | **The first candidate in M3 that moved the metric it was aimed at**, and the first policy in this project to complete a lap. Model kept and promoted for the T034 to T037 evaluation. The stall fall is **not** clean: see the note below |
+| 2026-08-26 | `ppo_car_007_progress` | **The T029 candidate.** One change from feature 006's `ppo_car_v01`: the reward table gains the dense progress term. Full baseline budget, `config/ppo_car.yaml` reused unchanged at 5,000,000 steps, `--seed=42` to match v01 exactly, same twelve areas, same seeds, every existing weight untouched | **5,000,000 steps in 5,395.4 s**, 927 steps/s, uninterrupted. **Markers per episode 1.4987 run mean and 2.6975 over the last 50, against a baseline of 0.2490 and a gate of 0.035.** By quarter 0.3477, 0.9794, 2.1148, 2.5528, which rises monotonically rather than spiking. **Eight episodes completed the full three-lap requirement** over 13,851 episodes, where feature 006 completed no lap at all across nine runs and more than 12,000,000 steps. `episode/end_lapscompleted` fires only at `LapCount >= lapsToComplete`, and `TrainingArea.prefab` sets that to 3, so each of those eight drove three consecutive laps rather than one. `reward/progress` reaches 1.3843 per episode late, which is 23.2 m of net progress, about 11.5 per cent of a lap, against 2.2 m in the spread set. End reasons 59.1 per cent wall, 27.4 per cent stalled, 13.5 per cent swapped, against the spread set's 47.7 / 39.0 / 13.2. **FR-010 does not hold on this run**: the seven terms sum to the trainer's cumulative reward on 4.8 per cent of rows, residual mean +0.3030 | **The first candidate in M3 that moved the metric it was aimed at**, and the first policy in this project to complete a lap. Model kept and promoted for the T034 to T037 evaluation. The stall fall is **not** clean: see the note below |
 
 Notes on the first full run:
 
@@ -116,9 +116,9 @@ not: the step-10000 row is one of the 4 percent that happen to agree, and one ro
 property of 500. The claim is withdrawn here rather than left standing.
 
 What the discrepancy is has not been established and is not guessed at in this entry. The obvious
-candidate is that the two numbers average over different sets of episodes — `ReportEpisode` runs on
+candidate is that the two numbers average over different sets of episodes - `ReportEpisode` runs on
 the paths in `DrivingAgent.Finish` and the step-limit branch, while the trainer's cumulative reward
-counts every episode the agent processor sees — but that is a hypothesis for an instrumented check,
+counts every episode the agent processor sees - but that is a hypothesis for an instrumented check,
 not a finding. It does not affect the per-term *trends* this entry rests on, which are what FR-008
 was written to expose, and it does affect any claim that a term's absolute value accounts for the
 total.
@@ -155,7 +155,7 @@ Notes on the first run, since a table row cannot carry them:
 ### Both instrumentation defects are fixed, and one residual is left unexplained
 
 `ppo_car_fr008_check`, 2026-08-19: 100,000 steps in 165.0 s, the pinned config with `max_steps`
-alone reduced. Not an experiment and it gets no table row — it exists to check that the two defects
+alone reduced. Not an experiment and it gets no table row - it exists to check that the two defects
 recorded above are gone, and its curve is committed at
 `results/rl/curves/ppo_car_fr008_check.csv`.
 
@@ -165,7 +165,7 @@ recorded above are gone, and its curve is committed at
 `ReportEpisode` for the first time.
 
 **The two halves now average over the same episodes.** `reward/wall` equals
-`-5.0 x end_wallcontact / total_episodes` exactly on all ten rows — at step 10000,
+`-5.0 x end_wallcontact / total_episodes` exactly on all ten rows - at step 10000,
 `-5 x 18/39 = -2.3077` against a recorded -2.307692. That identity is the real check: it can only
 hold if the per-term means and the end counts are divided by the same denominator, which is what
 `SwapTo` calling `EndEpisode` directly had broken.
@@ -182,7 +182,7 @@ Before the fix it was -0.694 with the same sign on 97.4% of rows. It is now two-
 **What is left is not explained, and saying so is the point.** Episodes straddling a summary
 boundary is the obvious candidate and it does not survive checking: the residual does not track
 episodes per window, since 16 episodes gives 0.0008 while 21 gives -0.5353. FR-008 sets no numeric
-tolerance — "the six terms sum to the total" is a derived check, not a threshold the spec states.
+tolerance - "the six terms sum to the total" is a derived check, not a threshold the spec states.
 The defect that made the breakdown unreadable is fixed. A residual an order of magnitude smaller and
 of no fixed sign is recorded here rather than rounded away.
 
@@ -244,7 +244,7 @@ The stall share clears its 0.019 gate about six times over, and taken alone that
 mechanism working. It is not enough on its own, and this row exists so nobody quotes it that way.
 
 **What makes it more than a trade is the pair of metrics the trade cannot explain.** Markers per
-episode rose six fold and eight laps were completed. A policy that had merely swapped one failure
+episode rose six fold and eight episodes drove three laps each. A policy that had merely swapped one failure
 for another would show neither. The honest summary is that the car now fails while driving instead
 of failing while sitting still, and driving is a prerequisite for the lap it is eventually meant to
 finish.
@@ -281,6 +281,20 @@ reached on different data. The obvious successor was that `EndForTrackSwap` repo
 trainer counts differently, which is attractive because our end-reason counts total 13,851 against a
 trainer count implied by `summary_freq / Environment/Episode Length` of about 11,219; but the
 per-summary correlation with the swapped share is -0.097, so it does not explain the variation.
+
+**Feature 006 named this hypothesis first, and feature 007's step accounting confirms the idea
+while reversing its direction.** The M3 entry above proposed that "the two numbers average over
+different sets of episodes", with `ReportEpisode` running on only some paths while the trainer
+"counts every episode the agent processor sees". That predicts the trainer counting **more**
+episodes than the reward reporting. The measurement runs the other way: our end-reason counts total
+**13,851** against a trainer count implied at **11,219**, so the reward reporting counts about 23
+per cent more episodes than the trainer's mean is taken over, not fewer. The general claim is
+confirmed and the direction in that sentence is wrong.
+
+**The confirmation comes from the step ratio rather than from the residual**, which is why it
+counts as evidence at all. If the two means are taken over episode sets differing by a factor `f`,
+then the physics-to-decision ratio is `4f` rather than 4. Measured, `4 x 11219 / 13851 = 3.2398`
+against an observed **3.2161**, within 0.024. Two independent symptoms, one arithmetic.
 
 **The likely shape of the answer, stated as a hypothesis and not as a finding.** The residual was
 invisible while every episode scored near -4.5 and appeared once episodes ranged from -5 to well
