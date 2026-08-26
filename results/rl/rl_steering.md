@@ -21,8 +21,29 @@ repeated.
 | scripted `WeightedAverage` (feature 005) | **34 of 34** | - | **0.04994** | - |
 | learned `ppo_car_spread_a`, deterministic | **0 of 10** | -0.1153 | 0.00055 | 0.0005 |
 | learned `ppo_car_spread_a`, sampling | **0 of 10** | -0.1221 | 0.04557 | 0.1452 |
+| learned `ppo_car_007_progress`, deterministic | **0 of 10** | -0.2044 | **0.13458** | 0.0722 |
+| learned `ppo_car_007_progress`, sampling | **0 of 10** | -0.2119 | **0.11103** | 0.1545 |
 
-Learned figures are 8,450 steering samples and 8,440 differences, taken at `COMPARE_HZ` (14.08 Hz)
+## What the lap column cannot say, and the marker column can
+
+**Every learned row above reads 0 of 10 laps, and they are not the same result.**
+
+| driver | laps | markers of 24 | end reasons | mean run duration |
+|---|---|---|---|---|
+| `ppo_car_spread_a`, deterministic | 0 of 10 | **0.00** | Stalled x10 | 60.00 s |
+| `ppo_car_spread_a`, sampling | 0 of 10 | **0.00** | Stalled x10 | 60.00 s |
+| `ppo_car_007_progress`, deterministic | 0 of 10 | **6.20** (25.8 per cent of a lap) | WallContact x10 | 7.24 s |
+| `ppo_car_007_progress`, sampling | 0 of 10 | **4.60** (19.2 per cent of a lap) | WallContact x10 | 5.92 s |
+
+Feature 006's policy sat at the start line until the 60 second stall cap on every held-out seed.
+Feature 007's drives a quarter of the lap and hits a barrier. Both are a loss against the scripted
+driver's 34 of 34, and a report that carried only the lap count would have called them the same
+loss. `python/rl/report.py` now prints the marker figure beside the lap figure for this reason, and
+says in the loss line whether the driver stopped late or never started.
+
+Learned figures for feature 006 are 8,450 steering samples and 8,440 differences; feature 007's
+are far smaller, 1,017 and 831, because its runs end in seven seconds instead of sixty. All are
+taken at `COMPARE_HZ` (14.08 Hz)
 over ten held-out seeds, each run resampled and differenced separately. Human and scripted figures
 are quoted from M1 and feature 005 rather than recomputed, so this document cannot drift from the
 ones that published them.
@@ -46,10 +67,17 @@ input from a jittery small one. This is a sharper version of the same point, mea
 argued: a driver that never leaves the start can match a lapping driver's steering variance to
 within a tenth. Any comparison that led with variance would have called these two drivers close.
 
-**The two inference modes are two different drivers from one set of weights (FR-026).** Their
-outcomes are identical - 0 laps, 0 checkpoints, 0 wall contacts, all ten runs stalled - and their
-steering has nothing in common. Variance differs by a factor of 83, mean \|delta steer\| by a
-factor of 290. Deterministic inference takes the distribution's mean and produces a nearly
+**The two inference modes are two different drivers from one set of weights (FR-026).** On
+feature 006's weights their outcomes were identical - 0 laps, 0 checkpoints, 0 wall contacts, all
+ten runs stalled - and their steering had nothing in common. Variance differed by a factor of 83,
+mean \|delta steer\| by a factor of 290.
+
+**That factor of 83 should not be quoted as a property of the two modes, and feature 007 is what
+shows why.** It was a ratio taken over a deterministic variance of 0.00055, produced by a car that
+barely turned its wheel. Measured on weights that actually steer, the same ratio is **2.86** on
+p95 \|delta steer\| (0.8550 against 0.2988) and 0.83 on variance, meaning the deterministic policy
+is now the *more* varied of the two. The modes still differ, they still get reported separately and
+never averaged, and the size of the difference was never the 83. Deterministic inference takes the distribution's mean and produces a nearly
 constant slight left lock (variance 0.00055); sampling reproduces the exploration noise PPO used
 while training. Reporting only the lap rate would have made FR-026 look immaterial; it is not, and
 the difference would matter enormously for any policy that actually drove.
@@ -63,10 +91,12 @@ column's -0.021. That bias is in the weights rather than in the sampling.
 whether two tracks share one steering distribution - counted on the dataset's own 0.05 lattice,
 41 support points from -1 to +1:
 
-| comparison | chi2 | dof | critical | p | reject H0 |
-|---|---|---|---|---|---|
-| deterministic vs human | 34,464.4 | 40 | 55.8 | ~0 | yes |
-| sampling vs human | 14,591.8 | 40 | 55.8 | ~0 | yes |
+| comparison | chi2 | dof | critical | p | reject H0 | learned n |
+|---|---|---|---|---|---|---|
+| `spread_a` deterministic vs human | 34,464.4 | 40 | 55.8 | ~0 | yes | 8,450 |
+| `spread_a` sampling vs human | 14,591.8 | 40 | 55.8 | ~0 | yes | 8,450 |
+| `007_progress` deterministic vs human | 1,986.0 | 34 | 48.6 | ~0 | yes | 1,017 |
+| `007_progress` sampling vs human | 1,631.7 | 28 | 41.3 | ~0 | yes | 831 |
 
 Both reject the null that the learned and human steering share one distribution, overwhelmingly.
 
@@ -78,6 +108,22 @@ there is. The **ordering** is the informative part - sampling is closer to the h
 than deterministic is, by a factor of 2.4 on the statistic - and even that is a weak claim to hang
 on a test in its saturated regime. The distributional figures in the table above carry more than
 the p-value does.
+
+**Feature 007 carries that caveat forward rather than dropping it, and it applies with less force
+rather than more.** Its statistics are an order of magnitude smaller, 1,986 and 1,632 against
+34,464 and 14,592, and its samples are far fewer, 1,017 and 831 against 8,450. That is not the
+policy becoming more human: it is runs that last seven seconds instead of sixty, so there is less
+data to saturate the test with. **The test remains in a regime where it measures data volume, so
+the rejection is still not the interesting part.** Reading a drop in the statistic as a drop in
+difference would be reading the run length.
+
+**What is worth noting is in the distribution table, not the test.** Feature 007's steering
+variance is 0.13458 deterministic and 0.11103 sampling, against the human column's 0.1515 and the
+scripted driver's 0.04994. Feature 006's deterministic policy sat at 0.00055. A policy that drives
+produces a steering distribution of roughly human spread, which feature 005's research predicted
+would happen and warned would not by itself mean the driver was any good. It does not: this one
+still completes no laps. The variance moving into the human range while the lap count stays at
+zero is the same lesson feature 006's row recorded from the other side.
 
 ## What resolves to what
 

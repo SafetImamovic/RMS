@@ -1,0 +1,11 @@
+seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,checkpoints_awarded,checkpoints_total,checkpoints_skipped,wall_contacts,end_reason,steer_p95_dsteer,steer_sign_changes_per_s,time_scale,duration_s
+1001,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,8,24,0,1,WallContact,0.3752,0.7384,4.00,9.500
+1002,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,5,24,0,1,WallContact,0.2148,0.4438,4.00,6.780
+1003,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,5,24,0,1,WallContact,0.3466,0.7987,4.00,6.280
+1004,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,5,24,0,1,WallContact,0.2050,0.7911,4.00,6.340
+1005,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,12,24,0,1,WallContact,0.3548,0.9370,4.00,11.760
+1006,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,7,24,0,1,WallContact,0.2601,0.8174,4.00,7.360
+1007,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,5,24,0,1,WallContact,0.3919,0.6309,4.00,6.360
+1008,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,6,24,0,1,WallContact,0.3800,1.2346,4.00,6.500
+1009,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,5,24,0,1,WallContact,0.2225,0.7987,4.00,6.280
+1010,ppo_car_007_progress_deterministic,13,180.00,20.00,false,,4,24,0,1,WallContact,0.2366,0.9653,4.00,5.200

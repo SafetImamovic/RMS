@@ -295,6 +295,51 @@ reason mix are unaffected. What is in doubt is any statement of the form "the to
 term is why", which is the reason FR-018 already forbids comparing this run's cumulative reward to
 feature 006's.
 
+### The held-out column: the car drives now, and it still does not finish a lap
+
+`ppo_car_007_progress-5000081` on the ten held-out evaluation seeds in `Assets/Scenes/Evaluation.unity`,
+no trainer attached. The `Couldn't connect to trainer on port 5004. Will perform inference instead.`
+line is in the editor log for both sweeps, which is what makes the "no trainer" claim checkable
+rather than asserted.
+
+| set | markers of 24 | range | laps | mean duration | p95 dsteer | sign changes/s | end reasons |
+|---|---|---|---|---|---|---|---|
+| 006 `spread_a`, deterministic | 0.00 | 0 to 0 | 0/10 | 60.00 s | 0.0009 | 0.00 | Stalled x10 |
+| 006 `spread_a`, sampling | 0.00 | 0 to 0 | 0/10 | 60.00 s | 0.8067 | 5.21 | Stalled x10 |
+| **007 `progress`, deterministic** | **6.20** | 4 to 12 | 0/10 | 7.24 s | 0.2988 | 0.82 | WallContact x10 |
+| **007 `progress`, sampling** | **4.60** | 2 to 7 | 0/10 | 5.92 s | 0.8550 | 3.84 | WallContact x10 |
+
+Markers per seed, deterministic: 8, 5, 5, 5, 12, 7, 5, 6, 5, 4. Sampling: 6, 6, 3, 4, 6, 7, 2, 6, 2, 4.
+
+**SC-005 is not met and SC-006 is not met.** SC-005 asks for at least one completed lap on held-out
+track and there were none, in either inference mode. SC-006 is the milestone bar of 80 per cent of
+seeds completing a lap, restated unchanged from feature 006's SC-002, and it stands at **0 per
+cent**. Those are the numbers that decide it and they are recorded before anything else in this
+section is read.
+
+**What did change is the failure.** Feature 006's policy sat still on all ten seeds until the 60
+second stall timeout and earned nothing at all. This one drives about a quarter of the lap and then
+hits a barrier, on all ten seeds, in about seven seconds. Zero markers to 6.20 of 24 is the first
+non-zero held-out result the RL side of this project has produced.
+
+**Sampling is worse than deterministic here, which is the expected direction and was not true
+before.** 4.60 markers against 6.20. Noise added to a policy that is doing something costs it
+markers; noise added to a policy that is doing nothing cannot cost anything, which is why feature
+006 measured the two modes as identical at zero.
+
+**Feature 006's factor of 83 between the inference modes should not be carried forward as a
+property of the modes.** It was measured with a deterministic p95 of 0.0009, a denominator produced
+by a car that never turned its wheel, so the ratio described a stalled policy rather than the
+difference between sampling and deterministic inference. Measured on a policy that actually steers,
+the factor is **2.86** (0.8550 against 0.2988). The two modes are still reported separately and
+never averaged, which was the right call for the wrong reason.
+
+**One asymmetry in the bar, stated because it is not obvious.** `lapsToComplete` is 3 in
+`Evaluation.unity`, so a row records `completed_lap` only after three laps, while the scripted
+driver's 34 of 34 was measured at one lap. The setting is feature 006's and is left untouched for
+comparability with their column, but it means the learned driver is being held to a strictly harder
+bar than the scripted one. At 6.20 of 24 markers it does not change the verdict.
+
 ### The jerk penalty was not the constraint, and the naive comparison would have said it was
 
 `ppo_car_jerk_lo`, 2026-08-20, is T048's first tuning candidate: `JerkPenalty` from -0.005 to

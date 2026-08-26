@@ -436,21 +436,64 @@ a gate measured on that metric.
 ## Phase 5: User Story 3 - The exported model drives held-out track (P1)
 
 **Goal**: the M3 column, whatever it says.
-- [ ] T034 [US3] Export the model and promote it to `unity/SelfDrivingSim/Assets/Models/`. Confirm
+- [X] T034 [US3] Export the model and promote it to `unity/SelfDrivingSim/Assets/Models/`. Confirm
       LFS routing with `git check-attr filter -- <path>.onnx` before the blob lands
-- [ ] T035 [US3] Run the evaluation sweep on the ten held-out seeds in
+  - Promoted as `Assets/Models/ppo_car_007_progress-5000081.onnx`, following the existing
+    `<run-id>-<step>.onnx` convention. **LFS routing confirmed before the blob landed**:
+    `git check-attr filter` returns `filter: lfs`
+  - Imported as `Unity.InferenceEngine.ModelAsset`, not Barracuda and not Sentis, which matters
+    only because a first attempt to load it as `Unity.Sentis.ModelAsset` failed to compile
+- [X] T035 [US3] Run the evaluation sweep on the ten held-out seeds in
       `Assets/Scenes/Evaluation.unity`, deterministic inference, with no trainer attached. Confirm
       the `Couldn't connect to trainer on port 5004. Will perform inference instead.` line, which
       is what makes SC-005's "no trainer" claim checkable
-- [ ] T036 [US3] Repeat in sampling inference. Feature 006 measured a factor of 83 between the two
+  - **Deterministic, ten held-out seeds, no trainer.** Markers of 24 per seed: 8, 5, 5, 5, 12, 7,
+    5, 6, 5, 4, mean **6.20**. All ten end in `WallContact` after 5.2 to 11.8 s
+  - The `Couldn't connect to trainer on port 5004. Will perform inference instead.` line is in the
+    editor log, which is what makes SC-005's "no trainer" claim checkable
+  - **Against feature 006 on the same ten seeds: 0.00 markers, all ten Stalled at the 60 s
+    timeout.** Zero to 6.20 is the first non-zero held-out result the RL side of this project has
+    produced
+- [X] T036 [US3] Repeat in sampling inference. Feature 006 measured a factor of 83 between the two
       on steering variance, so they are reported separately and not averaged
-- [ ] T037 [US3] Record lap completion per seed. SC-005 asks for at least one lap; SC-006 is the
+  - **Sampling: mean 4.60 markers**, range 2 to 7, all ten `WallContact`, mean duration 5.92 s.
+    Per seed 6, 6, 3, 4, 6, 7, 2, 6, 2, 4
+  - **Worse than deterministic, which is the expected direction and was not true before.** Noise
+    costs a policy that is doing something; it cannot cost one that is doing nothing, which is why
+    006 measured the two modes as identical at zero
+  - **Feature 006's factor of 83 is not carried forward as a property of the modes.** It came from
+    a deterministic p95 of 0.0009, a denominator produced by a car that never turned its wheel.
+    Measured on a policy that steers, the factor is **2.86**, 0.8550 against 0.2988. Still reported
+    separately and never averaged
+- [X] T037 [US3] Record lap completion per seed. SC-005 asks for at least one lap; SC-006 is the
       milestone bar of 80 per cent, restated unchanged from feature 006's SC-002, and it is
       recorded met or not met with the number that decides it
-- [ ] T038 [US3] Extend `python/rl/report.py` and `python/tests/test_rl_report.py` so the learned
+  - **SC-005 not met: zero laps, both inference modes, all ten seeds.** SC-006 not met: the
+    milestone bar of 80 per cent stands at **0 per cent**
+  - **One asymmetry, stated because it is not obvious.** `lapsToComplete` is 3 in
+    `Evaluation.unity`, so a row records `completed_lap` only after three laps, while the scripted
+    driver's 34 of 34 was measured at one lap. Left untouched for comparability with feature 006's
+    column, but it holds the learned driver to a strictly harder bar. At 6.20 of 24 markers it does
+    not change the verdict
+- [X] T038 [US3] Extend `python/rl/report.py` and `python/tests/test_rl_report.py` so the learned
       column carries the new metrics, and regenerate `results/rl/rl_steering.md` with the RL column
       beside the scripted driver's 34 of 34 and the human reference
-- [ ] T039 [US3] Carry feature 006's caveat forward rather than dropping it: the chi-squared test
+  - `DriverColumn` gains `markers_mean`, `markers_possible` and `end_reasons`, with a
+    `marker_rate` property. **The point of the field is that lap completion alone cannot tell a
+    policy that drove a quarter of the lap from one that never moved**: both read zero laps, and
+    that is exactly the difference between feature 006's column and this one
+  - The loss line now says which of the two it was, rather than leaving the reader to notice
+  - `build_column` also accepts `completed_lap` written as either `true` or `1`, because committed
+    run records carry both spellings and a column reading only one would under-report laps
+  - Four new cases in `test_rl_report.py`, 12 in the file, green
+  - `rl_steering.md` regenerated: the two 007 rows sit beside the scripted driver's 34 of 34 and
+    the human reference, with a new table making the marker difference explicit
+  - **A feature 006 number is corrected there.** Its "factor of 83 between the inference modes" was
+    a ratio over a deterministic variance of 0.00055, produced by a car that barely turned its
+    wheel. On weights that steer, the ratio is 2.86 on p95 and 0.83 on variance, so the
+    deterministic policy is now the more varied of the two. The modes are still reported separately
+    and never averaged
+- [X] T039 [US3] Carry feature 006's caveat forward rather than dropping it: the chi-squared test
       against the human distribution is saturated at 8,450 against 32,443 samples and measures data
       volume rather than driver difference. If it is reported, it is reported with that sentence
 
@@ -465,6 +508,15 @@ a gate measured on that metric.
 **These tasks are parallel to Phases 4 and 5.** They need one instrumented run, not a dedicated
 one.
 
+  - **Carried forward with its own numbers rather than quoted from 006.** This feature's
+    statistics are 1,986 deterministic and 1,632 sampling, against 34,464 and 14,592, on 1,017 and
+    831 samples against 8,450. **The fall is run length, not humanity**: runs end in seven seconds
+    instead of sixty, so there is less data to saturate the test with. The test is still measuring
+    data volume, so the rejection is still not the interesting part
+  - What is worth noting sits in the distribution instead: steering variance 0.13458 and 0.11103
+    against the human column's 0.1515, where feature 006's deterministic policy sat at 0.00055. A
+    policy that drives produces roughly human steering spread and still completes no laps, which is
+    feature 005's warning about variance as a standalone measure, confirmed from the other side
 - [ ] T040 [P] [US4] Instrument both counts in the candidate run: `PhysicsStepsCharged` from the
       reward path and `TrainerEpisodeLength` from the trainer, per summary
 - [ ] T041 [US4] Report the ratio against the expected ceiling of **4**, which is
