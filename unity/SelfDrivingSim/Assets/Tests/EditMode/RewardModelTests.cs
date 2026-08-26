@@ -163,6 +163,51 @@ namespace SelfDrivingSim.Tests
         }
 
         [Test]
+        public void The_progress_term_adds_nothing_to_circling()
+        {
+            // Feature 007 restates the invariant above rather than replacing it. The margin is
+            // unchanged because a closed loop pays exactly zero from the new term, so the bound
+            // that Idle already had to clear is still the whole of what circling earns.
+            //
+            // Asserted here at the arithmetic level: equal and opposite advances cancel exactly.
+            // TrackProgressTests carries the same claim over a 6000-step circle on a real chain,
+            // which is the version that would catch a geometry bug rather than a sign bug.
+            const float weight = 0.0594f;
+
+            float outward = RewardModel.Progress(4.7, weight);
+            float back = RewardModel.Progress(-4.7, weight);
+
+            Assert.That(outward, Is.GreaterThan(0f));
+            Assert.That(outward + back, Is.EqualTo(0f).Within(Tol));
+        }
+
+        [Test]
+        public void The_progress_term_is_symmetric_rather_than_one_sided()
+        {
+            // The failure this guards is the tempting one: clamping the negative half the way
+            // Speed does. That would make a car rocking towards a marker and away again collect on
+            // every half cycle, which is the only farmable term this table could have acquired.
+            const float weight = 0.0594f;
+
+            Assert.That(RewardModel.Progress(-1.0, weight),
+                Is.EqualTo(-RewardModel.Progress(1.0, weight)).Within(Tol));
+            Assert.That(RewardModel.Progress(-1.0, weight), Is.LessThan(0f));
+            Assert.That(RewardModel.Progress(0.0, weight), Is.EqualTo(0f).Within(Tol));
+        }
+
+        [Test]
+        public void A_lap_of_progress_pays_half_of_what_its_markers_pay()
+        {
+            // DESIGN 4.5's derivation, checked as a product rather than a quotient: whatever the
+            // chain length, driving all of it must pay half of what taking all 24 markers pays.
+            const double chain = 202.3;
+            float weight = (float)(0.5 * 24 * RewardModel.CheckpointReward / chain);
+
+            Assert.That(RewardModel.Progress(chain, weight),
+                Is.EqualTo(RewardModel.Checkpoints(24) * 0.5f).Within(1e-3f));
+        }
+
+        [Test]
         public void Standing_still_loses_ground_every_step()
         {
             float perStep = RewardModel.Idle(0f);
@@ -189,15 +234,19 @@ namespace SelfDrivingSim.Tests
                 StepCostTotal = RewardModel.Step() * 1200f,
                 ForwardSpeed = RewardModel.Speed(0.8f) * 1200f,
                 SteeringJerk = RewardModel.Jerk(0.9f) * 3f,
+                MarkerProgress = RewardModel.Progress(202.3, 0.0594f),
             };
 
             // The jerk and speed terms are written against their constants, not their arithmetic:
-            // T048 tunes both scales, and this test is about the six fields summing rather than
-            // about any one weight.
+            // T048 tunes both scales, and this test is about the seven fields summing rather than
+            // about any one weight. The progress term has no constant to write it against, because
+            // its weight is derived per track; the figures here are the nominal chain and its
+            // derived weight, standing in for one lap's worth.
             float expected =
                 24f - 1f - 5f + (RewardModel.StepCost * 1200f)
                 + (RewardModel.SpeedReward * 0.8f * 1200f)
-                + (RewardModel.JerkPenalty * 0.9f * 3f);
+                + (RewardModel.JerkPenalty * 0.9f * 3f)
+                + (float)(202.3 * 0.0594f);
 
             Assert.That(b.Total, Is.EqualTo(expected).Within(1e-4f));
         }

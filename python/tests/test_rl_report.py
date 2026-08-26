@@ -179,3 +179,77 @@ def test_values_are_counted_into_the_nearest_lattice_point():
 def test_a_trace_directory_with_no_files_is_an_error_rather_than_an_empty_column(tmp_path: Path):
     with pytest.raises(ValueError, match="no traces"):
         report.load_trace_dir(tmp_path)
+
+
+# --- feature 007: the markers a zero lap count hides -----------------------------------------
+
+
+def _runs_csv(path: Path, rows: str) -> Path:
+    path.write_text(
+        "seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,"
+        "checkpoints_awarded,checkpoints_total,checkpoints_skipped,wall_contacts,end_reason,"
+        "steer_p95_dsteer,steer_sign_changes_per_s,time_scale,duration_s\n" + rows,
+        encoding="utf-8",
+    )
+    return path
+
+
+def _traces(directory: Path, count: int = 2) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    for i in range(count):
+        _trace([0.0, 0.1, -0.1, 0.2] * 20).to_csv(directory / f"run_{i:02d}.csv", index=False)
+    return directory
+
+
+def test_the_column_carries_markers_so_two_zero_lap_drivers_can_be_told_apart(tmp_path: Path):
+    # This is the whole point of the field. Feature 006's learned column and feature 007's both
+    # read zero laps; one never moved and the other drove a quarter of the lap.
+    stalled = report.build_column(
+        "stalled",
+        _runs_csv(tmp_path / "a.csv",
+                  "1,x,13,180,20,false,,0,24,0,0,Stalled,0.1,0.2,4,60.0\n"
+                  "2,x,13,180,20,false,,0,24,0,0,Stalled,0.1,0.2,4,60.0\n"),
+        _traces(tmp_path / "ta"),
+    )
+    driving = report.build_column(
+        "driving",
+        _runs_csv(tmp_path / "b.csv",
+                  "1,x,13,180,20,false,,8,24,0,1,WallContact,0.1,0.2,4,9.5\n"
+                  "2,x,13,180,20,false,,4,24,0,1,WallContact,0.1,0.2,4,5.2\n"),
+        _traces(tmp_path / "tb"),
+    )
+
+    assert stalled.laps_completed == driving.laps_completed == 0
+    assert stalled.markers_mean == 0.0
+    assert driving.markers_mean == pytest.approx(6.0)
+    assert driving.marker_rate == pytest.approx(0.25)
+
+
+def test_end_reasons_are_counted_rather_than_summarised(tmp_path: Path):
+    column = report.build_column(
+        "mixed",
+        _runs_csv(tmp_path / "runs.csv",
+                  "1,x,13,180,20,false,,8,24,0,1,WallContact,0.1,0.2,4,9.5\n"
+                  "2,x,13,180,20,false,,0,24,0,0,Stalled,0.1,0.2,4,60.0\n"
+                  "3,x,13,180,20,false,,5,24,0,1,WallContact,0.1,0.2,4,6.0\n"),
+        _traces(tmp_path / "t"),
+    )
+
+    assert column.end_reasons["WallContact"] == 2
+    assert column.end_reasons["Stalled"] == 1
+
+
+def test_a_completed_lap_is_counted_whether_written_true_or_one(tmp_path: Path):
+    # Committed run records carry both spellings, because the writer changed between features and
+    # the older files were not rewritten. A column that read only one would under-report laps.
+    column = report.build_column(
+        "mixed-spelling",
+        _runs_csv(tmp_path / "runs.csv",
+                  "1,x,13,180,20,true,42.5,24,24,0,0,LapsCompleted,0.1,0.2,4,42.5\n"
+                  "2,x,13,180,20,1,41.0,24,24,0,0,LapsCompleted,0.1,0.2,4,41.0\n"
+                  "3,x,13,180,20,false,,3,24,0,1,WallContact,0.1,0.2,4,5.0\n"),
+        _traces(tmp_path / "t"),
+    )
+
+    assert column.laps_completed == 2
+    assert column.lap_rate == pytest.approx(2 / 3)

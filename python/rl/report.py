@@ -75,6 +75,14 @@ class DriverColumn:
     steering: DistributionSummary
     abs_delta_steering: DistributionSummary
 
+    # Feature 007. Lap completion alone cannot tell a policy that drives a quarter of the lap and
+    # crashes from one that never moves: both score zero laps. Feature 006's learned column read
+    # 0 of 10 laps AND 0.00 markers, and this feature's reads 0 of 10 laps and 6.20 markers, which
+    # is the entire difference between the two runs and is invisible without this field.
+    markers_mean: float
+    markers_possible: int
+    end_reasons: dict
+
     # The values behind the summaries. Kept because the homogeneity test needs counts over the
     # lattice, and a DistributionSummary cannot be un-summarised back into them.
     steering_values: np.ndarray
@@ -83,6 +91,11 @@ class DriverColumn:
     @property
     def lap_rate(self) -> float:
         return self.laps_completed / self.runs if self.runs else float("nan")
+
+    @property
+    def marker_rate(self) -> float:
+        """Markers taken as a share of the lap, which is what a zero lap count hides."""
+        return self.markers_mean / self.markers_possible if self.markers_possible else float("nan")
 
 
 def load_trace_dir(directory: Path) -> list[pd.DataFrame]:
@@ -162,12 +175,23 @@ def build_column(name: str, runs_path: Path, traces_dir: Path) -> DriverColumn:
     frames = load_trace_dir(traces_dir)
     steer, delta = steering_series(frames)
 
+    # "true" and "1" both appear in committed run records, because the writer changed between
+    # features and the older files were not rewritten.
+    completed = runs["completed_lap"].astype(str).str.lower().isin(("true", "1"))
+
+    possible = 0
+    if "checkpoints_total" in runs and len(runs):
+        possible = int(runs["checkpoints_total"].iloc[0])
+
     return DriverColumn(
         name=name,
         runs=len(runs),
-        laps_completed=int(runs["completed_lap"].astype(str).str.lower().eq("true").sum()),
+        laps_completed=int(completed.sum()),
         steering=describe(steer, "steering"),
         abs_delta_steering=describe(delta, "abs_delta_steering"),
+        markers_mean=float(runs["checkpoints_awarded"].mean()) if "checkpoints_awarded" in runs else float("nan"),
+        markers_possible=possible,
+        end_reasons=dict(runs["end_reason"].value_counts()) if "end_reason" in runs else {},
         steering_values=steer,
         abs_delta_values=delta,
     )
@@ -221,6 +245,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"runs              {column.runs}")
     print(f"laps completed    {column.laps_completed} of {column.runs}   "
           f"(scripted: {SCRIPTED_LAPS})")
+    print(f"markers           {column.markers_mean:.2f} of {column.markers_possible}   "
+          f"({100 * column.marker_rate:.1f}% of a lap)")
+    print(f"end reasons       {column.end_reasons}")
     print(f"steering          {_fmt(column.steering)}")
     print(f"|delta steering|  {_fmt(column.abs_delta_steering)}")
 
@@ -229,6 +256,15 @@ def main(argv: list[str] | None = None) -> int:
     if column.laps_completed == 0:
         print(f"LOSS  lap completion: {column.laps_completed} of {column.runs} against the "
               f"scripted driver's {SCRIPTED_LAPS}.")
+        # Said in the same breath as the loss, because a reader who stops at the lap count cannot
+        # tell "drove a quarter of the lap" from "never moved", and those are different results.
+        if column.markers_mean > 0:
+            print(f"      It reached {column.markers_mean:.2f} of {column.markers_possible} "
+                  f"markers on the way, so the loss is where it stopped and not that it never "
+                  f"started.")
+        else:
+            print(f"      It reached no marker at all, so the policy never made progress rather "
+                  f"than failing late.")
     variance = column.steering.variance
     if variance > SCRIPTED_STEER_VARIANCE:
         print(f"LOSS  steering variance: {variance:.5f} against the scripted driver's "

@@ -162,7 +162,7 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 347 prolaza, 3 preskočena (bc moduli traže torch)
+pytest python/tests                  # 357 prolaza, 3 preskočena (bc moduli traže torch)
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
 #   Ne skraćivati izlaz sa | tail: -q ispisuje samo tačke dok ne dođe do sažetka,
 #   pa odsječen izlaz izgleda kao manji ukupan broj (izmjereno u 005/T046).

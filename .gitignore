@@ -105,3 +105,6 @@ Desktop.ini
 .DS_Store
 
 .notes
+
+# Timestamped sweep output. The named eval_*.csv copies are what gets committed.
+results/rl/runs_*.csv
