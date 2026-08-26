@@ -157,16 +157,33 @@ a reason.
 
 **These land before T017, not after.** The reason is written into the orderings above.
 
-- [ ] T013 Add `WallContactsPerEpisode` to the episode report as `episode/wall_contacts`, taken from
+- [X] T013 Add `WallContactsPerEpisode` to the episode report as `episode/wall_contacts`, taken from
       `WallSensor.Contacts` at episode end, reset on episode begin
-- [ ] T014 Add `LateralClearance` as `episode/lateral_clearance`: the mean over the episode of the
+- [X] T014 Add `LateralClearance` as `episode/lateral_clearance`: the mean over the episode of the
       minimum normalised ray distance in the side of the fan, from `CarAgent.RayDistancesNorm`,
       accumulated on the same ticks the per-step reward terms are charged. **No change to
       `WallSensor`** (R5)
-- [ ] T015 [P] Extend `python/rl/export_curves.py` with `wall_contacts` and `lateral_clearance`, and
+  - Both accumulate on the same tick the per-step reward terms are charged, so the means are over
+    the steps the episode was actually charged for rather than over rendered frames
+  - Only rays at 45 degrees or more off the nose count toward clearance. A forward ray sees the
+    barrier the car is driving at, which is a different question from how close it is running to
+    the wall beside it
+  - **The clearance measure carries its T004 caveat in the code comment**, not only in the task
+    list: both recovery probes produced nose-in contacts where the barrier is ahead rather than
+    beside, the measure read 1.0 throughout, and that is the correct reading for those cases. A flat
+    reading is uninformative rather than evidence of no grinding until a parallel slide exists
+- [X] T015 [P] Extend `python/rl/export_curves.py` with `wall_contacts` and `lateral_clearance`, and
       `python/tests/test_rl_curves.py` to cover them
-- [ ] T016 [P] Extend `python/rl/report.py` and `python/tests/test_rl_report.py` so the held-out
+  - Three cases, 25 in the file. One of them pins that **a clearance of zero survives the
+    empty-not-zero rule**: zero clearance is a car flush against a barrier, which is exactly the
+    reading the grinding check looks for, and erasing it as absent would hide the thing being
+    hunted
+- [X] T016 [P] Extend `python/rl/report.py` and `python/tests/test_rl_report.py` so the held-out
       column carries both, beside the markers column feature 007 added
+  - `wall_contacts_mean` on `DriverColumn`, printed beside markers and end reasons. Two cases, 14
+    in the file, including one asserting that two drivers with **identical markers and identical
+    zero laps** are told apart by their contact counts. That reading is the reason this feature
+    added the column at all
 
 **Checkpoint**: the run can be read when it finishes.
 

@@ -253,3 +253,40 @@ def test_a_completed_lap_is_counted_whether_written_true_or_one(tmp_path: Path):
 
     assert column.laps_completed == 2
     assert column.lap_rate == pytest.approx(2 / 3)
+
+
+# --- feature 008: barrier use beside the lap count ---------------------------------------------
+
+
+def test_the_column_carries_wall_contacts(tmp_path: Path):
+    column = report.build_column(
+        "contacts",
+        _runs_csv(tmp_path / "runs.csv",
+                  "1,x,13,180,20,false,,8,24,0,3,WallContact,0.1,0.2,4,9.5\n"
+                  "2,x,13,180,20,false,,4,24,0,1,WallContact,0.1,0.2,4,5.2\n"),
+        _traces(tmp_path / "t"),
+    )
+
+    assert column.wall_contacts_mean == pytest.approx(2.0)
+
+
+def test_two_drivers_with_equal_markers_are_separated_by_their_contacts(tmp_path: Path):
+    # The reading feature 008 exists to make possible. Same markers, same zero laps, and one of
+    # them got there by bouncing off the barriers.
+    clean = report.build_column(
+        "clean",
+        _runs_csv(tmp_path / "a.csv",
+                  "1,x,13,180,20,false,,6,24,0,0,Stalled,0.1,0.2,4,60.0\n"),
+        _traces(tmp_path / "ta"),
+    )
+    scraping = report.build_column(
+        "scraping",
+        _runs_csv(tmp_path / "b.csv",
+                  "1,x,13,180,20,false,,6,24,0,5,WallContact,0.1,0.2,4,12.0\n"),
+        _traces(tmp_path / "tb"),
+    )
+
+    assert clean.markers_mean == scraping.markers_mean
+    assert clean.laps_completed == scraping.laps_completed == 0
+    assert clean.wall_contacts_mean == 0.0
+    assert scraping.wall_contacts_mean == 5.0

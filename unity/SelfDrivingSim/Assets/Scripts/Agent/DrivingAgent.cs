@@ -201,6 +201,27 @@ namespace SelfDrivingSim.Agent
         /// </summary>
         private int _physicsStepsCharged;
 
+        /// <summary>
+        /// Running sum of the minimum lateral ray clearance, and the count of samples in it
+        /// (feature 008, R5).
+        ///
+        /// **This is a proxy for barrier use and is written down as one.** The contact count cannot
+        /// detect a sustained grind, because `WallSensor` raises `OnCollisionEnter` once when the
+        /// colliders begin touching and not again until they separate, so a car sliding along a
+        /// barrier registers one contact for the whole slide. A policy running close to a barrier
+        /// holds a side ray near zero for a long run of steps and a policy on the centre line does
+        /// not.
+        ///
+        /// **Unvalidated as a grind detector at the time of writing (T004).** Both recovery probes
+        /// produced nose-in contacts, where the barrier is ahead rather than beside the car, and
+        /// the measure read 1.0 throughout. That is the correct reading for those cases and says
+        /// nothing about a parallel slide, which the probe never produced. A flat reading is
+        /// therefore uninformative rather than evidence of no grinding.
+        /// </summary>
+        private float _clearanceSum;
+
+        private int _clearanceSamples;
+
         private int StallSteps => Mathf.Max(1, Mathf.RoundToInt(stallSeconds / Time.fixedDeltaTime));
 
         private void Awake()
@@ -329,6 +350,8 @@ namespace SelfDrivingSim.Agent
             _steerLast = 0f;
             _stepsSinceAward = 0;
             _physicsStepsCharged = 0;
+            _clearanceSum = 0f;
+            _clearanceSamples = 0;
             Outcome = EndReason.Running;
         }
 
@@ -442,6 +465,11 @@ namespace SelfDrivingSim.Agent
             AddReward(step + speed + jerk + progress);
             _stepsSinceAward++;
             _physicsStepsCharged++;
+
+            // On the same tick as the per-step reward terms, so the mean is over the steps the
+            // episode was actually charged for rather than over rendered frames.
+            _clearanceSum += MinLateralClearance();
+            _clearanceSamples++;
         }
 
         /// <summary>
@@ -463,6 +491,35 @@ namespace SelfDrivingSim.Agent
             _progress.Step(car.transform.position, ring.NextIndex, ring.LapCount);
 
             return RewardModel.Progress(_progress.LastAdvance, _progress.ProgressWeight);
+        }
+
+        /// <summary>
+        /// The closest the side of the ray fan can see, normalised, or 1.0 when nothing is in
+        /// range (feature 008, R5).
+        ///
+        /// Only rays at 45 degrees or more off the nose count. A ray pointing forwards sees the
+        /// barrier the car is driving at, which is a different question from how close the car is
+        /// running to the wall beside it.
+        /// </summary>
+        private float MinLateralClearance()
+        {
+            if (sensing == null)
+            {
+                return 1f;
+            }
+
+            float lowest = 1f;
+            for (int i = 0; i < sensing.RayCount && i < sensing.RayDistancesNorm.Count; i++)
+            {
+                if (Mathf.Abs(sensing.RayAngleDeg(i)) < 45f)
+                {
+                    continue;
+                }
+
+                lowest = Mathf.Min(lowest, sensing.RayDistancesNorm[i]);
+            }
+
+            return lowest;
         }
 
         /// <summary>
@@ -619,6 +676,15 @@ namespace SelfDrivingSim.Agent
             // Averaged, like the trainer's own Environment/Episode Length, so the two are the same
             // kind of number and their ratio is the one R6 asks for.
             stats.Add("episode/physics_steps", _physicsStepsCharged);
+
+            // Feature 008. Markers per episode cannot be read without the contact count: a policy
+            // reaching further while touching more barriers is a different result from one
+            // reaching further cleanly.
+            stats.Add("episode/wall_contacts", wall != null ? wall.Contacts : 0f);
+
+            stats.Add(
+                "episode/lateral_clearance",
+                _clearanceSamples > 0 ? _clearanceSum / _clearanceSamples : 1f);
 
             // Summed, not averaged. The default aggregation takes the mean, and the mean of a
             // value that is always 1.0 is 1.0 however often it was written: `ppo_car_v01` reported

@@ -270,3 +270,44 @@ def test_laps_completed_is_not_duplicated_under_a_second_name():
     # one measurement is two things to keep in step.
     assert "end_lapscompleted" in export_curves.HEADER
     assert "laps_completed" not in export_curves.HEADER
+
+
+# --- feature 008: the wall terminal's two measures ---------------------------------------------
+
+
+def test_wall_contacts_and_clearance_are_exported():
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/wall_contacts": {10000: 2.4},
+        "episode/lateral_clearance": {10000: 0.61},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert rows[0]["wall_contacts"] == 2.4
+    assert rows[0]["lateral_clearance"] == 0.61
+
+
+def test_a_run_without_the_wall_measures_exports_them_empty():
+    # Every feature 006 and 007 run is one of these. A zero would read as "never touched a barrier"
+    # and as "ran flush against the wall", which are the two most misleading readings available.
+    data = {REFERENCE: {10000: -4.0}}
+
+    rows = export_curves.to_rows(data, "ppo_car_007_progress")
+
+    assert rows[0]["wall_contacts"] == ""
+    assert rows[0]["lateral_clearance"] == ""
+
+
+def test_clearance_of_zero_is_preserved_and_not_confused_with_absent():
+    # Zero clearance is a car flush against a barrier, which is exactly the reading the grinding
+    # check is looking for. It must survive the empty-not-zero rule rather than be erased by it.
+    data = {
+        REFERENCE: {10000: -4.0},
+        "episode/lateral_clearance": {10000: 0.0},
+    }
+
+    rows = export_curves.to_rows(data, "run")
+
+    assert rows[0]["lateral_clearance"] == 0.0
+    assert rows[0]["lateral_clearance"] != ""
