@@ -257,35 +257,122 @@ a reason.
     behavioural counts are Unity-side and unaffected, and no claim here rests on the reward
     decomposition. Cumulative reward is **especially** unreadable on this run, because a budget of 3
     lets one episode absorb four -5.0 penalties where only one could ever land before
-- [ ] T023 [US3] Export and promote the model to `Assets/Models/`, confirming LFS routing with
+**Phase 6 was not run, by decision on 2026-08-27, and the reason is recorded here rather than left
+as five open boxes.** `ppo_car_008_budget` is not a candidate model: the budget is not kept, the
+policy reached 0.5297 markers per episode against the baseline's 1.4987, and it completed zero laps
+in training where the baseline completed eight three-lap episodes. The baseline itself scored 0 of
+10 laps and 6.20 of 24 markers on the held-out seeds. A held-out sweep of a policy that is worse in
+training than one already measured at zero cannot return anything but zero, and promoting a model
+that is explicitly not kept into `Assets/Models/` would put a blob in the repository that nothing
+will ever load.
+
+**What this costs, stated plainly:** SC-006 and SC-007 close on an argument rather than on a
+measurement, which is weaker than the rest of this feature's claims and weaker than the house
+standard. They are recorded as **not measured**, not as measured failures. If the argument is ever
+doubted the sweep is about 45 minutes of editor time and the tasks below are still written to be
+executed as they stand.
+
+- [~] T023 [US3] Export and promote the model to `Assets/Models/`, confirming LFS routing with
       `git check-attr filter` before the blob lands
-- [ ] T024 [US3] Evaluation sweep, ten held-out seeds, deterministic, no trainer. Confirm the
+  - **Not run.** The model is not promoted. `results/rl/ppo_car_008_budget` keeps the checkpoint the
+    trainer wrote, so the run is reproducible without a blob in `Assets/`
+- [~] T024 [US3] Evaluation sweep, ten held-out seeds, deterministic, no trainer. Confirm the
       `Couldn't connect to trainer` line, which is what makes the no-trainer claim checkable
-- [ ] T025 [US3] Repeat in sampling inference. Reported separately, never averaged. **Do not quote
+  - **Not run.** See the decision above
+- [~] T025 [US3] Repeat in sampling inference. Reported separately, never averaged. **Do not quote
       feature 006's factor of 83**, which feature 007 showed was a ratio over a near-zero
       denominator; the honest figure on a driving policy was 2.86
-- [ ] T026 [US3] Record lap completion per seed and the 80 per cent bar, met or not met with the
+  - **Not run.** See the decision above
+- [~] T026 [US3] Record lap completion per seed and the 80 per cent bar, met or not met with the
       number. State that `lapsToComplete` is 3, so a recorded lap is three laps
-- [ ] T027 [US3] Regenerate `results/rl/rl_steering.md` with this feature's column beside the
+  - **Not run.** SC-006 and SC-007 are therefore unanswered by measurement in this feature. The last
+    measured held-out figures remain feature 007's, 0 of 10 laps and 6.20 of 24 markers, and the 80
+    per cent bar was last recorded not met at 0 per cent there
+- [~] T027 [US3] Regenerate `results/rl/rl_steering.md` with this feature's column beside the
       scripted driver's 34 of 34, feature 007's, and the human reference
+  - **Not run.** The file keeps feature 007's column as its most recent learned-driver entry. A
+    column of blanks for a policy that was never evaluated would read as a measurement
 
-**Checkpoint**: the milestone is answered with a number.
+**Checkpoint**: the milestone is **not** answered with a number, and this feature says so.
 
 ---
 
 ## Phase 7: Closeout
 
-- [ ] T028 Write the closeout table into `spec.md`, every criterion with the number that decides it
-- [ ] T029 [P] Update `DESIGN.md` 4.5 and 4.6 with the outcome in the house pattern: the decision,
+- [X] T027a **Restore the budget default to zero, because the run says the budget is not kept.**
+      Added on 2026-08-27, not in the original plan. Nothing in Phases 1 to 6 owned reverting the
+      default, and merging with `wallContactBudget = 3` would put the measurably worse
+      configuration on `develop` as the shipped default
+  - `DrivingAgent.wallContactBudget` is **0** again, which reproduces feature 007 exactly and is the
+    behaviour every M3 run was measured under. `TrainingArea.prefab` never carried the field, so it
+    took the C# initialiser and needs no change; that is also why the value has to be corrected in
+    the source rather than on the prefab
+  - **The field stays rather than being deleted**, with the tooltip carrying the measured reason, so
+    repeating the experiment is a value change instead of a code change. `WallTerminal` and its five
+    tests stay for the same reason
+- [X] T028 Write the closeout table into `spec.md`, every criterion with the number that decides it
+  - Written into `spec.md` as "The closeout, with the number that decides each criterion", in the
+    format feature 007's T044 used. **Nine met, two not measured**, and no criterion was measured
+    and failed. SC-006 and SC-007 are the two, both unanswered because Phase 6 was skipped
+- [X] T029 [P] Update `DESIGN.md` 4.5 and 4.6 with the outcome in the house pattern: the decision,
       the reason, the measured number, and the milestone half stated in the same section so it
       cannot be read as a success on its own
-- [ ] T030 [P] Update `README.md` only if a command, a scene or a file name changed. The plan
+  - **4.5** gains the outcome: the budget is not kept and the default returns to 0, the hypothesis is
+    refused in the opposite direction, the numbers that say so, the closed grinding risk with its
+    unvalidated-measure caveat, and the milestone half stated in the same section, that no held-out
+    lap was reached and none was measured here
+  - **4.6** gains the measured step limit, 608 episodes at 6.9 per cent where M3 read zero, the
+    budget default of 0 with a pointer to 4.5, and the correction that the physics-to-decision ratio
+    is not capped at 4
+  - **A gap in T005 was found and closed here.** T005 recorded that the budget default of 3 was
+    written into `DESIGN.md` 4.6 and it never was; only the field and the meaning of zero were
+    there. The section now carries a default and it is 0
+- [X] T030 [P] Update `README.md` only if a command, a scene or a file name changed. The plan
       expects none did, and confirming it is the task
-- [ ] T031 Run `.venv`, `.venv-bc` and the Unity EditMode suite and compare against T003
-- [ ] T032 Merge checklist: no em dashes in any file this feature touched
-- [ ] T033 State the next feature. **If the terminal was not the constraint either**, then two
+  - **No change needed, confirmed rather than assumed.** `README.md` names no scene, command, config
+    or file that this feature touched: it has no mention of `wallContactBudget`, `MaxStep`, the 008
+    run or the budget. The feature added one script and one test file and changed one prefab value,
+    none of which the README references
+- [X] T031 Run `.venv`, `.venv-bc` and the Unity EditMode suite and compare against T003
+  - **`.venv`: 362 passed, 3 skipped** against T003's 357 passed and 3 skipped. The five new cases
+    are T015's and T016's export and report tests
+  - **`.venv-bc`: 416 passed** against 411. Same five, since both venvs run the same `python/tests`
+    tree and differ only in whether torch is importable
+  - **Unity EditMode: green, run by the owner on 2026-08-27** from Window > General > Test Runner >
+    EditMode > Run All, which stays a human step because `TestRunnerApi` trips the MCP
+    user-interaction guard. The expected figure was T012's **137** and nothing since T012 changed a
+    test or a tested signature; the pass count was not written down at the time, so this records the
+    green result rather than a number
+  - **The project compiles clean after T027a**, verified rather than assumed: `SelfDrivingSim.dll`
+    rebuilt with `Tundra build success` and the console holds zero errors. That check exists because
+    a stale assembly is what a failed compile looks like from outside the editor
+- [X] T032 Merge checklist: no em dashes in any file this feature touched
+  - **Zero em dashes** across all four files changed in this phase: `DESIGN.md`, `spec.md`,
+    `tasks.md` and `DrivingAgent.cs`
+- [X] T033 State the next feature. **If the terminal was not the constraint either**, then two
       one-change candidates have now been exonerated and the next question is whether the vehicle or
       the observation is what limits this policy, rather than the reward. Say so plainly
+  - **Said plainly: the reward table is no longer the leading suspect.** The wall penalty was
+    exonerated by feature 006's `ppo_car_wall_lo` and the wall terminal by this feature's
+    `ppo_car_008_budget`. Feature 007 showed the one reward change that did move the metric, the
+    dense progress term, and it moved training without producing a held-out lap. Three reward-side
+    interventions, one working mechanism, no milestone
+  - **The next question is the vehicle or the observation, and the two are separable.** The
+    observation is 19 values from a 13 ray fan; the vehicle is `WheelCollider` physics whose measured
+    behaviour includes a car that stops dead on nose-first contact and takes about 3 s of reverse to
+    recover. Either could be what caps a policy that drives a quarter of a lap and cannot finish one
+  - **The instrument for both already exists and is under-used: the scripted driver.** It completes
+    34 of 34 training seeds on the same 19 value observation vector the agent reads, through the same
+    `CarController`. That is a standing existence proof that the observation is sufficient and the
+    vehicle is drivable, which points the next feature at what the **policy** cannot extract from a
+    sufficient observation rather than at the observation itself. Feature 007's remaining two M3
+    remedies, a curriculum starting nearer a marker and an imitation warm start from the scripted
+    driver, are both of that shape, and the warm start is the one that uses the existence proof
+    directly
+  - **One measurement debt is named and not paid here**: the per-episode records feature 007 asked
+    for. They would settle the physics-to-decision ratio and feature 007's SC-007 accounting defect
+    at once, and both are now blocking honest reading of the reward decomposition rather than of the
+    behavioural counts
 
 ---
 

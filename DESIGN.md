@@ -721,6 +721,45 @@ stiglo, pa je vučenje uz ogradu prema sljedećem markeru isplativo kao i čista
 strategija ne postoji jer prvi kontakt završava epizodu. Mjeri se srednjim minimalnim bočnim
 odstojanjem iz postojećeg snopa zraka, a ne brojem kontakata, iz razloga u prethodnom pasusu.
 
+**Ishod, upisan 2026-08-27 nakon jedinog runa feature-a 008.** Odluka: **budžet se ne zadržava**,
+`wallContactBudget` ostaje u kodu ali mu je podrazumijevana vrijednost **0**, što tačno reprodukuje
+feature 007. Polje ostaje da bi se eksperiment mogao ponoviti bez izmjene koda; vrijednost bilježi
+ishod.
+
+Razlog: **hipoteza je odbijena, i smjer odbijanja je rezultat.** Tvrdnja je bila da politika ne može
+naučiti oporavak od greške koju nikad ne smije preživjeti. `ppo_car_008_budget`, budžet 3, kazna
+netaknuta na -5.0, 5.000.000 koraka, seed 42, jedna izmjena u odnosu na `ppo_car_007_progress`, dao
+je **0.5297 markera po epizodi naspram 1.4987**, dakle razliku od -0.9689 koja prelazi prag od 0.035
+oko 28 puta **u goru stranu**, i **nula krugova** naspram osam epizoda od po tri kruga. Raspodjela
+razloga kraja se **obrnula**: sudar sa zidom 59.1 na **23.2** posto, zaglavljen 27.4 na **53.8**
+posto, granica koraka 0.0 na 6.9 posto.
+
+**Politika nije naučila oporavak nego se vratila zaglavljivanju**, a to je degenerisano rješenje
+koje je M3 imenovao na samom početku: manje voziti je jeftiniji način da se prestane plaćati -5.0
+nego bolje voziti. Prvi kontakt koji završava epizodu je tu opciju **potiskivao**, i podizanje
+terminala ju je vratilo. **Terminal je bio noseći**, suprotno od onoga što je ovaj feature
+pretpostavio.
+
+**Veličina budžeta nije objašnjenje.** Prosjek je bio **1.218 kontakata po epizodi** naspram budžeta
+od 3, pa tipična epizoda nikad nije ni prišla trošenju budžeta nego se završavala zaglavljivanjem.
+Veći budžet bi bio potrošen još manje.
+
+**Rizik vučenja uz ogradu je zatvoren brojem, i nije se desio.** Srednje bočno odstojanje je
+**0.6331**, ravno po četvrtinama na 0.6367, 0.6454, 0.6218, 0.6284, sa minimumom runa 0.3231.
+Politika koja jaše ogradu bi to držala blizu nule. To se slaže sa sondom iz T004, gdje se vozilo
+pritisnuto uz ogradu pomjerilo 0.47 m za 5 s, pa vučenje nije konkurentna strategija jer fizika
+vozila ne dozvoljava klizanje uz ogradu pri brzini. **Mjera i dalje nije potvrđena na stvarnom
+paralelnom klizanju**, pa je ovo saglasan dokaz a ne dokaz u strogom smislu; ali uz malo kontakata,
+puno zaglavljivanja i ravno odstojanje nema potpisa vučenja koji bi trebalo objašnjavati.
+
+**Polovina milestone-a koja se ovim ne rješava, rečena ovdje da se ishod ne bi čitao kao uspjeh.**
+Krug na neviđenoj stazi **nije** postignut, i u ovom feature-u **nije ni mjeren**: sweep po deset
+izdvojenih seedova nije pokretan jer model nije kandidat i lošiji je u treningu od politike koja je
+već izmjerena na 0 od 10 krugova. Zadnje izmjerene vrijednosti ostaju one feature-a 007, 0 od 10
+krugova i 6.20 od 24 markera. Ono što je ovaj feature dodao nije korak prema milestone-u nego
+uklanjanje jednog objašnjenja: **ni kazna ni terminal nisu vezujuće ograničenje**, jer je kaznu
+oslobodio `ppo_car_wall_lo` u feature-u 006, a terminal ovaj run.
+
 ### 4.6 Kraj epizode
 - Sudar sa zidom **kad se potroši budžet kontakata** (feature 008), ili
 - 60 s bez novog checkpointa (zaglavljen), ili
@@ -747,6 +786,26 @@ vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri kruga oko 80 s, a 120
 kao rezervu za politiku koja je sporija od heuristike. Prosječna epizoda feature-a 007 je bila oko
 1.676 koraka fizike, pa granica stoji oko tri i po puta iznad nje i ne bi trebalo da se pali često;
 `episode/end_steplimit` sad ima priliku da bude različit od nule, i ako nije, to se kaže.
+
+**Izmjereno (feature 008, 2026-08-27): granica se pali, i nije kozmetička.** `MaxStep = 6000` je
+prekinuo **608 epizoda, 6.9 posto** od njih 8.843 u runu `ppo_car_008_budget`, tamo gdje je
+`episode/end_steplimit` čitao tačno nulu u svakom runu M3. Bez nje bi te epizode tekle neograničeno,
+jer se `_stepsSinceAward` resetuje na svakom markeru pa spora politika koja pokupi jedan marker u 60
+s nikad ne aktivira ni pravilo zaglavljivanja. Epizode su narasle sa 485.4 na **612.0** koraka
+odluke, pa je u isti budžet od 5.000.000 koraka stalo 8.843 epizode umjesto 13.851, a to je manje
+raznolikog iskustva za istu cijenu i dio razloga zašto je taj run naučio manje.
+
+**Budžet kontakata, podrazumijevano 0 (feature 008).** Vrijednost 0 znači da prvi kontakt završava
+epizodu, kao u feature-u 007 i cijelom M3. Isprobana je vrijednost 3 i **nije zadržana**; mjerenja i
+razlog su u §4.5.
+
+**Ispravka ranijeg čitanja: odnos koraka fizike prema odlukama nije ograničen na 4.** Feature 007 je
+izmjerio 3.2161 sa maksimumom 4.0063 i pročitao plafon od 4 kao potvrđen. Ovaj run čita **4.0870**
+kao srednju vrijednost i 5.0224 na jednom sažetku, pa 4 nije plafon. Račun preko neslaganja skupova
+epizoda predviđa 3.7993 naspram izmjerenih 4.0870, pa ni on više ne objašnjava cijeli razmak.
+Granica koraka je četvrti način da se epizoda završi i najvjerovatniji je osumnjičeni; to je
+**hipoteza i tako je zapisana**, a za rješavanje traži zapise po epizodi koje je feature 007 već
+imenovao kao zaseban posao.
 
 **Razlika između kraja i presjecanja nije kozmetička.** Sudar i tri kruga su terminalni; obje
 vremenske granice su presjecanje. Trener drugačije procjenjuje vrijednost presječene epizode, pa bi

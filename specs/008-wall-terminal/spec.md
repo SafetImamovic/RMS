@@ -175,6 +175,59 @@ The exported model completes at least one lap on the ten held-out seeds.
   is not, because that is what hid the missing limit for the whole of M3.
 - **SC-010**: Every run has an `EXPERIMENTS.md` row naming its one change.
 
+### The closeout, with the number that decides each criterion
+
+Written 2026-08-27, after the one run this feature made.
+
+| criterion | bar | measured | verdict |
+|---|---|---|---|
+| SC-001 a contact under budget leaves the episode live | demonstrated in EditMode | `WallTerminal` property tests, part of **137 passed, 0 failed** against T003's 132 | **met** |
+| SC-002 a resting car is charged once | not once per physics step | pinned by test; `WallSensor` has `OnCollisionEnter` and no `OnCollisionStay`, so the charge is edge triggered | **met** |
+| SC-003 markers per episode against 1.4987 and the gate | read against both, with the gate's caveat named | **0.5297**, a difference of **-0.9689**, which clears the 0.035 gate about 28 times over **in the worse direction** | **met as a reporting criterion**, and the hypothesis it was testing fails |
+| SC-004 wall contacts per episode reported | reported for every run | **1.218** per episode against a budget of 3 | **met** |
+| SC-005 the end-reason mix, wall fall checked against stall rise | reported together, never read alone | wall 59.1 to **23.2** per cent, stalled 27.4 to **53.8** per cent, step limit 0.0 to 6.9 per cent | **met**, and the trade is the feature's central finding |
+| SC-006 a lap on the ten held-out seeds | at least one | **not measured.** Phase 6 was not run, by decision on 2026-08-27, on a non-candidate policy worse in training than one already at 0 of 10 | **not met, and not measured** |
+| SC-007 the 80 per cent milestone bar | recorded met or not met with its number | **not measured**, for the same reason. The last measured figure is feature 007's 0 per cent | **not met, and not measured** |
+| SC-008 the wall-grinding check | a number, whichever way it comes out | lateral clearance **0.6331**, flat by quarter at 0.6367, 0.6454, 0.6218, 0.6284, minimum **0.3231** | **met**, no grinding |
+| SC-009 throughput re-measured | reported, since episodes lengthen | **903 steps/s** against 927, 5,000,000 steps in 5,534.6 s; episodes 612.0 trainer steps against 485.4 | **met** |
+| SC-009a `episode/end_steplimit` non-zero | non-zero somewhere, or the limit shown to be slack | **608 episodes, 6.9 per cent**, where every M3 run had read exactly zero | **met**, and not by a silent zero |
+| SC-010 every run has an `EXPERIMENTS.md` row | one row per run, naming the one change | one run, one row, curve and logs committed | **met** |
+
+**Nine met, two not measured.** No criterion in this feature was measured and failed. The two that
+are unanswered, SC-006 and SC-007, are the milestone, and they are unanswered because Phase 6 was
+skipped rather than because a sweep returned zero. That is a weaker way to close them than the rest
+of this feature's claims and it is written as one; the reasoning is in `tasks.md` under Phase 6.
+
+**The hypothesis is refused, and the direction of the refusal is the result.** The claim was that a
+policy cannot learn to recover from a mistake it is never allowed to survive. Lifting the terminal
+did not teach recovery. It let the policy go back to stalling, which is the degenerate solution M3
+named at the very start: driving less is a cheaper way to stop paying -5.0 than driving better. The
+first contact ending the episode had been suppressing that option. **The terminal was load bearing,
+and in the opposite direction to the one this feature assumed.**
+
+**The budget was barely used, so the size of the budget is not the explanation.** Contacts per
+episode averaged 1.218 against a budget of 3. The typical episode never came close to spending it
+and ended stalled instead. A larger budget would have been spent even less.
+
+**Two things this feature settled that outlive its own negative result.**
+
+1. **Grinding is closed with a number.** It was the risk the design worried about most, and lateral
+   clearance says it did not happen. That agrees with the T004 probe, which measured a car pressed
+   against a barrier moving 0.47 m in 5 seconds, so grinding is not competitive because the vehicle
+   cannot slide along a wall at speed. The clearance measure has still not been validated against a
+   real parallel slide, so this is consistent evidence rather than proof.
+2. **The step limit `DESIGN.md` had claimed since M3 now exists on the prefab**, and it fires. Every
+   M3 run read `episode/end_steplimit` as exactly zero, which looked like a slack limit and was
+   really a missing one. `_stepsSinceAward` resets on every marker, so a slow policy collecting one
+   marker per 60 seconds never trips the stall rule either, and those episodes ran unbounded.
+
+**One earlier reading is corrected.** Feature 007 read the physics-to-decision ratio's ceiling of 4
+as confirmed from a maximum of 4.0063. This run measures **4.0870** as its mean and 5.0224 on a
+single summary, so 4 is not a ceiling. The episode-set account predicts 3.7993 against 4.0870, so it
+no longer explains all of the gap either. The step limit is a fourth way for an episode to end and
+is the likeliest suspect; that is a hypothesis, and settling it needs the per-episode records
+feature 007 already named as a separate feature.
+
 ## Assumptions
 
 - **Feature 007's gate of 0.035 on markers per episode is reused rather than re-measured**, and the

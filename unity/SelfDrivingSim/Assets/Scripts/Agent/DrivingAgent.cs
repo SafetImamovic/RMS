@@ -91,8 +91,14 @@ namespace SelfDrivingSim.Agent
                  "It counts contact EVENTS, not steps and not seconds, because WallSensor " +
                  "raises OnCollisionEnter once when the colliders begin touching and not " +
                  "again until they separate, so a car that slides along a barrier without " +
-                 "separating spends one unit of budget on the whole slide.")]
-        [SerializeField] private int wallContactBudget = 3;
+                 "separating spends one unit of budget on the whole slide.\n\n" +
+                 "Default is ZERO because feature 008 measured a budget of 3 and did not keep " +
+                 "it: ppo_car_008_budget reached 0.5297 markers per episode against 1.4987, " +
+                 "completed no lap, and its stall share rose from 27.4 to 53.8 per cent. " +
+                 "Lifting the terminal did not teach recovery, it handed the policy back the " +
+                 "option of driving less. The field stays so the experiment can be repeated " +
+                 "without a code change; the default records the outcome.")]
+        [SerializeField] private int wallContactBudget = 0;
 
         /// <summary>Why the last episode ended. Recorded, and distinct per reason (FR-011).</summary>
         public enum EndReason
