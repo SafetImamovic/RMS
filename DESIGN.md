@@ -704,14 +704,108 @@ oduzeti najviše `1.5 / d`, a epizode traju oko 485 odluka, pa taj mehanizam nos
 manjka od 0.78. Sve ostalo nosi neslaganje skupova epizoda iznad. Stavka koju je M3 ostavio
 otvorenom je time zatvorena.
 
-### 4.6 Kraj epizode
-- Sudar sa zidom, ili
-- 60 s bez novog checkpointa (zaglavljen), ili
-- 3 kompletirana kruga (uspjeh).
+**Red za zid ima dva dijela, i oni se mogu mijenjati odvojeno (feature 008).** Kazna je -5.0, a
+terminal je to što epizoda staje na kontaktu. Feature 006 je runom `ppo_car_wall_lo` mijenjao
+**kaznu** sa -5.0 na -1.0 i dobio mjerljivo lošiji povrat uz pomak u raspodjeli razloga kraja od oko
+4.5 procentna poena; to je dokaz o težini. **Terminal nikad nije testiran**: u svakom runu M3
+epizoda se završavala na prvom kontaktu, u obje grane svakog poređenja.
 
-**Dodano za M3 (feature 006).** Uz pravilo zaglavljivanja stoji i tvrda granica `MaxStep = 6000`
-koraka, dakle 120 s na 50 Hz. Heuristički vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri
-kruga oko 80 s, a 120 s ostavlja pola toga kao rezervu za politiku koja je sporija od heuristike.
+Feature 008 mijenja terminal i drži kaznu na -5.0, pa je pomjeren broj pripisiv jednom od ta dva.
+Uvodi se `wallContactBudget`, broj **kontakata** koje epizoda preživi prije nego terminal proradi.
+**Budžet broji događaje, ne korake i ne sekunde**: `WallSensor` ima samo `OnCollisionEnter`, pa
+vozilo koje se vuče uz ogradu bez odvajanja potroši **jedan** kontakt na cijelo to vučenje. Nula
+reprodukuje feature 007 tačno, i to je ono što poređenje čini poštenim.
+
+**Rizik koji taj potez otvara** je da napredak plaća položaj po luku i ne mari kako je vozilo tamo
+stiglo, pa je vučenje uz ogradu prema sljedećem markeru isplativo kao i čista vožnja. Danas ta
+strategija ne postoji jer prvi kontakt završava epizodu. Mjeri se srednjim minimalnim bočnim
+odstojanjem iz postojećeg snopa zraka, a ne brojem kontakata, iz razloga u prethodnom pasusu.
+
+**Ishod, upisan 2026-08-27 nakon jedinog runa feature-a 008.** Odluka: **budžet se ne zadržava**,
+`wallContactBudget` ostaje u kodu ali mu je podrazumijevana vrijednost **0**, što tačno reprodukuje
+feature 007. Polje ostaje da bi se eksperiment mogao ponoviti bez izmjene koda; vrijednost bilježi
+ishod.
+
+Razlog: **hipoteza je odbijena, i smjer odbijanja je rezultat.** Tvrdnja je bila da politika ne može
+naučiti oporavak od greške koju nikad ne smije preživjeti. `ppo_car_008_budget`, budžet 3, kazna
+netaknuta na -5.0, 5.000.000 koraka, seed 42, jedna izmjena u odnosu na `ppo_car_007_progress`, dao
+je **0.5297 markera po epizodi naspram 1.4987**, dakle razliku od -0.9689 koja prelazi prag od 0.035
+oko 28 puta **u goru stranu**, i **nula krugova** naspram osam epizoda od po tri kruga. Raspodjela
+razloga kraja se **obrnula**: sudar sa zidom 59.1 na **23.2** posto, zaglavljen 27.4 na **53.8**
+posto, granica koraka 0.0 na 6.9 posto.
+
+**Politika nije naučila oporavak nego se vratila zaglavljivanju**, a to je degenerisano rješenje
+koje je M3 imenovao na samom početku: manje voziti je jeftiniji način da se prestane plaćati -5.0
+nego bolje voziti. Prvi kontakt koji završava epizodu je tu opciju **potiskivao**, i podizanje
+terminala ju je vratilo. **Terminal je bio noseći**, suprotno od onoga što je ovaj feature
+pretpostavio.
+
+**Veličina budžeta nije objašnjenje.** Prosjek je bio **1.218 kontakata po epizodi** naspram budžeta
+od 3, pa tipična epizoda nikad nije ni prišla trošenju budžeta nego se završavala zaglavljivanjem.
+Veći budžet bi bio potrošen još manje.
+
+**Rizik vučenja uz ogradu je zatvoren brojem, i nije se desio.** Srednje bočno odstojanje je
+**0.6331**, ravno po četvrtinama na 0.6367, 0.6454, 0.6218, 0.6284, sa minimumom runa 0.3231.
+Politika koja jaše ogradu bi to držala blizu nule. To se slaže sa sondom iz T004, gdje se vozilo
+pritisnuto uz ogradu pomjerilo 0.47 m za 5 s, pa vučenje nije konkurentna strategija jer fizika
+vozila ne dozvoljava klizanje uz ogradu pri brzini. **Mjera i dalje nije potvrđena na stvarnom
+paralelnom klizanju**, pa je ovo saglasan dokaz a ne dokaz u strogom smislu; ali uz malo kontakata,
+puno zaglavljivanja i ravno odstojanje nema potpisa vučenja koji bi trebalo objašnjavati.
+
+**Polovina milestone-a koja se ovim ne rješava, rečena ovdje da se ishod ne bi čitao kao uspjeh.**
+Krug na neviđenoj stazi **nije** postignut, i u ovom feature-u **nije ni mjeren**: sweep po deset
+izdvojenih seedova nije pokretan jer model nije kandidat i lošiji je u treningu od politike koja je
+već izmjerena na 0 od 10 krugova. Zadnje izmjerene vrijednosti ostaju one feature-a 007, 0 od 10
+krugova i 6.20 od 24 markera. Ono što je ovaj feature dodao nije korak prema milestone-u nego
+uklanjanje jednog objašnjenja: **ni kazna ni terminal nisu vezujuće ograničenje**, jer je kaznu
+oslobodio `ppo_car_wall_lo` u feature-u 006, a terminal ovaj run.
+
+### 4.6 Kraj epizode
+- Sudar sa zidom **kad se potroši budžet kontakata** (feature 008), ili
+- 60 s bez novog checkpointa (zaglavljen), ili
+- 3 kompletirana kruga (uspjeh), ili
+- tvrda granica koraka.
+
+**Ispravka, upisana pri planiranju feature-a 008 (2026-08-26).** Prethodna verzija ovog pasusa je
+tvrdila da uz pravilo zaglavljivanja stoji i tvrda granica `MaxStep = 6000` koraka. **Ta granica ne
+postoji.** `TrainingArea.prefab` postavlja `MaxStep: 0`, a grana u `CheckTermination` je čuvana sa
+`MaxStep > 0`, pa se nikad ne pali. Zato `episode/end_steplimit` čita nulu u svakom runu M3, i to
+nije zato što epizode nikad nisu bile dovoljno duge nego zato što granice nema. Broj 6000 je bio
+namjera koja nije prenesena u prefab.
+
+**Zašto je to sad važno, a do sad nije bilo.** Dok sudar završava epizodu na prvi kontakt, epizode
+su ograničene odozgo time što vozilo prije ili kasnije udari. Feature 008 podiže taj terminal, a
+`_stepsSinceAward` se resetuje na **svakom** osvojenom markeru, pa politika koja se vuče uz ogradu i
+pokupi marker bar jednom u 60 s **nikad ne završi epizodu**. Dužina epizode postaje neograničena, i
+to je istovremeno problem za trening, jer bafer puni jedna ogromna epizoda, i za zidni sat.
+
+**Pravilo: tvrda granica koraka mora postojati prije nego se terminal podigne.** Postavljena je na
+**`MaxStep: 6000`** u `TrainingArea.prefab` (feature 008, T004a), dakle 120 s na 50 Hz, što je
+vrijednost koju je ovaj dokument i ranije tvrdio a prefab je nikad nije nosio. Izbor: heuristički
+vozač vozi krug za 26.5 s u prosjeku (§4.7.2), pa su tri kruga oko 80 s, a 120 s ostavlja pola toga
+kao rezervu za politiku koja je sporija od heuristike. Prosječna epizoda feature-a 007 je bila oko
+1.676 koraka fizike, pa granica stoji oko tri i po puta iznad nje i ne bi trebalo da se pali često;
+`episode/end_steplimit` sad ima priliku da bude različit od nule, i ako nije, to se kaže.
+
+**Izmjereno (feature 008, 2026-08-27): granica se pali, i nije kozmetička.** `MaxStep = 6000` je
+prekinuo **608 epizoda, 6.9 posto** od njih 8.843 u runu `ppo_car_008_budget`, tamo gdje je
+`episode/end_steplimit` čitao tačno nulu u svakom runu M3. Bez nje bi te epizode tekle neograničeno,
+jer se `_stepsSinceAward` resetuje na svakom markeru pa spora politika koja pokupi jedan marker u 60
+s nikad ne aktivira ni pravilo zaglavljivanja. Epizode su narasle sa 485.4 na **612.0** koraka
+odluke, pa je u isti budžet od 5.000.000 koraka stalo 8.843 epizode umjesto 13.851, a to je manje
+raznolikog iskustva za istu cijenu i dio razloga zašto je taj run naučio manje.
+
+**Budžet kontakata, podrazumijevano 0 (feature 008).** Vrijednost 0 znači da prvi kontakt završava
+epizodu, kao u feature-u 007 i cijelom M3. Isprobana je vrijednost 3 i **nije zadržana**; mjerenja i
+razlog su u §4.5.
+
+**Ispravka ranijeg čitanja: odnos koraka fizike prema odlukama nije ograničen na 4.** Feature 007 je
+izmjerio 3.2161 sa maksimumom 4.0063 i pročitao plafon od 4 kao potvrđen. Ovaj run čita **4.0870**
+kao srednju vrijednost i 5.0224 na jednom sažetku, pa 4 nije plafon. Račun preko neslaganja skupova
+epizoda predviđa 3.7993 naspram izmjerenih 4.0870, pa ni on više ne objašnjava cijeli razmak.
+Granica koraka je četvrti način da se epizoda završi i najvjerovatniji je osumnjičeni; to je
+**hipoteza i tako je zapisana**, a za rješavanje traži zapise po epizodi koje je feature 007 već
+imenovao kao zaseban posao.
 
 **Razlika između kraja i presjecanja nije kozmetička.** Sudar i tri kruga su terminalni; obje
 vremenske granice su presjecanje. Trener drugačije procjenjuje vrijednost presječene epizode, pa bi

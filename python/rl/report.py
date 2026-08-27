@@ -83,6 +83,10 @@ class DriverColumn:
     markers_possible: int
     end_reasons: dict
 
+    # Feature 008. A driver that reaches further while touching more barriers is a different
+    # driver from one that reaches further cleanly, and the lap count says neither.
+    wall_contacts_mean: float
+
     # The values behind the summaries. Kept because the homogeneity test needs counts over the
     # lattice, and a DistributionSummary cannot be un-summarised back into them.
     steering_values: np.ndarray
@@ -192,6 +196,7 @@ def build_column(name: str, runs_path: Path, traces_dir: Path) -> DriverColumn:
         markers_mean=float(runs["checkpoints_awarded"].mean()) if "checkpoints_awarded" in runs else float("nan"),
         markers_possible=possible,
         end_reasons=dict(runs["end_reason"].value_counts()) if "end_reason" in runs else {},
+        wall_contacts_mean=float(runs["wall_contacts"].mean()) if "wall_contacts" in runs else float("nan"),
         steering_values=steer,
         abs_delta_values=delta,
     )
@@ -248,6 +253,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"markers           {column.markers_mean:.2f} of {column.markers_possible}   "
           f"({100 * column.marker_rate:.1f}% of a lap)")
     print(f"end reasons       {column.end_reasons}")
+    print(f"wall contacts     {column.wall_contacts_mean:.2f} per run")
     print(f"steering          {_fmt(column.steering)}")
     print(f"|delta steering|  {_fmt(column.abs_delta_steering)}")
 

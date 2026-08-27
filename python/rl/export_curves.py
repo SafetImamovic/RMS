@@ -73,6 +73,12 @@ COLUMNS: Sequence[tuple] = (
     # 4; feature 006 measured a mean near 3.16 with no way to say why, because only the trainer's
     # half was ever written down.
     ("physics_steps_charged", "episode/physics_steps"),
+    # Feature 008. Markers per episode cannot be read without the contact count, and the contact
+    # count cannot see a sustained grind, because OnCollisionEnter fires once per touch and not
+    # once per step. Lateral clearance is the measure that can, and it is a proxy: it reads how
+    # close the car runs to whatever the side rays see, which on these tracks is the barriers.
+    ("wall_contacts", "episode/wall_contacts"),
+    ("lateral_clearance", "episode/lateral_clearance"),
     # Counts, not means, and only because the agent asks the trainer to sum them. A run trained
     # before that change wrote these as an average of a constant 1.0 and carried no frequency
     # information; it exports them as empty, which is the honest answer rather than a 1.0 that

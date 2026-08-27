@@ -68,6 +68,7 @@ Notes on the pair, since a table row cannot carry them:
 | 2026-08-26 | `ppo_car_007_spread_b` | Run b of three. Identical to `ppo_car_007_spread_a` except `--seed=2` | **2,000,000 steps in 2,597.9 s**, 770 steps/s, uninterrupted. Markers per episode **0.2290** run mean, 0.2326 over the last 50. `reward/progress` 0.1238, which is 2.07 m net per episode. Over 5,181 episodes: 48.9 per cent wall, 37.9 per cent stalled, 13.2 per cent swapped, **zero laps**. Step ratio **3.1536** | Not a candidate model. Run b of three. The lowest marker count of the set and still within 0.032 of the highest, which is what makes the gate small |
 | 2026-08-26 | `ppo_car_007_spread_c` | Run c of three. Identical to a and b except `--seed=3` | **2,000,000 steps in 2,649.4 s**, 755 steps/s, uninterrupted. Markers per episode **0.2576** run mean, 0.2714 over the last 50, the highest late-phase figure of the set. `reward/progress` 0.1356, which is 2.27 m net per episode. Over 4,993 episodes: 47.2 per cent wall, 39.5 per cent stalled, 13.3 per cent swapped, **zero laps**. Step ratio **3.1627** | Not a candidate model. Completes the set T028 measures. **No run in the set completed a lap**, and markers per episode means 0.2491 across the three against feature 006's 0.249, so the term did not move the metric at this budget. The gates are in `results/rl/progress_spread.md`, written before any candidate run existed |
 | 2026-08-26 | `ppo_car_007_progress` | **The T029 candidate.** One change from feature 006's `ppo_car_v01`: the reward table gains the dense progress term. Full baseline budget, `config/ppo_car.yaml` reused unchanged at 5,000,000 steps, `--seed=42` to match v01 exactly, same twelve areas, same seeds, every existing weight untouched | **5,000,000 steps in 5,395.4 s**, 927 steps/s, uninterrupted. **Markers per episode 1.4987 run mean and 2.6975 over the last 50, against a baseline of 0.2490 and a gate of 0.035.** By quarter 0.3477, 0.9794, 2.1148, 2.5528, which rises monotonically rather than spiking. **Eight episodes completed the full three-lap requirement** over 13,851 episodes, where feature 006 completed no lap at all across nine runs and more than 12,000,000 steps. `episode/end_lapscompleted` fires only at `LapCount >= lapsToComplete`, and `TrainingArea.prefab` sets that to 3, so each of those eight drove three consecutive laps rather than one. `reward/progress` reaches 1.3843 per episode late, which is 23.2 m of net progress, about 11.5 per cent of a lap, against 2.2 m in the spread set. End reasons 59.1 per cent wall, 27.4 per cent stalled, 13.5 per cent swapped, against the spread set's 47.7 / 39.0 / 13.2. **FR-010 does not hold on this run**: the seven terms sum to the trainer's cumulative reward on 4.8 per cent of rows, residual mean +0.3030 | **The first candidate in M3 that moved the metric it was aimed at**, and the first policy in this project to complete a lap. Model kept and promoted for the T034 to T037 evaluation. The stall fall is **not** clean: see the note below |
+| 2026-08-27 | `ppo_car_008_budget` | **The wall terminal.** One change from `ppo_car_007_progress`: a barrier contact charges the same pinned -5.0 and ends the episode only once a budget of **3** contacts is spent. The penalty is untouched, so this tests the termination rather than the weight, which is what feature 006's `ppo_car_wall_lo` tested. Also restored: `MaxStep = 6000` on `TrainingArea.prefab`, which `DESIGN.md` had claimed since M3 and the prefab had never carried. `config/ppo_car.yaml` unchanged at 5M, `--seed=42` | **5,000,000 steps in 5,534.6 s**, 903 steps/s, uninterrupted. **Markers per episode 0.5297 against the baseline's 1.4987, a difference of -0.9689 that clears the 0.035 gate in the worse direction.** By quarter 0.3832, 0.4376, 0.5630, 0.7351, still rising but at a fraction of the baseline's 0.3477 to 2.5528. **Zero laps.** The end-reason mix inverted: wall contact 59.1 to **23.2** per cent, stalled 27.4 to **53.8** per cent, and the restored step limit fired on **608 episodes**, 6.9 per cent, where it had never fired before. Episodes ran 612.0 trainer steps against 485.4, so 8,843 episodes fitted in the budget instead of 13,851. `reward/progress` fell 0.7729 to 0.2827, which is 4.74 m of net progress per episode against 12.95 m | Not a candidate model, and the budget is **not kept**. **The terminal was load bearing and lifting it made the policy worse.** Recorded as the run that exonerates the wall terminal the way `ppo_car_wall_lo` exonerated the wall penalty |
 
 Notes on the first full run:
 
@@ -353,6 +354,67 @@ never averaged, which was the right call for the wrong reason.
 driver's 34 of 34 was measured at one lap. The setting is feature 006's and is left untouched for
 comparability with their column, but it means the learned driver is being held to a strictly harder
 bar than the scripted one. At 6.20 of 24 markers it does not change the verdict.
+
+### Lifting the wall terminal put the policy back to stalling
+
+`ppo_car_008_budget`, 2026-08-27, is the only run that has ever changed the wall **terminal** rather
+than the wall **penalty**. The hypothesis was that a policy cannot learn to recover from a mistake
+it is never allowed to survive: with the episode ending at the first contact, every trajectory in
+the buffer that touches a barrier ends there and the value function has no data about what follows a
+graze.
+
+**The hypothesis is refused, and the direction of the refusal is the interesting part.**
+
+| | 007 baseline | 008 candidate |
+|---|---|---|
+| markers per episode | **1.4987** | **0.5297** |
+| markers by quarter | 0.3477, 0.9794, 2.1148, 2.5528 | 0.3832, 0.4376, 0.5630, 0.7351 |
+| `reward/progress` per episode | 0.7729, about 12.95 m | 0.2827, about 4.74 m |
+| wall contact share | 0.5907 | 0.2320 |
+| stalled share | 0.2741 | **0.5376** |
+| step limit share | 0.0000 | 0.0688 |
+| laps completed | 8 episodes of three laps | **0** |
+| episodes in 5M steps | 13,851 | 8,843 |
+
+**The policy did not learn to recover. It went back to stalling.** Wall endings more than halved and
+stall endings doubled, which is the degenerate solution M3 identified at the very beginning: driving
+less is a cheaper way to stop paying -5.0 than driving better. The first contact ending the episode
+had been suppressing that, and removing it handed the option back.
+
+**The budget was barely used.** Contacts per episode averaged **1.218** against a budget of 3, so
+the typical episode never came close to spending it and ended stalled instead. The change did not
+fail because the budget was too small; it failed because the policy stopped putting itself in a
+position to use it.
+
+**Grinding did not happen, and that risk can now be closed.** Lateral clearance averaged **0.6331**
+and was flat across quarters at 0.6367, 0.6454, 0.6218, 0.6284, with a run minimum of 0.3231. A
+policy riding a barrier would hold that near zero. This matches what T004's probe measured directly:
+a car pressed against a barrier moves 0.47 m in 5 seconds, so grinding is not a competitive strategy
+because the vehicle cannot slide along a wall at speed. **The risk the feature was most worried about
+was real in principle and absent in practice**, and it is closed with a number rather than an
+argument.
+
+**The restored step limit was not cosmetic.** `MaxStep = 6000` fired on 608 episodes, 6.9 per cent of
+them, where `episode/end_steplimit` had read exactly zero in every run of M3. Without it those
+episodes would have run unbounded, because `_stepsSinceAward` resets on every marker and a slow
+policy that collects one marker per 60 seconds never trips the stall rule either.
+
+### The physics-to-decision ratio is not capped at 4
+
+Feature 007 measured the ratio at 3.2161 with a maximum of 4.0063 and read the ceiling of 4 as
+confirmed, on the reasoning that `DecisionPeriod: 4` bounds it. **This run reads 4.0870 as its mean
+and 5.0224 on a single summary**, so 4 is not a ceiling and that reading was wrong.
+
+The episode-set account still explains most of it but no longer all: our end-reason counts total
+8,843 against a trainer count implied at 8,399, which predicts `4 x 8399 / 8843 = 3.7993` against a
+measured 4.0870. Feature 007's version of this arithmetic landed within 0.024 and this one is out by
+0.29.
+
+What changed between the two runs is that the step limit now truncates episodes, which is a fourth
+way for an episode to end and one the reward reporting and the trainer may well treat differently.
+**That is a hypothesis and it is written as one.** The honest statement is that the ratio is a
+measured quantity whose model is incomplete, that 4 is not its upper bound, and that settling it
+needs the per-episode records feature 007 already named as a separate feature.
 
 ### The jerk penalty was not the constraint, and the naive comparison would have said it was
 

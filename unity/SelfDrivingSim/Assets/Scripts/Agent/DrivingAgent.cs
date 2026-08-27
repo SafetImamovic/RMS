@@ -86,6 +86,20 @@ namespace SelfDrivingSim.Agent
                  "merely slow.")]
         [SerializeField] private float stallSeconds = 60f;
 
+        [Tooltip("How many barrier contacts an episode survives before the episode ends. " +
+                 "Zero reproduces feature 007 exactly: the first contact ends the episode. " +
+                 "It counts contact EVENTS, not steps and not seconds, because WallSensor " +
+                 "raises OnCollisionEnter once when the colliders begin touching and not " +
+                 "again until they separate, so a car that slides along a barrier without " +
+                 "separating spends one unit of budget on the whole slide.\n\n" +
+                 "Default is ZERO because feature 008 measured a budget of 3 and did not keep " +
+                 "it: ppo_car_008_budget reached 0.5297 markers per episode against 1.4987, " +
+                 "completed no lap, and its stall share rose from 27.4 to 53.8 per cent. " +
+                 "Lifting the terminal did not teach recovery, it handed the policy back the " +
+                 "option of driving less. The field stays so the experiment can be repeated " +
+                 "without a code change; the default records the outcome.")]
+        [SerializeField] private int wallContactBudget = 0;
+
         /// <summary>Why the last episode ended. Recorded, and distinct per reason (FR-011).</summary>
         public enum EndReason
         {
@@ -192,6 +206,27 @@ namespace SelfDrivingSim.Agent
         /// the ratio measurable rather than argued about.
         /// </summary>
         private int _physicsStepsCharged;
+
+        /// <summary>
+        /// Running sum of the minimum lateral ray clearance, and the count of samples in it
+        /// (feature 008, R5).
+        ///
+        /// **This is a proxy for barrier use and is written down as one.** The contact count cannot
+        /// detect a sustained grind, because `WallSensor` raises `OnCollisionEnter` once when the
+        /// colliders begin touching and not again until they separate, so a car sliding along a
+        /// barrier registers one contact for the whole slide. A policy running close to a barrier
+        /// holds a side ray near zero for a long run of steps and a policy on the centre line does
+        /// not.
+        ///
+        /// **Unvalidated as a grind detector at the time of writing (T004).** Both recovery probes
+        /// produced nose-in contacts, where the barrier is ahead rather than beside the car, and
+        /// the measure read 1.0 throughout. That is the correct reading for those cases and says
+        /// nothing about a parallel slide, which the probe never produced. A flat reading is
+        /// therefore uninformative rather than evidence of no grinding.
+        /// </summary>
+        private float _clearanceSum;
+
+        private int _clearanceSamples;
 
         private int StallSteps => Mathf.Max(1, Mathf.RoundToInt(stallSeconds / Time.fixedDeltaTime));
 
@@ -321,6 +356,8 @@ namespace SelfDrivingSim.Agent
             _steerLast = 0f;
             _stepsSinceAward = 0;
             _physicsStepsCharged = 0;
+            _clearanceSum = 0f;
+            _clearanceSamples = 0;
             Outcome = EndReason.Running;
         }
 
@@ -434,6 +471,11 @@ namespace SelfDrivingSim.Agent
             AddReward(step + speed + jerk + progress);
             _stepsSinceAward++;
             _physicsStepsCharged++;
+
+            // On the same tick as the per-step reward terms, so the mean is over the steps the
+            // episode was actually charged for rather than over rendered frames.
+            _clearanceSum += MinLateralClearance();
+            _clearanceSamples++;
         }
 
         /// <summary>
@@ -455,6 +497,35 @@ namespace SelfDrivingSim.Agent
             _progress.Step(car.transform.position, ring.NextIndex, ring.LapCount);
 
             return RewardModel.Progress(_progress.LastAdvance, _progress.ProgressWeight);
+        }
+
+        /// <summary>
+        /// The closest the side of the ray fan can see, normalised, or 1.0 when nothing is in
+        /// range (feature 008, R5).
+        ///
+        /// Only rays at 45 degrees or more off the nose count. A ray pointing forwards sees the
+        /// barrier the car is driving at, which is a different question from how close the car is
+        /// running to the wall beside it.
+        /// </summary>
+        private float MinLateralClearance()
+        {
+            if (sensing == null)
+            {
+                return 1f;
+            }
+
+            float lowest = 1f;
+            for (int i = 0; i < sensing.RayCount && i < sensing.RayDistancesNorm.Count; i++)
+            {
+                if (Mathf.Abs(sensing.RayAngleDeg(i)) < 45f)
+                {
+                    continue;
+                }
+
+                lowest = Mathf.Min(lowest, sensing.RayDistancesNorm[i]);
+            }
+
+            return lowest;
         }
 
         /// <summary>
@@ -523,7 +594,25 @@ namespace SelfDrivingSim.Agent
                 // Before EndEpisode, never after: the penalty has to land in the episode the
                 // trainer attributes it to.
                 AddReward(penalty);
-                Finish(EndReason.WallContact);
+
+                // Feature 008. The penalty is charged on every contact, exactly as before; what
+                // changed is that the episode only ends once the budget is spent.
+                //
+                // **The two halves of this row are separable and only one of them has ever been
+                // tested.** Feature 006's `ppo_car_wall_lo` moved the penalty from -5.0 to -1.0 and
+                // left the terminal alone, so it is evidence about the weight. In every M3 run the
+                // episode still ended at the first contact, in both arms of every comparison.
+                //
+                // A policy cannot learn to recover from a mistake it is never allowed to survive:
+                // with the terminal at the first contact, every trajectory in the buffer that
+                // touches a barrier ends there, and the value function has no data about what
+                // follows a graze. Feature 007 made that bind, by producing the first policy that
+                // drives far enough to hit anything.
+                if (WallTerminal.EndsEpisode(wall.Contacts, wallContactBudget))
+                {
+                    Finish(EndReason.WallContact);
+                }
+
                 return;
             }
 
@@ -593,6 +682,15 @@ namespace SelfDrivingSim.Agent
             // Averaged, like the trainer's own Environment/Episode Length, so the two are the same
             // kind of number and their ratio is the one R6 asks for.
             stats.Add("episode/physics_steps", _physicsStepsCharged);
+
+            // Feature 008. Markers per episode cannot be read without the contact count: a policy
+            // reaching further while touching more barriers is a different result from one
+            // reaching further cleanly.
+            stats.Add("episode/wall_contacts", wall != null ? wall.Contacts : 0f);
+
+            stats.Add(
+                "episode/lateral_clearance",
+                _clearanceSamples > 0 ? _clearanceSum / _clearanceSamples : 1f);
 
             // Summed, not averaged. The default aggregation takes the mean, and the mean of a
             // value that is always 1.0 is 1.0 however often it was written: `ppo_car_v01` reported
