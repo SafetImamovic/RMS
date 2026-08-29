@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using UnityEngine;
+using SelfDrivingSim.Agent;
 using SelfDrivingSim.Vehicle;
 
 namespace SelfDrivingSim.Logging
@@ -14,6 +15,11 @@ namespace SelfDrivingSim.Logging
     /// distributions, and a column named <c>steerAngle</c> in degrees would have to be
     /// converted somewhere, which is the point at which a comparison quietly starts measuring
     /// the conversion instead of the driving.
+    ///
+    /// One column is not the dataset's: <c>target_speed</c>, the speed the scripted driver
+    /// was asking for at that step, written only when a <see cref="HeuristicDriver"/> shares
+    /// the object. It is empty everywhere else, so a human drive and a policy drive carry the
+    /// column without carrying a number that would be false (feature 009, T017).
     ///
     /// **Sampled in FixedUpdate, at the physics rate.** Logging once per rendered frame would
     /// make the file's contents depend on the machine's frame rate, so the same drive on two
@@ -41,6 +47,20 @@ namespace SelfDrivingSim.Logging
         [SerializeField] private int flushEveryRows = 256;
 
         private CarController _car;
+
+        /// <summary>
+        /// The scripted driver on this object, when there is one. Null in every scene but the
+        /// demonstration scene (feature 009, research R10).
+        ///
+        /// It is read, never driven. <see cref="HeuristicDriver.TargetSpeedMs"/> is written by
+        /// <see cref="HeuristicDriver.Decide"/>, and in the demonstration scene that method is
+        /// called by <see cref="DrivingAgent.Heuristic"/> rather than by the driver's own
+        /// <c>FixedUpdate</c>, which <see cref="DrivingAgent"/> disables. So the property is
+        /// current whenever a decision has been made, and stale by up to three physics steps in
+        /// between, which is what sampling an expert at <c>DecisionPeriod: 4</c> means.
+        /// </summary>
+        private HeuristicDriver _driver;
+
         private StreamWriter _writer;
         private string _path;
         private float _elapsed;
@@ -65,6 +85,7 @@ namespace SelfDrivingSim.Logging
         private void Awake()
         {
             _car = GetComponent<CarController>();
+            _driver = GetComponent<HeuristicDriver>();
         }
 
         private void OnEnable()
@@ -90,7 +111,7 @@ namespace SelfDrivingSim.Logging
                 _writer = new StreamWriter(_path, append: false);
                 _writer.WriteLine(
                 "t,steering,throttle,brake,speed,speed_mag,wheel_ms,motor_nm,headroom," +
-                "x,y,z,yaw_deg,source");
+                "x,y,z,yaw_deg,target_speed,source");
             }
             catch (IOException e)
             {
@@ -163,10 +184,31 @@ namespace SelfDrivingSim.Logging
             // Position and heading are here for the turning-circle check (T022), which
             // cannot be done from speed alone: a circle has to be fitted to a path.
             Vector3 p = transform.position;
+
+            // The speed the scripted driver was asking for, against the speed the car had.
+            // Feature 009 gates on whether the expert still drives when it is sampled at the
+            // agent's decision period rather than its own, and research R3 names the throttle as
+            // where that would fail: it is bang-bang against a 0.25 m/s deadband, and one decision
+            // is long enough for the speed to move 0.47 m/s. The pair of columns is what makes
+            // that measurable instead of arguable.
+            //
+            // Empty rather than zero when no scripted driver is present, which is every scene but
+            // the demonstration scene. Zero would read as "the driver wanted a standstill", and a
+            // mean absolute error computed over those rows would be the car's own speed wearing
+            // the name of a tracking error. An empty field parses as NaN and drops out of the
+            // statistic instead of poisoning it.
+            //
+            // The error itself is not computed here. It is a statistic, and statistics in this
+            // project live in Python, where the trace can be resampled and the choice of window is
+            // visible in the code that made the number.
+            string targetSpeed = _driver == null
+                ? string.Empty
+                : _driver.TargetSpeedMs.ToString("F5", CultureInfo.InvariantCulture);
+
             _writer.WriteLine(string.Format(
                 CultureInfo.InvariantCulture,
                 "{0:F4},{1:F5},{2:F4},{3:F4},{4:F5},{5:F5},{6:F5},{7:F1},{8:F4}," +
-                "{9:F4},{10:F4},{11:F4},{12:F3},{13}",
+                "{9:F4},{10:F4},{11:F4},{12:F3},{13},{14}",
                 _elapsed,
                 _car.SteerNorm,
                 _car.Throttle,
@@ -180,6 +222,7 @@ namespace SelfDrivingSim.Logging
                 p.y,
                 p.z,
                 transform.eulerAngles.y,
+                targetSpeed,
                 sourceLabel));
 
             _rows++;

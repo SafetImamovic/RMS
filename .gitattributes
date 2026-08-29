@@ -51,3 +51,8 @@ results/drive_logs/*.csv linguist-generated=true
 *.pt filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
+# Demonstracije za imitaciono učenje (feature 009). Binarni protobuf koji piše
+# ML-Agents DemonstrationRecorder. Commituje se namjerno: run sa toplim startom
+# se bez te datoteke ne može ponoviti iz čistog klona, a lista seedova uz nju
+# stoji zato da se porijeklo datoteke može provjeriti bez otvaranja binarnog.
+*.demo filter=lfs diff=lfs merge=lfs -text
