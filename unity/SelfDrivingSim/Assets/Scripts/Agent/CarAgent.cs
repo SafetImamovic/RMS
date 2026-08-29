@@ -584,10 +584,20 @@ namespace SelfDrivingSim.Agent
         ///
         /// **The car.** The origin sits inside the vehicle, so a plain raycast finds the body
         /// collider and the WheelColliders before anything else and every ray reads nearly
-        /// zero. Rejecting hits that share this car's Rigidbody handles both, and the
-        /// transform-root test catches any child collider that was left without one. Doing it
-        /// here rather than with a layer means the sensing is correct in any scene, without a
+        /// zero. Rejecting hits that share this car's Rigidbody handles both, and the subtree
+        /// test catches any child collider that was left without one. Doing it here rather
+        /// than with a layer means the sensing is correct in any scene, without a
         /// project-settings change that a fresh clone would have to reproduce.
+        ///
+        /// **The subtree test was a transform-root test until feature 009, and that was a
+        /// sensing fault, not a style detail.** `TrainingArea.prefab` makes `Car` and `Track`
+        /// siblings under one area root, so comparing roots classified the car's own barriers,
+        /// surface and checkpoints as parts of the car and discarded every hit on them. The
+        /// fan then read 1.0 in all thirteen directions on a car sitting between two walls,
+        /// which is a symmetric observation: the steering controllers return exactly zero and
+        /// the sight-limited speed returns the vehicle maximum. Measured in
+        /// `Demonstration.unity` with both barrier colliders inside a 25 m overlap query and
+        /// all thirteen rays reporting clear.
         ///
         /// **Triggers.** The checkpoints are trigger volumes spanning the full track width
         /// (TrackBuilder), so a fan that saw triggers would report a wall straight ahead
@@ -638,7 +648,7 @@ namespace SelfDrivingSim.Agent
                 return true;
             }
 
-            return collider.transform.root == transform.root;
+            return collider.transform.IsChildOf(transform);
         }
 
         /// <summary>
