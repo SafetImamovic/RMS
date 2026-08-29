@@ -760,6 +760,45 @@ krugova i 6.20 od 24 markera. Ono što je ovaj feature dodao nije korak prema mi
 uklanjanje jednog objašnjenja: **ni kazna ni terminal nisu vezujuće ograničenje**, jer je kaznu
 oslobodio `ppo_car_wall_lo` u feature-u 006, a terminal ovaj run.
 
+**Feature 009 uzima treći lijek, i morao ga je prvo ispraviti (upisano pri planiranju, 2026-08-28).**
+Gore navedena tri lijeka su: kurikulum bliže markeru, gušći signal napretka, i topli start iz BC
+politike. Feature 007 je uzeo drugi. Ovaj feature uzima treći, a **treći lijek onako kako je gore
+napisan ne postoji**, i to se kaže naglas umjesto da se tiho zamijeni nečim drugim.
+
+**Zašto ne postoji: observacija.** BC pipeline iz §6 trenira CNN nad **slikama kamere** iz Kaggle
+dataseta. `DrivingAgent` čita **vektor od 19 vrijednosti** iz lepeze od 13 zraka, plus brzine i
+skalarne proizvode kursa (§4.3). Dva prostora observacija nemaju nijednu zajedničku dimenziju, pa u
+BC mreži ne postoji težina koja agentu išta znači, niti u datasetu postoji demonstracija koju bi
+agent mogao vidjeti. Rečenica iz M3 zatvaranja je napisana prije nego što je iko uporedio ta dva
+ulaza.
+
+**Zamjena, i zašto je jedina.** `HeuristicDriver` (feature 005, §4.7) čita **istih 19 vrijednosti**
+kroz istu lepezu, piše u isti `CarController`, i završava **34 od 34 trening seeda** (§4.7.2). To je
+jedini vozač u projektu koji je istovremeno stručan i u agentovom prostoru observacija. Demonstracije
+se snimaju iz njega.
+
+**Topli start nije nagrada, i zato ova tabela ostaje netaknuta.** `behavioral_cloning` je pomoćni
+gubitak nad politikom, ne signal nagrade: uči politiku da preslika komandu stručnjaka, a ne mijenja
+šta se plaća. Zato kumulativna nagrada iz runa feature-a 009 ostaje uporediva sa 007 i 008, što je
+tvrdnja koju potkrepljuje diff nad ovom tabelom a ne rečenica. **GAIL bi dodao naučen signal
+nagrade**, promijenio ovu tabelu i uništio to poređenje, pa je izvan obima i imenovan kao naredni
+feature ako ikad zatreba.
+
+**Dva ograničenja koja demonstracije nose, izmjerena a ne pretpostavljena.** Prvo, snimak nastaje
+samo na koracima odluke, a `DecisionPeriod` je 4, pa je demonstracija stručnjak uzorkovan na
+**12.5 Hz** dok on sam odlučuje na 50 Hz. Zbog toga se **34 od 34 ne prenosi automatski** i mjeri se
+ponovo prije nego što se išta snimi u količini; ako padne, feature staje i to prijavljuje, jer bi
+spuštanje `DecisionPeriod`-a promijenilo takt na kojem je mjereno cijelo M3. Drugo, ML-Agents upisuje
+observaciju zajedno sa komandom **prethodne** odluke, pa `.demo` nosi par `(obs_t, a_{t-1})`, dakle
+pomak od 80 ms na `DecisionPeriod: 4`. To je svojstvo alata, ne postupka snimanja, i zapisano je da
+se datoteka kasnije ne bi čitala kao `(obs_t, a_t)`.
+
+**Obim M3, odlučeno 2026-08-28.** M3 se zatvara ovim feature-om, bez obzira šta izmjeri. Kurikulum,
+prvi od tri lijeka, **ostaje neuzet** i nije naredni feature: četiri od pet milestone-a su odlučena
+dok je M5 na nuli, a M5 je ono što se predaje. Ako run feature-a 009 padne blizu praga od 0.035,
+`results/rl/progress_spread.md` već propisuje jedini dozvoljeni nastavak, a to je svjež spread od tri
+runa umjesto presude.
+
 ### 4.6 Kraj epizode
 - Sudar sa zidom **kad se potroši budžet kontakata** (feature 008), ili
 - 60 s bez novog checkpointa (zaglavljen), ili
@@ -992,6 +1031,39 @@ citira mora biti provjerljiv iz repozitorija, a slika sa nečijeg ekrana to nije
 `BehaviorParameters` nosi zastavicu za determinističku inferencu, pa iste težine daju dva različita
 vozača. Evaluacija za M5 se radi **deterministički**, jer su i heuristika i BC deterministični, a
 razlika između dva načina se mjeri i zapisuje umjesto da se pretpostavi.
+
+**Imitacija kao ulaz trenera, ne kao član nagrade (feature 009, odlučeno prije koda, 2026-08-28).**
+`config/ppo_car.yaml` dobija blok `behavioral_cloning` i ništa više. Blok nosi `demo_path` do
+snimljene datoteke, `strength: 0.5`, `steps: 500000` i `samples_per_update: 2048`; `num_epoch` i
+`batch_size` se nasljeđuju od trenera, i to je odluka a ne propust. Tabela nagrade iz §4.5 se ne
+dira, budžet kontakata ostaje 0 i `MaxStep` ostaje 6000, pa je poređenje feature-ov 007 terminal sa
+feature-ovom 008 granicom koraka.
+
+**`steps` je ono što ovo čini toplim startom, a ne imitacionim runom.** Raspored gubitka je linearan
+samo ako je `steps` iznad nule; na podrazumijevanoj nuli je konstantan, pa bi se imitacioni gubitak
+primjenjivao punom snagom kroz svih 5.000.000 koraka i run bi mjerio imitaciju umjesto potkrepljenja.
+Vrijednost 500.000 je desetina budžeta: gubitak se ugasi kroz prvu desetinu, a preostalih devet
+desetina su čist PPO nad nepromijenjenom tabelom. `samples_per_update` se postavlja iz istog razloga
+u drugom smjeru: na podrazumijevanoj nuli svaki update prolazi cijeli bafer demonstracija, što se
+vidi na propusnosti runa, a 2048 poklapa `batch_size` trenera pa jedan update košta jedan batch.
+
+**Jeftina provjera da je topli start uopšte primijenjen.** Trener piše `Losses/Pretraining Loss` u
+TensorBoard. Ako te serije nema ili stoji na nuli, demonstracija se nije učitala i run mjeri feature
+007 pod drugim imenom. Gleda se u prvih nekoliko sumarija, ne na kraju.
+
+**Heuristički režim agenta sad delegira, i to ne pravi drugu implementaciju baseline-a.**
+`DrivingAgent.Heuristic` je do feature-a 009 vraćao nule, a komentar iznad njega je izričito odbijao
+da se skriptirani vozač prepiše u taj callback, jer bi projekat time dobio dva baseline-a i poređenje
+u M5 ne bi imalo jedan odgovor. **Ta zamjerka ostaje zadovoljena: callback zove
+`HeuristicDriver.Decide()` umjesto da ga kopira**, pa implementacija upravljačkog zakona i dalje
+postoji tačno na jednom mjestu. Dok je agent izvor odluke, `HeuristicDriver` je iskopčan i ne piše u
+`CarController.ScriptedMove`, čime FR-004 feature-a 005 o jednom izvoru upravljanja ostaje na snazi
+umjesto da se ponovo otkriva.
+
+**Demonstracije se snimaju samo sa trening seedova.** Krug na neviđenoj stazi je kriterij koji je
+ovaj projekat promašio tri puta; pokazati politici stručne putanje baš na tih deset izdvojenih
+seedova bi odgovaralo na drugo pitanje. Lista seedova se commituje uz `.demo`, a datoteka ide kroz
+LFS, da bi run bio ponovljiv iz čistog klona a ne iz postupka koji neko mora ponovo odraditi.
 
 
 ### 5.1 Izmjereno (M3, feature 006, upisano nakon runova)

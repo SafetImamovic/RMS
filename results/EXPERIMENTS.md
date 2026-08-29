@@ -561,3 +561,40 @@ cloning policy that M4 produces anyway.
 **T050 has no winner at any budget, and is recorded as unsatisfiable at this reward table** rather
 than left open. Phase 5's outcome is negative and specific: three one-change candidates, a measured
 noise floor, and a named reason none of them worked.
+
+---
+
+### The agent could not see its own track, and every number above was measured that way
+
+Feature 009 built a demonstration scene and drove one training seed through it. The car went
+straight into a barrier at full throttle. The trace said why: `steering` was exactly `0.00000` on
+every row and `target_speed` was pinned at `10.0`, the vehicle maximum.
+
+Read live in play mode, `CarAgent.RayDistancesNorm` was **1.0 in all thirteen directions** while
+`Physics.OverlapSphere` at the same instant returned both barrier `MeshCollider`s within 25 m. The
+car was on the surface, at its marker, between two walls, reporting an empty road.
+
+**Cause.** `CarAgent.IsSelf` ended with `collider.transform.root == transform.root`.
+`TrainingArea.prefab` makes `Car` and `Track` siblings under one area root, so the car's own
+barriers, surface and checkpoints shared its root and every hit on them was discarded as the car
+sensing itself. The `attachedRigidbody` test above it already caught every collider actually on the
+car; the root test only added the rest of the area. Fixed to
+`collider.transform.IsChildOf(transform)`.
+
+**Why it hid for four features.** An all-clear fan is a symmetric fan. `RayControllers` returns
+exactly zero steering for it and the sight limit returns `vMaxMs`, so a blind car drives straight
+and fast into a wall, which reads as a policy that has not learned to steer. Collisions were
+unaffected, so wall contacts were recorded normally and the end-reason mix looked plausible
+throughout. Nothing in the instrumentation was wrong; the observation feeding it was.
+
+**Scope.** `Evaluation.unity` has the same layout as the prefab and produced the held-out figures
+for features 006, 007 and 008. `Training.unity` shares it too. Every RL run in this log was trained
+and evaluated through this filter. Whether the M3 result is a finding about the reward table or an
+artefact of a sensor that never saw a wall is **not settled by this entry** and is not feature
+009's to settle.
+
+**What the fix demonstrably changed, on the scripted driver.** Same scene, same seed, before and
+after: thirteen rays clear at 20 m becomes twelve of thirteen hitting between 2.77 m and 12.96 m,
+and the steering command goes from a constant zero to a varying one. Across the 34 training seeds
+the driver then completed **34 of 34** three-lap runs with **zero wall contacts**, at the agent's
+12.5 Hz decision period. Full figures in `results/rl/demo_cadence.md`.
