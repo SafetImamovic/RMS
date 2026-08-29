@@ -240,6 +240,8 @@ namespace SelfDrivingSim.Agent
             if (track == null) { track = GetComponentInParent<TrackBuilder>(true); }
             if (track == null) { track = FindAnyObjectByType<TrackBuilder>(FindObjectsInactive.Include); }
 
+            ResolveScriptedExpert();
+
             AssertObservationSize();
         }
 
@@ -799,17 +801,79 @@ namespace SelfDrivingSim.Agent
         }
 
         /// <summary>
-        /// Hold still when no policy is driving.
+        /// The scripted driver, when this object carries one. Null in every training scene.
+        /// </summary>
+        private HeuristicDriver _expert;
+
+        /// <summary>
+        /// Find the scripted driver and take the wheel off it (feature 009, FR-002).
         ///
-        /// Heuristic mode here means "no decision source", not "the scripted driver". The scripted
-        /// driver is <see cref="HeuristicDriver"/> and it has its own component; duplicating it
-        /// into this callback would put two implementations of the baseline in the project, and the
-        /// M5 comparison would have no single answer to which one produced a figure.
+        /// **Disabling is not the same as disengaging, and the difference is the whole reason this
+        /// method exists.** <see cref="HeuristicDriver.SetEngaged"/> stops the driver from writing
+        /// a command, but its <c>FixedUpdate</c> keeps running and, while disengaged, actively
+        /// clears <c>CarController.ScriptedMove</c> so a released wheel does not hold a stale
+        /// input. That is right when a human is taking over and wrong here: the frame order
+        /// between two components' <c>FixedUpdate</c> is undefined, so a merely disengaged driver
+        /// can null the command this agent wrote in the same physics step. Disabling the component
+        /// stops that loop outright, and <see cref="HeuristicDriver.Decide"/> is still callable,
+        /// because it is a pure function of the rays and the speed rather than of the run
+        /// bookkeeping (specs/009-imitation-warm-start/research.md, R1 and R6).
+        ///
+        /// Feature 005's FR-004 asks for exactly one writer to <c>ScriptedMove</c> in any frame.
+        /// After this runs, that writer is <see cref="OnActionReceived"/> and nothing else.
+        /// </summary>
+        private void ResolveScriptedExpert()
+        {
+            _expert = GetComponent<HeuristicDriver>();
+            if (_expert == null)
+            {
+                return;
+            }
+
+            _expert.SetEngaged(false);
+            _expert.enabled = false;
+        }
+
+        /// <summary>
+        /// Drive the scripted driver's command through the agent's own action space.
+        ///
+        /// **This delegates and does not duplicate, which is what the previous version of this
+        /// comment was protecting.** It used to return zeros and refuse to copy the scripted
+        /// driver's control law into this callback, because two implementations of the baseline
+        /// would leave the M5 comparison without a single answer to which one produced a figure.
+        /// Feature 009 needed the expert inside the agent's own observation and action space so
+        /// ML-Agents could record demonstrations from it, and calling
+        /// <see cref="HeuristicDriver.Decide"/> gets that without copying a line: the control law
+        /// still lives in exactly one place.
+        ///
+        /// **Zeros are still the answer when there is no scripted driver on this object**, which
+        /// is every training scene and the evaluation scene. Only the demonstration scene carries
+        /// one (research R10), so heuristic mode elsewhere means what it always meant, no decision
+        /// source.
+        ///
+        /// The command is clamped the same way a policy's is in <see cref="OnActionReceived"/>,
+        /// so the recorded demonstration cannot contain an action the action space does not allow.
         /// </summary>
         public override void Heuristic(in ActionBuffers actionsOut)
         {
             var continuous = actionsOut.ContinuousActions;
-            for (int i = 0; i < continuous.Length; i++)
+
+            if (_expert == null)
+            {
+                for (int i = 0; i < continuous.Length; i++)
+                {
+                    continuous[i] = 0f;
+                }
+
+                return;
+            }
+
+            Vector2 move = HeuristicCommand.Clamp(_expert.Decide());
+
+            if (continuous.Length > 0) { continuous[0] = move.x; }
+            if (continuous.Length > 1) { continuous[1] = move.y; }
+
+            for (int i = 2; i < continuous.Length; i++)
             {
                 continuous[i] = 0f;
             }
