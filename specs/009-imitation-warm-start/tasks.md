@@ -179,7 +179,7 @@
   - The clamp case is the one that matters most. The trainer validates a demonstration's **shape**
     against the policy's action spec and not its **range** (R7), so an out-of-range command would
     be recorded without complaint and would teach the policy an action it can never take
-- [ ] T015 [US1] Run the EditMode suite and record the new count against T004's. **Human step**:
+- [X] T015 [US1] Run the EditMode suite and record the new count against T004's. **Human step**:
       `TestRunnerApi` trips the MCP user-interaction guard, so this is Window > General > Test
       Runner > EditMode > Run All, as feature 008's T031 also recorded
   - **The project compiles clean**, verified rather than assumed: `Assets/Refresh` rebuilt
@@ -187,6 +187,11 @@
     console holds zero errors and zero warnings. The test assembly building at all is the proof
     that `HeuristicCommandTests` compiles against `HeuristicCommand`
   - Expected count: **142**, being feature 008's 137 plus the five new cases
+  - **Run by the owner 2026-08-29 after the sensing fix, reported as all passing.** The exact
+    count was not captured, so this records a pass rather than a number. It is a weaker record
+    than T004's and is left weaker rather than written up as if the figure were read
+  - Run **after** `CarAgent.IsSelf` changed, which is the ordering that matters here: the suite
+    covers the delegation and the sensing, and both had moved since the last green run
 
 **Checkpoint**: the scripted driver can drive through the agent, and three assertions say so without
 a scene.
@@ -350,19 +355,35 @@ feature has either earned Phase 4 or ended with a number.
   - `git status` under `Assets/` lists only the new `Demonstration.unity` and its meta, plus the
     Phase 2 source files. `TrainingArea.prefab`, `Scenes/Training.unity` and
     `Scenes/Evaluation.unity` do not appear, so the training path is untouched
-- [ ] T024 [US2] Record the 34 training seeds with `Record` ticked. **Training seeds only.** The ten
+- [X] T024 [US2] Record the 34 training seeds with `Record` ticked. **Training seeds only.** The ten
       evaluation seeds are the criterion this project has failed three times, and demonstrating on
       them would answer a different question
-- [ ] T025 [US2] Untick `Record`, then open the `.demo` in the editor and confirm the importer
+  - Recorded 2026-08-29 at `timeScale 4`, 34 of 34 `LapsCompleted`, zero wall contacts
+  - **The first attempt was discarded and the reason belongs in this task.** `NumStepsToRecord`
+    was left at 0, which means record for as long as the scene runs, and `SweepRunner` finishing
+    does **not** stop `DrivingAgent` starting new episodes. The recorder ran about four hours past
+    the sweep and produced a 26.9 MB file dominated by the last seed. Deleted rather than trimmed,
+    because a `.demo` is a protobuf stream and a partial delete would not be auditable
+  - Re-recorded with `NumStepsToRecord: 34000`, sized from the 1x sweep's 2679 simulated seconds
+    at 12.5 Hz. The 34 runs account for about 33,509 steps, so about **491 steps, 1.5 per cent**,
+    are the expert continuing on the final seed. Declared rather than hidden; the alternative cap
+    would have truncated a real run
+  - **The recorded 1x sweep also settled a caveat I had left open.** `DESIGN.md` 4.7.2 says 2x is
+    the fastest scale at which feature 005's numbers reproduce, and the gate was measured at 4x.
+    The 1x recording run reproduces it: per-lap 26.266 s at both scales, 34 of 34 and zero walls at
+    both, `|dsteer|` P95 0.0568 against 0.0564. 4x did not distort this measurement
+  - **The file name is not the field.** `DemonstrationName` is `heuristic_train34`; ML-Agents wrote
+    `heuristictrain34.demo`. `demo_path` must use the written name
+- [X] T025 [US2] Untick `Record`, then open the `.demo` in the editor and confirm the importer
       reports a non-zero episode count and step count. This is US1's fourth acceptance criterion
-- [ ] T026 [P] [US2] Write `results/rl/demo_seeds.json` with the seed list, and assert in a Python
+- [X] T026 [P] [US2] Write `results/rl/demo_seeds.json` with the seed list, and assert in a Python
       test that it is a subset of `train.accepted_seeds` in `results/tracks/seed_split.json` and
       disjoint from `eval.accepted_seeds`. FR-003 as a test rather than as a promise
-- [ ] T027 [P] [US2] Record the demonstration's episode count, step count and file size in
+- [X] T027 [P] [US2] Record the demonstration's episode count, step count and file size in
       `results/EXPERIMENTS.md`, and state the sample rate as **12.5 Hz** with the reason (R2)
-- [ ] T028 [US2] Commit the `.demo` through LFS and confirm with `git lfs ls-files` that it went
+- [X] T028 [US2] Commit the `.demo` through LFS and confirm with `git lfs ls-files` that it went
       through the filter rather than in as a blob
-- [ ] T029 [P] [US2] Record in `data-model.md` and in the `EXPERIMENTS.md` row that the file pairs
+- [X] T029 [P] [US2] Record in `data-model.md` and in the `EXPERIMENTS.md` row that the file pairs
       each observation with the **previous** decision's command, an 80 ms shift at
       `DecisionPeriod: 4` (research R5). It is a property of ML-Agents, it is not configurable
       without patching `Library/PackageCache`, and it is written down so nobody later reads the file

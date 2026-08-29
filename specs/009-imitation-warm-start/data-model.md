@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Name | `unity/SelfDrivingSim/Assets/Demonstrations/heuristic_train34.demo` |
+| Name | `unity/SelfDrivingSim/Assets/Demonstrations/heuristictrain34.demo`. **Recorded as `heuristic_train34` and written without the underscore**: ML-Agents sanitises `DemonstrationName`. The scene field and the file name differ, and the file name is the one `demo_path` must use |
 | Producer | `DemonstrationRecorder` on the agent, driven by `DrivingAgent.Heuristic` delegating to `HeuristicDriver.Decide()` |
 | Observation | the agent's own 19 value vector, unchanged. This is the whole reason the source is `HeuristicDriver` and not the M4 BC policy |
 | Action | 2 continuous values, `(steer, throttle)`, clamped to `[-1, 1]` |
@@ -12,7 +12,9 @@
 | Reaction mode | `Immediate`, stated because no committed CSV records it (R4) |
 | Seeds | the 34 training seeds in `results/tracks/seed_split.json`, copied to `results/rl/demo_seeds.json` |
 | Committed | yes, through LFS, with `*.demo` added to `.gitattributes` (R9) |
-| Recorded | episode count, step count, file size, and lap completion of the source |
+| Recorded | 34,000 info/action pairs, 65 episodes, 4.42 MB, summed reward 4118.14, source completed 34 of 34 with zero wall contacts |
+| Cap | `NumStepsToRecord: 34000`. **Not optional.** At 0 the recorder runs for as long as the scene does, and `SweepRunner` finishing does not stop `DrivingAgent` starting new episodes: the first attempt recorded four hours past the sweep and was discarded |
+| Declared overrun | the 34 runs account for about 33,509 steps, so about 491 steps, 1.5 per cent, are the expert still driving the final seed. Seed 40 is slightly over-represented |
 
 **The pairing carries a one-decision lag and this is a property of the file, not a defect in the
 recording procedure.** Research R5 traced it: the demonstration writer runs before the brain

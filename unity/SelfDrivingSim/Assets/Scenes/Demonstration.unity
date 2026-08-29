@@ -339,7 +339,7 @@ MonoBehaviour:
   repeatsPerSeed: 1
   controllers: 00000000
   fans: []
-  timeScale: 1
+  timeScale: 4
   runOnStart: 1
 --- !u!4 &1141980886
 Transform:
@@ -591,7 +591,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Demonstrations.DemonstrationRecorder
   Record: 0
-  NumStepsToRecord: 0
+  NumStepsToRecord: 34000
   DemonstrationName: heuristic_train34
   DemonstrationDirectory: Assets/Demonstrations
 --- !u!114 &1632542845

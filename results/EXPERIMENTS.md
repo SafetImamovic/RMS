@@ -598,3 +598,115 @@ after: thirteen rays clear at 20 m becomes twelve of thirteen hitting between 2.
 and the steering command goes from a constant zero to a varying one. Across the 34 training seeds
 the driver then completed **34 of 34** three-lap runs with **zero wall contacts**, at the agent's
 12.5 Hz decision period. Full figures in `results/rl/demo_cadence.md`.
+
+### Pre-registered: does M3's negative result survive the sensing fix?
+
+**Written before launch.** Run id `ppo_car_009_sighted_probe`, seed 42,
+`config/ppo_car_sighted_probe.yaml`, which differs from `config/ppo_car.yaml` in `max_steps` alone,
+1,000,000 rather than 5,000,000. No `behavioral_cloning` block. The reward table is untouched,
+`wallContactBudget` is 0 and `MaxStep` is 6000, so this is feature 008's configuration at a fifth of
+the budget with one thing changed that is not in the config at all: the agent can now see its own
+barriers.
+
+**Why a short run is the right instrument.** Feature 009's remaining work is a 5M-step warm start
+whose purpose is to rescue a policy that could not learn to drive. If the policy could not learn
+because it was blind, that work answers a question that no longer exists. One million steps is
+enough to see whether the failure mode has changed, and cheap enough that being wrong about it
+costs an hour rather than a day.
+
+**Read against feature 008 at the same step count**, not against its final numbers. The comparison
+is markers per episode and the end-reason mix at 1M, and the baseline for both is
+`results/ppo_car_008_budget`.
+
+**The two outcomes, and what each licenses.**
+
+- **The failure mode is unchanged.** M3's result stands on its own, the reward-side conclusion
+  survives with its most obvious confound eliminated, and feature 009 proceeds to T024 with a
+  stronger closeout than it could otherwise have written.
+- **The policy starts making progress.** M3's three failures were measured through a sensor fault
+  and the milestone's verdict is not safe to write from features 006 to 008. The imitation warm
+  start is then not obviously needed, and the 2026-08-28 decision that capped M3 at feature 009
+  was taken on a premise that no longer holds. That is an owner decision, not a feature decision.
+
+Neither outcome is a milestone figure. This run is a diagnostic and is recorded as one.
+
+### The fix was real and the milestone still fails: a sighted agent does not drive either
+
+`ppo_car_009_sighted_probe`, 1,000,000 steps in 1294 s, 773 steps/s, seed 42, no
+`behavioral_cloning`. Read against `ppo_car_008_budget` at the same step count.
+
+| at 1M steps | 008, blind | 009 probe, sighted |
+|---|---|---|
+| markers per episode, last 10 summaries | 0.3955 | **0.2247** |
+| markers per episode, whole run | 0.3745 | **0.2649** |
+| cumulative reward | -9.3390 | **-4.4739** |
+| episode length | 583.0 | 498.8 |
+| ended on wall contact | 5.03 | **12.76** |
+| ended stalled | 9.63 | 9.61 |
+| wall contacts per episode | 1.3445 | **0.4718** |
+| laps completed | none | **none** |
+
+**The pre-registered first outcome holds. M3's negative result survives the sensing fix.** Markers
+per episode did not rise, it fell, and no run completed a lap. The policy that could not learn to
+drive blind does not learn to drive sighted, at least not in a fifth of feature 008's budget.
+
+**The failure changed shape, and the reward improvement is arithmetic rather than driving.** The
+sighted policy ends far more episodes on wall contact, 12.76 against 5.03, while accumulating
+**fewer** contacts per episode, 0.4718 against 1.3445, over shorter episodes. It reaches a wall
+sooner and terminates there instead of grazing repeatedly. Cumulative reward rises from -9.34 to
+-4.47 largely because a shorter episode pays the per-step cost fewer times. This is exactly the
+trade feature 008 was caught by and named, applied here to this run's own reading: a failure that
+moves is not a failure that is fixed.
+
+**What this does not establish.** One seed, one fifth of the budget, against a run-mean noise floor
+of sd 0.0924 measured in feature 007. The 0.11 fall in markers per episode sits close enough to
+that band to be called suggestive rather than measured. The negative is the solid part: nothing in
+this curve resembles a policy approaching a lap.
+
+**Consequence for feature 009.** The warm start proceeds. Its closeout is now stronger than it could
+otherwise have been, because the most obvious confound in M3's three failures has been eliminated by
+measurement rather than left open at the defence. The sensing fault remains a real defect that was
+present for features 006 to 008; it was not the cause of the milestone failure.
+
+### The demonstration: 34 training seeds, 34,000 decisions, sampled at the agent's clock
+
+`unity/SelfDrivingSim/Assets/Demonstrations/heuristictrain34.demo`, recorded 2026-08-29 from
+`HeuristicDriver` through `DrivingAgent.Heuristic` with `BehaviorType` Heuristic Only and no model
+assigned.
+
+| | |
+|---|---|
+| Observation | `(19,)`, `VectorSensor_size19` |
+| Action | 2 continuous |
+| Info/action pairs | 34,000 |
+| Episodes | 65 |
+| Summed reward | 4118.14 |
+| File size | 4.42 MB |
+| Seeds | the 34 training seeds, `results/rl/demo_seeds.json` |
+| Runs completed | 34 of 34, zero wall contacts |
+
+**Sampled at 12.5 Hz, not 50 Hz, and that is correct rather than a compromise.** The demonstration
+write sits inside `SendInfoToBrain`, which only runs on a decision step, so at `DecisionPeriod: 4`
+the recorder physically cannot sample faster (research R2). The policy that will be trained from
+this file also acts at 12.5 Hz, so the demonstration and the policy share a clock. The scripted
+driver decides at 50 Hz and `results/rl/demo_cadence.md` measures what it loses by being sampled
+at a quarter of that: nothing, in laps.
+
+**The file pairs each observation with the previous decision's command.** This is a property of
+ML-Agents, not of this project's code, and it is not configurable without patching
+`Library/PackageCache` (research R5). At `DecisionPeriod: 4` that is an 80 ms shift. It is written
+down here so nobody later reads the file as `(obs_t, a_t)`.
+
+**65 episodes against 34 runs** because each run ends one episode and each track swap ends
+another.
+
+**Declared overrun.** `NumStepsToRecord` was 34,000 and the 34 runs account for about 33,509
+decision steps, so roughly **491 steps, 1.5 per cent of the file**, are the expert continuing to
+drive the final seed after the sweep finished. Seed 40 is therefore slightly over-represented. The
+alternative was a cap below the sweep's length, which would have truncated a real run instead.
+
+**The first recording attempt was discarded.** `NumStepsToRecord` was 0, meaning record
+indefinitely, and `SweepRunner` finishing does not stop `DrivingAgent` from starting new episodes.
+The recorder ran for about four hours past the sweep and produced a 26.9 MB file dominated by one
+seed. It was deleted rather than trimmed, because a `.demo` is a protobuf stream and a partial
+delete would have been unauditable.
