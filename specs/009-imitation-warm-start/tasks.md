@@ -454,26 +454,89 @@ one known distortion is documented rather than discovered later.
     `3017764` fixed `CarAgent.IsSelf` and this policy can see its own barriers, which 007 and 008
     could not. `ppo_car_009_sighted_probe` is named as the like-for-like sighted baseline and
     1.4987 as the milestone figure, so the closeout cannot quietly pick whichever suits
-- [ ] T034 [US3] Launch `ppo_car_009_bc`, 5,000,000 steps, seed 42, detached as `quickstart.md`
+- [X] T034 [US3] Launch `ppo_car_009_bc`, 5,000,000 steps, seed 42, detached as `quickstart.md`
       shows. Feature 007 lost a run at 1,440,000 steps to a stopped background task and that is why
       the launch is detached rather than convenient
-- [ ] T035 [US3] Within the first few summaries, confirm `Losses/Pretraining Loss` is present and
+  - Launched 2026-08-30 via `Start-Process` exactly as `quickstart.md` gives it, `--seed=42`,
+    `--torch-device=cuda`, `--force`, logs to `results/rl/ppo_car_009_bc.log` and `.err.log`
+  - **The editor had `Demonstration.unity` open, not `Training.unity`.** Caught before Play by
+    asking the editor for its active scene rather than assuming the last session left it right.
+    Recording scenes carry `BehaviorType` Heuristic Only and a `DemonstrationRecorder`, so pressing
+    Play there would have connected nothing to the waiting trainer and, worse, could have started
+    writing a second demonstration
+  - `Training.unity` verified before Play: prefab `m_BehaviorType: 0` (Default), `m_Model:
+    {fileID: 0}` (no model assigned), twelve areas, and no `DemonstrationRecorder` or behaviour-type
+    override anywhere in the scene file
+  - The trainer echoes the parsed `behavioral_cloning` block into its own log at startup, so the
+    log itself records `demo_path`, `steps: 500000`, `strength: 0.5`, `samples_per_update: 2048`
+    and `num_epoch/batch_size: None`. The run's configuration is auditable from the run's own
+    artefacts and not only from the config file
+- [X] T035 [US3] Within the first few summaries, confirm `Losses/Pretraining Loss` is present and
       non-zero in TensorBoard. **If it is absent, the demonstration never loaded and the run is
       measuring feature 007 again.** Kill it, fix the path, relaunch. One glance, and it saves two
       hours
-- [ ] T036 [US3] Export the curve with `python -m python.rl.export_curves results/ppo_car_009_bc`
-- [ ] T037 [US3] Read **markers per episode** against **1.4987** and the **0.035** gate, with the
+  - **Passed.** `Losses/Pretraining Loss` is **1.250184 at step 30,000**, read out of the run's
+    event file with `EventAccumulator` rather than off a TensorBoard screenshot. `Losses/Policy
+    Loss` 0.020442 and `Losses/Value Loss` 0.094813 are alongside it
+  - **The check is only valid after the first PPO update, and this task as written could have
+    killed a healthy run.** At the step 10,000 summary the whole `Losses/` group was absent, not
+    just the pretraining tag: `buffer_size` is 20480, so no update had happened and no loss of any
+    kind had been written yet. Read at the first summary, "absent" means "too early"; read after
+    20,480 steps it means what the task intends
+  - The distinguishing test is therefore **`Losses/Pretraining Loss` absent while `Losses/Policy
+    Loss` is present**. That is a missing demonstration. All three absent together is a run that
+    has not updated yet. Recorded here because the next feature to reuse this check will meet the
+    same trap
+- [X] T036 [US3] Export the curve with `python -m python.rl.export_curves results/ppo_car_009_bc`
+  - Wrote `results/rl/curves/ppo_car_009_bc.csv`, 500 summary rows, step 10,000 to 5,000,000
+- [X] T037 [US3] Read **markers per episode** against **1.4987** and the **0.035** gate, with the
       gate's caveat named in the same breath rather than in a footnote
-- [ ] T038 [US3] Read the **end-reason mix whole**. A fall in the wall share that turns up as a rise
+  - **2.6321 against 1.4987, a rise of 1.1334 against a gate of 0.035.** Cleared by about thirty
+    times the gate's width, so the caveat's "near the gate earns a spread rather than a verdict"
+    branch does not apply and no three-run spread is owed
+  - Last ten summaries 3.5421 against feature 007's 2.7754, so the result holds whether the
+    comparison is whole-run or end-of-run. Reported both ways rather than whichever is larger
+- [X] T038 [US3] Read the **end-reason mix whole**. A fall in the wall share that turns up as a rise
       in the stall share is a traded failure, not a fixed one. Feature 008 fell into exactly this
       and named it, and this task exists so 009 does not repeat it
-- [ ] T039 [US3] Report cumulative reward against 007 and 008, and **back the comparability claim
+  - **Not a trade.** Against 007 the wall share fell 59.07 to 57.10 per cent and the stall share
+    *also* fell, 27.41 to 24.90. Track swaps flat at 13.46 against 13.11. What rose is the lap
+    share, 0.058 to 0.527 per cent, and the step-limit share
+  - **The one limit on that comparison, stated rather than buried.** Feature 007 ran with no
+    `MaxStep`, so it has no step-limit category at all, and 009's 4.37 per cent of episodes ending
+    on 008's 6000-step limit have no counterpart in 007's denominator. The shares are close but not
+    strictly like for like. The markers finding survives it in direction, because truncating long
+    episodes can only lower markers per episode
+- [X] T039 [US3] Report cumulative reward against 007 and 008, and **back the comparability claim
       with the diff** showing the reward table unchanged rather than asserting it. SC-011
-- [ ] T040 [US3] Report throughput against **903** and **927** steps per second. SC-009. The BC
+  - **+0.0887 over the last ten summaries, against -1.2612 for 007 and -6.6515 for 008.** First
+    non-negative cumulative reward in the project
+  - Comparability backed as the task demands: `git diff be2f9c4..HEAD --
+    unity/SelfDrivingSim/Assets/Scripts/` contains no reward-bearing line. Six files changed since
+    008 closed and none of them touch `AddReward`, `SetReward` or the reward table
+- [X] T040 [US3] Report throughput against **903** and **927** steps per second. SC-009. The BC
       module adds work per update and this is where that shows
-- [ ] T041 [P] [US3] Report `Losses/Pretraining Loss` over the run, not only at the start. It should
+  - **687 steps per second**, 5,000,000 steps in 7336.6 s. Steady-state 686 after dropping the
+    first five summaries, so startup is not what moved it
+  - **The fall splits in two and the probe is what makes that sayable.** The sighted probe has no
+    BC module and ran at **782**, so roughly half the drop from 903 and 927 predates this feature
+    and belongs to the sensing fix restoring ray hits that were previously discarded. BC accounts
+    for 782 to 687
+  - Both runs were on the same machine in different sessions, so this is a reading of two
+    measurements and not a controlled one. Said that way in `EXPERIMENTS.md` too
+- [X] T041 [P] [US3] Report `Losses/Pretraining Loss` over the run, not only at the start. It should
       fall and then stop being updated once the anneal reaches its floor, and a curve that does
       neither means the block is not behaving as R8 describes
+  - **The cut-off is exactly R8.** Present from the first PPO update at step 30,000, non-zero
+    through step **520,000**, and 0.0 at every summary from **540,000** to 5,000,000 without
+    exception. That is the module declining to update once the linear anneal drives its learning
+    rate under 1e-10. `steps: 500000` did what it was set to do
+  - **The fall is the half the task expected and did not get.** 1.2502 at 30,000 against 1.1186 at
+    520,000, about eleven per cent, wandering rather than descending. Recorded as a shallow drift
+    rather than written up as a fall
+  - A reading, offered as a reading: at `strength: 0.5` the policy is pulled by PPO and by the
+    expert at once and never sits still long enough to fit the demonstration closely. Whether a
+    closer fit would help is not answerable from one run and this feature does not ask it
 
 **Checkpoint**: the candidate is trained and read against the numbers fixed before it ran.
 

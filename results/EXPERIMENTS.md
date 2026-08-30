@@ -765,3 +765,94 @@ cumulative reward is measured in the same units as 007 and 008. The **agent is n
 `CarAgent.IsSelf` was fixed in `3017764` and this policy can see its own barriers, which 007 and 008
 could not. `ppo_car_009_sighted_probe` is the like-for-like sighted baseline at 1M steps and is the
 honest comparison for the early curve; 1.4987 remains the milestone figure and is read as one.
+
+### The warm start works: `ppo_car_009_bc`
+
+`ppo_car_009_bc`, 5,000,000 steps in 7336.6 s, seed 42, `config/ppo_car.yaml` with the
+`behavioral_cloning` block pre-registered above. Read against the values fixed before it ran.
+
+| whole run | 007 `progress` | 008 `budget` | 009 probe, no BC | **009 `bc`** |
+|---|---|---|---|---|
+| markers per episode | 1.4987 | 0.5297 | 0.2649 | **2.6321** |
+| markers per episode, last 10 summaries | 2.7754 | 0.7805 | 0.2247 | **3.5421** |
+| cumulative reward, last 10 | -1.2612 | -6.6515 | -4.4104 | **+0.0887** |
+| episodes ending in three completed laps | 8 | 0 | 0 | **77** |
+| laps in the last 10 summaries | 0 | 0 | 0 | **6** |
+| steps per second | 903 | 927 | 782 | **687** |
+
+**The 0.035 gate is cleared by a factor of about thirty.** Markers per episode is **2.6321** against
+**1.4987**, a rise of **1.1334**. The gate's caveat is named here rather than in a footnote:
+`results/rl/progress_spread.md` holds that clearing it is credible, that failing to clear it is
+weaker evidence than it looks, and that a result landing *near* it earns a fresh three-run spread
+rather than a verdict. This result does not land near it, so no spread is owed.
+
+**The end-reason mix, read whole, is not a traded failure.** Against feature 007: the wall share
+fell from 59.07 to **57.10 per cent** and the stall share *also* fell, from 27.41 to **24.90 per
+cent**. Feature 008's pattern, where the wall share fell only because the stall share rose, does not
+appear here. Track swaps are flat at 13.46 against 13.11 per cent. What rose is the step-limit share
+and the lap share.
+
+**One comparability limit on that mix.** Feature 007 ran with no `MaxStep` at all, so it has no
+step-limit category; 009 has 008's 6000. The 4.37 per cent of 009's episodes that end on the step
+limit have no counterpart in 007's denominator, so the shares are close but not strictly like for
+like. The direction of the markers finding survives it, because truncating long episodes can only
+lower markers per episode, not raise it.
+
+**The learning curve is monotone, which none of the previous three were.**
+
+| steps | laps completed | mean markers per episode |
+|---|---|---|
+| 0 - 500k | 0 | 0.3137 |
+| 500k - 1M | 0 | 0.7489 |
+| 1M - 1.5M | 0 | 1.7594 |
+| 1.5M - 2M | 1 | 2.5320 |
+| 2M - 2.5M | 9 | 3.4274 |
+| 2.5M - 3M | 5 | 2.9580 |
+| 3M - 3.5M | 10 | 3.2878 |
+| 3.5M - 4M | 14 | 3.6568 |
+| 4M - 4.5M | 17 | 3.8238 |
+| 4.5M - 5M | **21** | 3.7205 |
+
+Laps are still arriving at the end of the budget and markers are still near their maximum, so the
+run is not obviously converged. That is an observation, not a case for a longer budget.
+
+**The sensing fix is not what did this, and the probe is why that can be said rather than assumed.**
+At a matched 1,000,000 steps, with identical sensing and identical config apart from the BC block:
+
+| at 1M steps | 009 probe, no BC | 009 `bc` |
+|---|---|---|
+| markers per episode, whole | 0.2649 | **0.5470** |
+| markers per episode, last 10 | 0.2247 | **1.0571** |
+| cumulative reward, last 10 | -4.4104 | **-3.7469** |
+
+The sighted probe was *worse* than blind feature 008 at the same point. The warm start is the
+difference.
+
+**Cumulative reward is positive for the first time in this project**, +0.0887 over the last ten
+summaries against -1.2612 for 007 and -6.6515 for 008. The comparison is backed rather than
+asserted: `git diff be2f9c4..HEAD -- unity/SelfDrivingSim/Assets/Scripts/` contains **no
+reward-bearing line**, so the reward table that produced these three numbers is the same table
+(SC-011).
+
+**Throughput is 687 steps per second against 903 and 927** (SC-009), and the loss splits in two.
+The sighted probe, which has no BC module at all, ran at **782**, so roughly half the fall predates
+this feature and belongs to the sensing fix restoring ray hits that were previously discarded. The
+BC module accounts for the rest, 782 to 687. Both runs were on the same machine but in different
+sessions, so this attribution is a reading of two measurements rather than a controlled one.
+
+**`Losses/Pretraining Loss` behaves as R8 describes, in the part that matters** (T041). It is
+present from the first PPO update at step 30,000, non-zero through step **520,000**, and exactly
+**0.0 from step 540,000 to the end** without exception, which is the module declining to update once
+the linear anneal drives its learning rate below 1e-10. `steps: 500000` did what it was set to do.
+
+**What it does not do is fall much.** 1.2502 at 30,000 against 1.1186 at 520,000, about eleven per
+cent, wandering rather than descending. The task expected a fall and then a cut-off; it got a
+shallow drift and then a cut-off. A reading, offered as one: the policy is being pulled by PPO and
+by the expert at the same time, and at `strength: 0.5` over 500,000 steps it never sits still long
+enough to fit the demonstration closely. Whether a deeper fit would help is not answerable from this
+run and is not asked of it.
+
+**What this does not establish.** 77 lap endings out of 14,607 episodes is **0.53 per cent**, on
+training tracks the demonstration was recorded from. The milestone bar is 80 per cent on the ten
+held-out seeds and this entry says nothing about it. One seed, one run, no spread. The held-out
+evaluation in Phase 6 is the number that decides M3, and it has not been measured yet.
