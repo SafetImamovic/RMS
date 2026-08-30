@@ -396,21 +396,64 @@ one known distortion is documented rather than discovered later.
 
 ## Phase 5: The candidate run (US3)
 
-- [ ] T030 [US3] Add the `behavioral_cloning` block to `config/ppo_car.yaml` under
+- [X] T030 [US3] Add the `behavioral_cloning` block to `config/ppo_car.yaml` under
       `behaviors.CarDriver`. `demo_path` to the committed file, `strength: 0.5`, `steps: 500000`,
       `samples_per_update: 2048`, `num_epoch` and `batch_size` left to inherit. **Nothing else in
       the file changes**, and the diff is the proof of that
-- [ ] T031 [US3] Comment the block in the file's own register, saying why each value is what it is.
+  - Added 2026-08-30, after `reward_signals` and before `max_steps`. `git diff --stat` reports
+    **47 insertions and 0 deletions**, which is the proof the task asked for rather than a claim
+    that nothing moved
+  - **Parsed rather than eyeballed.** `RunOptions.from_dict` on the committed file, with
+    `register_trainer_plugins()` called first, returns `steps 500000`, `strength 0.5`,
+    `samples_per_update 2048`, `num_epoch None`, `batch_size None`, and `demo_path` resolving to an
+    existing file from the repository root. `max_steps` is still 5,000,000, `hyperparameters` are
+    still 2048 and 3, and `extrinsic` is still `(0.99, 1.0)`
+  - `num_epoch: None` and `batch_size: None` are the inheritance the task asked for and not
+    omissions: `module.py:47-50` falls back to the trainer's own `batch_size` and `num_epoch`, so
+    the BC update runs at 2048 and 3 epochs
+- [X] T031 [US3] Comment the block in the file's own register, saying why each value is what it is.
       `steps: 500000` is what makes this a **warm start** rather than an imitation run: research R8
       found the schedule is `LINEAR` only above zero, so the default `steps: 0` would apply the loss
       at full strength for all 5,000,000 steps. `samples_per_update: 2048` bounds the per-update
       cost, which at the default 0 iterates the whole buffer
-- [ ] T032 [US3] Confirm FR-010 by reading the prefab rather than by assuming: `wallContactBudget`
+  - The comment also records **why `demo_path` reads `heuristictrain34` and not
+    `heuristic_train34`**: `DemonstrationRecorder.cs:137` strips every character outside
+    `[a-zA-Z0-9 -]` from `DemonstrationName`. It belongs in the config because a path that does not
+    resolve fails silently, and the next reader should not have to rediscover it
+  - The `samples_per_update` comment carries the arithmetic rather than the assertion: at about
+    34,000 recorded steps and `n_sequences` 2048, `possible_batches` is 16, and the default 0 would
+    run all 16 per epoch, three epochs deep, on every PPO update. At 2048, `max_batches` is 1
+- [X] T032 [US3] Confirm FR-010 by reading the prefab rather than by assuming: `wallContactBudget`
       is **0** and `MaxStep` is **6000**, so the comparison is feature 007's terminal with feature
       008's step limit
-- [ ] T033 [US3] Write the `results/EXPERIMENTS.md` row **before launching**, naming the one change
+  - `MaxStep: 6000` at `TrainingArea.prefab:408`, read directly. `DecisionPeriod: 4` and
+    `TakeActionsBetweenDecisions: 1` at lines 428 and 430, unchanged, which is also the cadence the
+    demonstration was recorded at
+  - **`wallContactBudget` is not in the prefab at all**, and reading rather than assuming is what
+    turned that up. The effective value is **0**, but it comes from the initialiser at
+    `DrivingAgent.cs:101` and not from a serialized field. `git log -S` over `Assets/` finds one
+    commit touching the name, `2008996`, and none touching the prefab, so the field has never been
+    written into prefab YAML
+  - **Consequence, and it is not cosmetic.** Feature 008 varied the budget in source rather than in
+    the inspector, which is why `be2f9c4` could put it back to zero with a code change. The value is
+    reproducible from a clean clone, but it is invisible to anyone who reads only the prefab. Named
+    here so 009's closeout does not describe a scene value that does not exist
+  - `grep -rn wallContactBudget unity/SelfDrivingSim/Assets/` returns those two source lines and
+    nothing else: no scene, no prefab and no variant overrides it
+- [X] T033 [US3] Write the `results/EXPERIMENTS.md` row **before launching**, naming the one change
       and the three chosen values. FR-008, and ordering rule 4: a hyperparameter written down after
       the result is a tuned hyperparameter
+  - Written 2026-08-30 as "Pre-registered: the imitation warm start", and **committed before the
+    trainer was launched** so the ordering is in the history rather than in a claim about it
+  - Carries the three values in a table with a reason each, the unchanged hyperparameters read back
+    through `RunOptions.from_dict`, the environment read off the prefab, and the five things that
+    will be read fixed in advance
+  - **One comparability limit is stated in the row before the numbers exist.** The reward table is
+    untouched and the diff over `Assets/Scripts/` since `be2f9c4` contains no reward-bearing line,
+    so cumulative reward is in the same units as 007 and 008. The agent is not the same agent:
+    `3017764` fixed `CarAgent.IsSelf` and this policy can see its own barriers, which 007 and 008
+    could not. `ppo_car_009_sighted_probe` is named as the like-for-like sighted baseline and
+    1.4987 as the milestone figure, so the closeout cannot quietly pick whichever suits
 - [ ] T034 [US3] Launch `ppo_car_009_bc`, 5,000,000 steps, seed 42, detached as `quickstart.md`
       shows. Feature 007 lost a run at 1,440,000 steps to a stopped background task and that is why
       the launch is detached rather than convenient

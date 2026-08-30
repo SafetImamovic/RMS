@@ -710,3 +710,58 @@ indefinitely, and `SweepRunner` finishing does not stop `DrivingAgent` from star
 The recorder ran for about four hours past the sweep and produced a 26.9 MB file dominated by one
 seed. It was deleted rather than trimmed, because a `.demo` is a protobuf stream and a partial
 delete would have been unauditable.
+
+### Pre-registered: the imitation warm start
+
+**Written before launch, 2026-08-30.** Run id `ppo_car_009_bc`, seed 42, `config/ppo_car.yaml`,
+5,000,000 steps, `--torch-device=cuda`.
+
+**The one change is a `behavioral_cloning` block.** `git diff --stat config/ppo_car.yaml` reports 47
+insertions and 0 deletions, so no hyperparameter above it moved: `batch_size` 2048, `buffer_size`
+20480, `learning_rate` 3.0e-4 linear, `beta` 5.0e-3, `epsilon` 0.2, `lambd` 0.95, `num_epoch` 3,
+`hidden_units` 256, `num_layers` 2, `max_steps` 5,000,000, `time_horizon` 128, and `extrinsic` at
+gamma 0.99 strength 1.0. Read back through `RunOptions.from_dict` rather than by eye.
+
+**The three chosen values, and why each is what it is.** All three were fixed before the run and
+none may be revisited after it (FR-008, ordering rule 4).
+
+| value | chosen | why |
+|---|---|---|
+| `steps` | **500,000** | The anneal schedule is `LINEAR` only above zero (research R8). The default 0 would apply the imitation loss at full strength for all 5M steps, which measures how well PPO copies the scripted driver. At 500,000 the loss decays over the first tenth of the budget and the rest is ordinary RL. |
+| `strength` | **0.5** | Half weight. The demonstration drives 34 of 34 training laps but the scripted driver is not the policy M3 is looking for, so the term guides the early policy rather than defining it. |
+| `samples_per_update` | **2048** | The default 0 iterates the whole demonstration buffer per update: 16 minibatches per epoch, three epochs, every PPO update. At 2048 it is one. SC-009 compares throughput against 903 and 927 steps/s and a sixteenfold imitation cost would swamp that. |
+
+`num_epoch` and `batch_size` are left unset and inherit 3 and 2048 from the trainer, so the BC
+update rides the PPO update's shape rather than adding two more chosen numbers.
+
+**The demonstration** is `heuristictrain34.demo`, the 34 training seeds only, 34,000 info/action
+pairs at 12.5 Hz, committed through LFS and described in the section above. The held-out seeds are
+absent by construction and `python/tests/test_demo_seeds.py` asserts it.
+
+**The environment is feature 007's terminal with feature 008's step limit**, confirmed by reading
+rather than assuming: `MaxStep: 6000` at `TrainingArea.prefab:408`, and `wallContactBudget` **0**
+from the initialiser at `DrivingAgent.cs:101`. The field is not serialized into the prefab at all,
+so the budget is a source value rather than a scene value; that is how feature 008 varied it and it
+is recorded here because reading only the prefab would not show it.
+
+**What will be read, fixed now.**
+
+- **Markers per episode against 1.4987**, feature 007's figure, and against the **0.035** gate. The
+  gate's caveat travels with it in the same breath: `results/rl/progress_spread.md` holds that
+  clearing it is credible, that failing to clear it is weaker evidence than it looks, and that a
+  result landing near it earns a fresh three-run spread rather than a verdict.
+- **The end-reason mix whole.** A fall in the wall share appearing as a rise in the stall share is a
+  traded failure, not a fixed one. Feature 008 fell into exactly that and named it.
+- **Cumulative reward against 007 and 008**, with the diff backing the comparability claim (SC-011).
+- **Throughput against 903 and 927 steps per second** (SC-009).
+- **`Losses/Pretraining Loss` over the whole run**, not only at the start. It should fall and then
+  stop updating once the anneal reaches its floor. Its **absence in the first summaries means the
+  demonstration never loaded**, in which case the run is measuring feature 007 again and is killed
+  rather than read.
+
+**One comparability limit, stated before the numbers rather than after them.** The reward table is
+untouched and the diff over `Assets/Scripts/` since `be2f9c4` contains no reward-bearing line, so
+cumulative reward is measured in the same units as 007 and 008. The **agent is not the same agent**:
+`CarAgent.IsSelf` was fixed in `3017764` and this policy can see its own barriers, which 007 and 008
+could not. `ppo_car_009_sighted_probe` is the like-for-like sighted baseline at 1M steps and is the
+honest comparison for the early curve; 1.4987 remains the milestone figure and is read as one.

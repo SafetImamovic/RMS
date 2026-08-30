@@ -40,6 +40,53 @@ behaviors:
         gamma: 0.99
         strength: 1.0
 
+    # Behavioural cloning, feature 009. This block is the whole of the feature's change to the
+    # trainer: nothing above it moves, so cumulative reward stays comparable to features 007 and
+    # 008 (SC-011, and the diff is the proof). BC is an auxiliary loss on the policy rather than a
+    # reward signal, which is why GAIL was ruled out in the spec: a learned reward would change the
+    # table DESIGN 4.5 pins and make every M3 number incomparable.
+    behavioral_cloning:
+      # Relative to the repository root, which is where mlagents-learn is run (ENVIRONMENT.md).
+      #
+      # The name is the one ML-Agents wrote and not the one the scene asked for. The recorder
+      # strips every character outside [a-zA-Z0-9 -] from DemonstrationName
+      # (DemonstrationRecorder.cs:137), so `heuristic_train34` was written as
+      # `heuristictrain34.demo`. A path that does not resolve is silent: the run trains without an
+      # imitation loss, which is why T035 checks for Losses/Pretraining Loss in the first summaries.
+      #
+      # The file is 34 training seeds of HeuristicDriver driving through DrivingAgent, sampled at
+      # 12.5 Hz because the recorder writes on decision requests and DecisionPeriod is 4
+      # (research R2). Committed through LFS; results/rl/demo_seeds.json lists the seeds and
+      # python/tests/test_demo_seeds.py asserts they are training seeds only (FR-003).
+      demo_path: unity/SelfDrivingSim/Assets/Demonstrations/heuristictrain34.demo
+
+      # This is the value that makes the run a warm start rather than an imitation run, and the
+      # trainer's default would not. At the default 0 the anneal schedule is CONSTANT rather than
+      # LINEAR (research R8, BCModule.__init__), so the imitation loss would be applied at full
+      # strength for all 5,000,000 steps and the run would measure how closely PPO can copy the
+      # scripted driver. At 500,000 the loss decays to nothing over the first tenth of the budget
+      # and the remaining 4.5M steps are ordinary reinforcement learning from a policy that has
+      # already been shown what driving looks like.
+      steps: 500000
+
+      # Half weight. The demonstration completes 34 of 34 training laps, but the scripted driver is
+      # not the policy this milestone is looking for, so the imitation term is set to guide the
+      # early policy rather than to define it. Chosen before the run and not revisited after it
+      # (FR-008).
+      strength: 0.5
+
+      # Bounds the cost of each BC update, and SC-009 is the reason it is set at all. The default 0
+      # makes max_batches 0, and the module then iterates the whole demonstration buffer on every
+      # PPO update: about 34,000 recorded steps at a 2048 batch is 16 minibatches per epoch, three
+      # epochs deep. At 2048 it is one minibatch per epoch. Throughput is reported against 903 and
+      # 927 steps per second and a sixteenfold imitation cost would swamp that comparison.
+      samples_per_update: 2048
+
+      # num_epoch and batch_size are absent on purpose. Both default to None, and the optimiser
+      # then takes them from the hyperparameters above (module.py:47-50), so the BC update runs at
+      # the same batch of 2048 and the same 3 epochs as the PPO update it rides along with. Two
+      # fewer numbers chosen without evidence.
+
     # Set from the measured throughput (T030, T031), not from the design's old 2M to 5M range.
     #
     # ppo_car_smoke ran 500,000 steps in 814.9 s with twelve areas, which is 660 steps/s in steady
