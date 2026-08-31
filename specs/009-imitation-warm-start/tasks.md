@@ -544,17 +544,17 @@ one known distortion is documented rather than discovered later.
 
 ## Phase 6: The held-out evaluation (US4)
 
-- [ ] T042 [US4] Export the `.onnx` and commit it through LFS with the run id in its name, as
+- [X] T042 [US4] Export the `.onnx` and commit it through LFS with the run id in its name, as
       features 006 to 008 did
-- [ ] T043 [US4] Run the standard sweep on the ten held-out seeds, **deterministic** inference
-- [ ] T044 [US4] Run it again with **sampling** inference. The two modes are reported separately and
+- [X] T043 [US4] Run the standard sweep on the ten held-out seeds, **deterministic** inference
+- [X] T044 [US4] Run it again with **sampling** inference. The two modes are reported separately and
       **never averaged**, which is US4's first acceptance criterion
-- [ ] T045 [US4] Record lap completion per seed in both modes. State `lapsToComplete: 3` wherever a
+- [X] T045 [US4] Record lap completion per seed in both modes. State `lapsToComplete: 3` wherever a
       lap count appears, because a recorded lap is three laps and the sentence has to say so
-- [ ] T046 [US4] Record the **80 per cent bar met or not met with its number**. SC-008, and it is
+- [X] T046 [US4] Record the **80 per cent bar met or not met with its number**. SC-008, and it is
       feature 006's SC-002 restated unchanged
-- [ ] T047 [P] [US4] Record markers on held-out track against feature 007's **6.20 of 24**
-- [ ] T048 [P] [US4] Write the held-out result into `results/EXPERIMENTS.md` in the same session as
+- [X] T047 [P] [US4] Record markers on held-out track against feature 007's **6.20 of 24**
+- [X] T048 [P] [US4] Write the held-out result into `results/EXPERIMENTS.md` in the same session as
       the run, not later
 
 **Checkpoint**: M3's milestone criterion is measured and recorded, met or not.

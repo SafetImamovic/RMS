@@ -856,3 +856,68 @@ run and is not asked of it.
 training tracks the demonstration was recorded from. The milestone bar is 80 per cent on the ten
 held-out seeds and this entry says nothing about it. One seed, one run, no spread. The held-out
 evaluation in Phase 6 is the number that decides M3, and it has not been measured yet.
+
+### The held-out column: M3's bar is met, in both inference modes
+
+`ppo_car_009_bc-5000101.onnx`, the final checkpoint of the run above, on the ten held-out seeds in
+`Assets/Scenes/Evaluation.unity`. `lapsToComplete` is **3**, so every completed row below is three
+laps, and `checkpoints_awarded` of 72 is 24 markers taken three times. The two inference modes are
+reported separately and are never averaged.
+
+| held-out, 10 seeds | 006 `spread_a` | 007 `progress` | **009 `bc`** |
+|---|---|---|---|
+| laps, deterministic | 0/10 | 0/10 | **10/10** |
+| laps, sampling | 0/10 | 0/10 | **9/10** |
+| markers, deterministic | 0.00 | 6.20 of 24 | **24.0 of 24** |
+| markers, sampling | 0.00 | 4.60 of 24 | **22.3 of 24** |
+| wall contacts, deterministic | 0 | 10 | **0** |
+| wall contacts, sampling | 0 | 10 | **1** |
+| end reason, deterministic | Stalled x10 | WallContact x10 | **LapsCompleted x10** |
+| end reason, sampling | Stalled x10 | WallContact x10 | **LapsCompleted x9, WallContact x1** |
+
+**SC-007 is met and SC-008 is met.** SC-007 asked for at least one completed lap on held-out track
+in either mode; there are nineteen across the two. SC-008 is the milestone bar of 80 per cent of
+seeds completing a lap, restated unchanged from feature 006's SC-002 and failed three times before
+this. It stands at **100 per cent deterministic** and **90 per cent sampling**. Both clear it.
+
+The markers rows are capped at 24 so they can be read against feature 007's column, which was
+measured on policies that never finished a lap. Uncapped, the deterministic mean is 72.0 of 72 and
+the sampling mean is 65.5.
+
+**Per seed.** Deterministic: 72, 72, 72, 72, 72, 72, 72, 72, 72, 72. Sampling: 72, 72, 72, 72, 72,
+72, 72, 72, **7**, 72. The single sampling failure is seed **1009**, a wall contact at 7 markers
+after 7.16 s, which is the same first-quarter crash that was feature 007's only outcome.
+
+**Sampling is worse than deterministic, and the gap is now small.** Nine of ten against ten of ten,
+22.3 markers against 24.0. Feature 007 measured the same direction at 4.60 against 6.20. What has
+changed is the size: a policy that is doing the task well loses one seed to injected noise where a
+policy doing it badly lost a quarter of its markers.
+
+**Where the noise goes is the steering, and the lap survives it.** |dsteer| P95 is **0.2870**
+deterministic against **0.8277** sampling, and sign changes are **0.3941/s** against **4.2592/s**,
+a factor of 10.8. The sampled policy saws at the wheel roughly eleven times as often and still
+completes three laps on nine of ten tracks. The deterministic figure of 0.3941/s is the number to
+carry into M5's steering comparison, not the sampled one.
+
+**The policy is faster than the expert it was warm started from.** Three laps in **62.425 s** mean
+deterministic, 20.808 s per lap, against the scripted driver's **26.266 s** per lap in
+`results/rl/demo_cadence.md`. That is about 9.6 m/s against 7.6 m/s, near enough 26 per cent
+quicker. Behavioural cloning seeded the policy and PPO then optimised past the demonstrator, which
+is the outcome the auxiliary-loss form of BC is supposed to allow and the pure-imitation form is
+not. The comparison is across seed sets, expert on the 34 training seeds and policy on the ten
+held-out ones, and it survives that only because the generator produces near constant length
+tracks: the ten held-out tracks measure **198.5 m to 201.6 m**, a spread of 1.6 per cent.
+
+**That constant length is also why the lap times look suspiciously alike** and are not a defect.
+Ten different tracks, ten times within 0.9 s of each other, is what a constant speed policy does on
+loops of near identical circumference. It was checked before the result was believed.
+
+**Two comparability limits, both stated because neither changes the verdict.** Feature 007's
+held-out column was measured before the ray self-filter fix of `3017764`, so its 6.20 was produced
+by an agent that could not see its own track; the honest reading of the 007 column is a lower bound
+on what that configuration could have done. And this evaluation runs with `MaxStep = 6000`, which
+007's did not have; at 62 s of three-lap driving against a 480 s limit it was never close to firing.
+
+**What this does not establish.** One training seed, one run, one checkpoint, ten evaluation tracks
+from one generator. It says M3's bar is met by this policy on this track distribution. It does not
+say the reward table was ever the problem, and the M3 closeout is where that is argued.
