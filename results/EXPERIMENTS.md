@@ -921,3 +921,39 @@ on what that configuration could have done. And this evaluation runs with `MaxSt
 **What this does not establish.** One training seed, one run, one checkpoint, ten evaluation tracks
 from one generator. It says M3's bar is met by this policy on this track distribution. It does not
 say the reward table was ever the problem, and the M3 closeout is where that is argued.
+
+### Pre-registered: is the held-out pass a property of the policy or of seed 42?
+
+Written **before** either run is launched, on 2026-08-31, so the reading cannot be chosen after the
+numbers are in.
+
+M3's bar is met above on **one training seed**. `results/rl/progress_spread.md` measured the
+run-to-run noise of this setup and its whole point is that a single run is a weak claim. The bar is
+a milestone and the thesis will be defended on it, so it gets a spread.
+
+**Two more runs: `ppo_car_009_bc_s7` and `ppo_car_009_bc_s13`.** 5,000,000 steps each,
+`config/ppo_car.yaml` byte for byte as it stands at commit `5784a8d`, `behavioral_cloning` block
+included, the same `heuristictrain34.demo`. **`--seed` is the only thing that differs**, at 7 and
+13 against 42. Same machine, same scene, same reward table.
+
+**What counts as agreement.** Each run's final checkpoint is evaluated on the ten held-out seeds in
+**deterministic** inference, and the criterion is the milestone's own: **at least 80 per cent of
+seeds completing three laps**. Three of three runs clearing it says M3's pass is a property of the
+method. Sampling inference is run and reported for each, but the milestone is read off
+deterministic, as it was above.
+
+**What counts as disagreement, and it is written now rather than argued later.** If any run lands
+below 80 per cent, the honest report is a **range across seeds**, not a mean and not the best of
+three, and the M3 closeout says the method clears the bar on some seeds and not others. One run out
+of three failing does not retract the pass and does not confirm it; it changes the claim from "the
+method works" to "the method works often", and that sentence goes into `DESIGN.md` in those words.
+
+**Also recorded per run, for comparison with the seed 42 column**: markers per episode over the
+whole run and over the last ten summaries, cumulative reward over the last ten, the count of
+three-lap episodes, and the end-reason mix. These are the training-side numbers, and they are
+secondary. The held-out percentage is what this spread exists to test.
+
+**What this spread does not do.** Three seeds is not a distribution, the evaluation tracks are the
+same ten in every run, and no run uses a different generator. It answers whether seed 42 was lucky.
+It does not answer whether the ten held-out tracks are representative, which is a separate question
+and belongs to M5.
