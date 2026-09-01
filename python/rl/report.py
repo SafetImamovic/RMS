@@ -80,6 +80,9 @@ class DriverColumn:
     # 0 of 10 laps AND 0.00 markers, and this feature's reads 0 of 10 laps and 6.20 markers, which
     # is the entire difference between the two runs and is invisible without this field.
     markers_mean: float
+
+    # Markers in a WHOLE recorded run, being one lap's markers times `laps_to_complete`. Not one
+    # lap's worth: a run that finishes is three laps in `Evaluation.unity` (feature 009).
     markers_possible: int
     end_reasons: dict
 
@@ -91,6 +94,12 @@ class DriverColumn:
     # lattice, and a DistributionSummary cannot be un-summarised back into them.
     steering_values: np.ndarray
     abs_delta_values: np.ndarray
+
+    # How many laps a recorded run is. Carried so a reader of the column knows whether "24 markers"
+    # meant a whole run or a third of one, which is the difference between M3's columns and M5's.
+    # Last, and defaulted, because every field above it is required and a dataclass cannot put a
+    # defaulted field before an undefaulted one.
+    laps_to_complete: int = 1
 
     @property
     def lap_rate(self) -> float:
@@ -183,9 +192,35 @@ def build_column(name: str, runs_path: Path, traces_dir: Path) -> DriverColumn:
     # features and the older files were not rewritten.
     completed = runs["completed_lap"].astype(str).str.lower().isin(("true", "1"))
 
-    possible = 0
+    # `checkpoints_total` is the markers in ONE lap. A recorded run is `lapsToComplete` laps, which
+    # is 3 in `Evaluation.unity`, so a finished run awards 72 against a total of 24 and the naive
+    # denominator prints "72.00 of 24 (300.0% of a lap)". Harmless while nothing finished a lap,
+    # which is every run of M3; wrong on the page as soon as one does.
+    #
+    # The lap count is a scene setting and is not in the run record, so it is INFERRED from the
+    # finished runs rather than passed in: a completed run awarded exactly `total * laps`. Every
+    # completed run must agree, and a disagreement raises instead of picking one, because two lap
+    # counts in one sweep means the rows did not come from one configuration.
+    #
+    # With nothing completed there is nothing to infer from, and the denominator falls back to a
+    # single lap. That is what M3's columns were read as, so their published figures are unchanged.
+    per_lap = 0
     if "checkpoints_total" in runs and len(runs):
-        possible = int(runs["checkpoints_total"].iloc[0])
+        per_lap = int(runs["checkpoints_total"].iloc[0])
+
+    laps_to_complete = 1
+    if per_lap and completed.any() and "checkpoints_awarded" in runs:
+        ratios = {
+            int(round(float(a) / per_lap)) for a in runs.loc[completed, "checkpoints_awarded"]
+        }
+        if len(ratios) > 1:
+            raise ValueError(
+                f"{name}: completed runs imply more than one lap count {sorted(ratios)}; "
+                "the rows are not from one configuration"
+            )
+        laps_to_complete = max(ratios.pop(), 1)
+
+    possible = per_lap * laps_to_complete
 
     return DriverColumn(
         name=name,
@@ -195,6 +230,7 @@ def build_column(name: str, runs_path: Path, traces_dir: Path) -> DriverColumn:
         abs_delta_steering=describe(delta, "abs_delta_steering"),
         markers_mean=float(runs["checkpoints_awarded"].mean()) if "checkpoints_awarded" in runs else float("nan"),
         markers_possible=possible,
+        laps_to_complete=laps_to_complete,
         end_reasons=dict(runs["end_reason"].value_counts()) if "end_reason" in runs else {},
         wall_contacts_mean=float(runs["wall_contacts"].mean()) if "wall_contacts" in runs else float("nan"),
         steering_values=steer,
@@ -251,7 +287,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"laps completed    {column.laps_completed} of {column.runs}   "
           f"(scripted: {SCRIPTED_LAPS})")
     print(f"markers           {column.markers_mean:.2f} of {column.markers_possible}   "
-          f"({100 * column.marker_rate:.1f}% of a lap)")
+          f"({100 * column.marker_rate:.1f}% of "
+          f"{'a lap' if column.laps_to_complete == 1 else f'{column.laps_to_complete} laps'})")
     print(f"end reasons       {column.end_reasons}")
     print(f"wall contacts     {column.wall_contacts_mean:.2f} per run")
     print(f"steering          {_fmt(column.steering)}")
@@ -271,14 +308,23 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"      It reached no marker at all, so the policy never made progress rather "
                   f"than failing late.")
+    # Written when the learned column always lost, and it could only report a loss. Feature 009's
+    # policy is the steadier of the two, 0.03208 against 0.04994, so the comparison now reports
+    # either direction. The caveat below travels with both, because it is what feature 006 learned:
+    # steering variance alone cannot tell a driver that laps from one that never moves.
     variance = column.steering.variance
     if variance > SCRIPTED_STEER_VARIANCE:
-        print(f"LOSS  steering variance: {variance:.5f} against the scripted driver's "
-              f"{SCRIPTED_STEER_VARIANCE:.5f}, so the learned steering is the less settled of "
+        print(f"steering variance {variance:.5f} against the scripted driver's "
+              f"{SCRIPTED_STEER_VARIANCE:.5f}: the learned steering is the LESS settled of "
+              f"the two.")
+    elif variance < SCRIPTED_STEER_VARIANCE:
+        print(f"steering variance {variance:.5f} against the scripted driver's "
+              f"{SCRIPTED_STEER_VARIANCE:.5f}: the learned steering is the MORE settled of "
               f"the two.")
     else:
-        print(f"steering variance {variance:.5f} against the scripted driver's "
-              f"{SCRIPTED_STEER_VARIANCE:.5f}.")
+        print(f"steering variance {variance:.5f}, equal to the scripted driver's.")
+    print("      Read with the lap count, never alone: a driver that never moves also has low "
+          "steering variance (feature 006, rl_steering.md).")
 
     if args.dataset is not None:
         human = human_steering(args.dataset)

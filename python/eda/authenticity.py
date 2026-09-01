@@ -430,6 +430,115 @@ def chi2_homogeneity(
 
 
 # =======================================================================================
+# M5 - the two-sample test DESIGN 7.1 asks for
+# =======================================================================================
+@dataclass(frozen=True)
+class KsTwoSampleResult:
+    """A two-sample Kolmogorov-Smirnov comparison of two drivers.
+
+    Deliberately NOT a `HypothesisTestResult`. That type carries `dof` and
+    `n_categories_pooled`, which are properties of a binned chi-square and have no meaning
+    here: KS works on the empirical distribution functions and bins nothing. Reusing the
+    type would have forced two fields to hold placeholder values, and a placeholder in a
+    reported statistic is how a reader is misled.
+    """
+
+    test_id: str
+    null_hypothesis: str
+    scope: str
+    statistic: float
+    p_value: float
+    alpha: float
+    reject_null: bool
+    n_a: int
+    n_b: int
+    effect_size: float
+    effect_is_material: bool
+    interpretation: str
+
+
+# Below this the two empirical distributions are within a tenth of each other everywhere, which
+# on these sample sizes is a rejection that means nothing in practice.
+#
+# The KS statistic IS the effect size: it is the largest vertical gap between the two empirical
+# CDFs, on a scale of 0 to 1, independent of sample size. That is exactly why it is reported
+# beside the p-value rather than instead of it. At the sizes M5 compares, roughly 31,000 agent
+# samples against 32,000 human ones, a p-value is close to a formality: KS will reject a gap far
+# too small to matter. This threshold is what separates "different" from "different enough".
+_MATERIAL_KS_D = 0.10
+
+
+def ks_two_sample(
+    sample_a,
+    sample_b,
+    alpha: float = config.ALPHA,
+    scope: str = "",
+    label_a: str = "A",
+    label_b: str = "B",
+) -> KsTwoSampleResult:
+    """H0: both samples are drawn from one continuous distribution.
+
+    **Why this exists alongside `chi2_homogeneity` rather than replacing it.** The chi-square
+    asks whether two drivers differ over the steering lattice, which is the right question for
+    a quantity the human recorded on 41 discrete levels. KS asks the same question of a
+    quantity that is genuinely continuous, which is what `|delta steering|` is. `DESIGN.md` 7.1
+    names both, and they are not interchangeable.
+
+    **The tie caveat, stated because it is not visible in the number.** KS assumes continuous
+    data, and quantised input produces ties. SciPy handles ties, but on a heavily tied sample
+    the p-value is conservative. Applied to `|delta steering|`, which is a difference of
+    continuous policy outputs, ties are rare. Applied to raw human steering, which lives on the
+    0.05 lattice, they are not, and the chi-square is the better instrument there.
+    """
+    a = np.asarray(sample_a, dtype=float)
+    b = np.asarray(sample_b, dtype=float)
+    a = a[np.isfinite(a)]
+    b = b[np.isfinite(b)]
+
+    if a.size == 0 or b.size == 0:
+        raise ValueError(f"ks_two_sample needs two non-empty samples, got {a.size} and {b.size}")
+
+    result = sp_stats.ks_2samp(a, b)
+    statistic = float(result.statistic)
+    p_value = float(result.pvalue)
+    reject = bool(p_value < alpha)
+    material = bool(statistic >= _MATERIAL_KS_D)
+
+    if reject and material:
+        meaning = (
+            f"ODBAČENO i razlika je materijalna: najveći razmak između empirijskih raspodjela "
+            f"je {statistic:.4f}, dakle {label_a} i {label_b} se stvarno različito ponašaju na "
+            f"ovoj osi."
+        )
+    elif reject:
+        meaning = (
+            f"Odbačeno, ali razlika NIJE materijalna: razmak je samo {statistic:.4f} na "
+            f"{a.size} naspram {b.size} uzoraka. Na ovolikim uzorcima test odbacuje i razlike "
+            f"koje se ne vide. Statistička značajnost bez veličine efekta nije nalaz."
+        )
+    else:
+        meaning = (
+            f"NIJE odbačeno: {label_a} i {label_b} su na ovoj osi statistički nerazlučivi, "
+            f"razmak {statistic:.4f}."
+        )
+
+    return KsTwoSampleResult(
+        test_id="M5_ks_two_sample",
+        null_hypothesis=f"{label_a} i {label_b} vuku vrijednosti iz jedne te iste raspodjele",
+        scope=scope,
+        statistic=statistic,
+        p_value=p_value,
+        alpha=alpha,
+        reject_null=reject,
+        n_a=int(a.size),
+        n_b=int(b.size),
+        effect_size=statistic,
+        effect_is_material=material,
+        interpretation=meaning,
+    )
+
+
+# =======================================================================================
 # T023 - verdicts
 # =======================================================================================
 # Above this ratio a left/right imbalance is a shape of the track, not a rounding artefact.

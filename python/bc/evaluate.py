@@ -30,7 +30,7 @@ import numpy as np
 
 from python.bc import config, dataset, model, split, train
 from python.eda import config as eda_config
-from python.eda import loader, stats
+from python.eda import lattice, loader, stats
 from python.eda.loader import TrackDataset
 from python.eda.stats import DistributionSummary
 
@@ -39,16 +39,12 @@ class EvaluationError(Exception):
     """Raised when a comparison would report a number that does not mean what it says."""
 
 
+# The lattice arithmetic moved to `python.eda.lattice` for feature 010, because M5 needs it in an
+# environment without torch and this module cannot be imported there. These four names stay exactly
+# as they were so M4's callers and tests are unchanged; each one now delegates.
 def lattice_levels() -> np.ndarray:
-    """The 41 steering values the human recording actually contains.
-
-    Derived from the step and the limits rather than listed, and checked against feature 002's
-    measurement in the tests.
-    """
-    low, high = config.STEERING_LIMITS
-    step = config.STEERING_LATTICE_STEP
-    count = int(round((high - low) / step)) + 1
-    return np.round(np.linspace(low, high, count), 4)
+    """The 41 steering values the human recording actually contains."""
+    return lattice.levels()
 
 
 def quantise_to_lattice(values) -> np.ndarray:
@@ -57,13 +53,7 @@ def quantise_to_lattice(values) -> np.ndarray:
     Applied to the MODEL, never to the human. The human record is the reference and is not
     touched: quantising it would be adjusting the thing being measured against.
     """
-    step = config.STEERING_LATTICE_STEP
-    low, high = config.STEERING_LIMITS
-    snapped = np.round(np.asarray(values, dtype=float) / step) * step
-    # The trailing `+ 0.0` turns -0.0 into 0.0. They compare equal, so nothing downstream
-    # breaks, but a histogram of the human lattice that lists both "-0.00" and "0.00" invites
-    # a reader to wonder which one the real zeros are in.
-    return np.round(np.clip(snapped, low, high), 4) + 0.0
+    return lattice.quantise(values)
 
 
 @dataclass
@@ -193,11 +183,7 @@ def summarise_all_scopes(values: np.ndarray, name: str, predictions: PredictionS
 
 def lattice_distribution(values: np.ndarray) -> np.ndarray:
     """Relative frequency over the 41 human levels, in level order."""
-    levels = lattice_levels()
-    snapped = quantise_to_lattice(values)
-    counts = np.array([(snapped == level).sum() for level in levels], dtype=float)
-    total = counts.sum()
-    return counts / total if total else counts
+    return lattice.distribution(values)
 
 
 def kl_divergence(predicted: np.ndarray, human: np.ndarray) -> float:
@@ -212,11 +198,7 @@ def kl_divergence(predicted: np.ndarray, human: np.ndarray) -> float:
     frame. A smoothed KL is not the same quantity as an unsmoothed one, so every report that
     carries this number says so.
     """
-    p = lattice_distribution(predicted) + config.KL_SMOOTHING
-    q = lattice_distribution(human) + config.KL_SMOOTHING
-    p = p / p.sum()
-    q = q / q.sum()
-    return float(np.sum(p * np.log(p / q)))
+    return lattice.kl_divergence(predicted, human)
 
 
 def predict(run_id: str, ds: TrackDataset | None = None,

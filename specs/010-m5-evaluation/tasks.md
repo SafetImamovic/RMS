@@ -150,23 +150,63 @@
 
 ## Phase 3: the missing test and the four columns (US2)
 
-- [ ] T009 [US2] Add a two-sample **KS test** to the statistics layer. It is the only test in
+- [X] T009 [US2] Add a two-sample **KS test** to the statistics layer. It is the only test in
       `DESIGN.md` 7.1 that exists nowhere in the repository (research R2)
-- [ ] T010 [P] [US2] Tests for it: a known-identical pair does not reject, a known-shifted pair
+  - `ks_two_sample` in `python/eda/authenticity.py`, beside `chi2_homogeneity`, because
+    `python/rl/report.py` already imports that module and one home for hypothesis tests is better
+    than two
+  - **Deliberately not a `HypothesisTestResult`.** That type carries `dof` and
+    `n_categories_pooled`, which are properties of a binned chi-square and meaningless for a test
+    that bins nothing. Reusing it would have forced two reported fields to hold placeholders
+  - Returns `effect_size` beside the p-value, and `effect_is_material` against a threshold of
+    **D = 0.10**. The KS statistic **is** the effect size, being the largest gap between the two
+    empirical CDFs on a scale of 0 to 1, independent of sample size. That is exactly why it is
+    reported alongside rather than instead
+  - The tie caveat is written into the docstring: KS assumes continuous data, so it is the right
+    instrument for `|delta steering|` and the wrong one for raw human steering on the 0.05 lattice,
+    where the chi-square is better
+- [X] T010 [P] [US2] Tests for it: a known-identical pair does not reject, a known-shifted pair
       does, and the p-value is returned rather than only the decision
-- [ ] T011 [US2] Repair `report.py`'s marker denominator. `markers_possible` must account for
-      `lapsToComplete`, so a three-lap run reads 72 of 72 rather than `72.00 of 24 (300.0%)`
-      (research R4)
-- [ ] T012 [US2] Repair `report.py`'s comparison prose. The "LOSS" branch was written when the
-      learned column always lost; the 009 policy's steering variance is **0.03208 against the
-      scripted driver's 0.04994**, so the comparison must be able to report either direction
-      (research R4)
-- [ ] T013 [US2] Reuse rather than reimplement: `lattice_levels`, `quantise_to_lattice` and
-      `KL_SMOOTHING` from `python/bc/`, `chi2_homogeneity` from `python/eda/authenticity.py`,
-      `steering_series` and `counts_on_lattice` from `python/rl/report.py`. If a helper must move to
-      be shared, move it and leave every existing caller working
-- [ ] T014 [P] [US2] A test that the moved helpers still return what their original callers got, so
-      the move is a move and not a rewrite
+  - `python/tests/test_ks_two_sample.py`, **seven tests**, the three asked for plus four that
+    matter more: that a shift of 0.03 on 60,000 samples per side rejects **without** being
+    material, which is the whole reason T026 exists; that `effect_size` equals `statistic` so the
+    two printed numbers can never disagree; that the statistic is stable across a twentyfold change
+    in sample size while the p-value is not; and that non-finite values are dropped
+- [X] T011 [US2] Repair `report.py`'s marker denominator
+  - `markers_possible` is now one lap's markers times `laps_to_complete`, and the lap count is
+    **inferred from the finished runs** rather than passed in, because it is a scene setting that
+    does not appear in the run record. A completed run awarded exactly `total * laps`
+  - **Every completed run must agree, and a disagreement raises** instead of picking one: two lap
+    counts in a sweep means the rows are not from one configuration
+  - With nothing completed there is nothing to infer from and it falls back to one lap, so **M3's
+    published columns are unchanged**. Verified: feature 007 still reads `6.20 of 24 (25.8% of a
+    lap)`, and feature 009 now reads `72.00 of 72 (100.0% of 3 laps)` rather than `of 24 (300.0%)`
+  - The unit label follows the lap count, so the line no longer says "of a lap" about three laps
+- [X] T012 [US2] Repair `report.py`'s comparison prose
+  - It reported only a loss because it was written when the learned column always lost. It now
+    reports **MORE settled**, **LESS settled** or equal, and feature 009 reads MORE at 0.03208
+    against the scripted driver's 0.04994
+  - Feature 006's caveat now travels with **both** directions rather than only the losing one:
+    steering variance is read with the lap count and never alone, because a driver that never moves
+    also has low variance
+- [X] T013 [US2] Reuse rather than reimplement, and move a helper if it must be shared
+  - **The move was forced, not chosen, and the task's framing understated it.** `python.bc.evaluate`
+    imports the model and the trainer, so it needs torch and **cannot be imported under `.venv` at
+    all**, which is where M5's comparison runs. The lattice arithmetic it held never needed torch
+  - `lattice_levels`, `quantise_to_lattice`, `lattice_distribution` and `kl_divergence` moved to a
+    new torch-free `python/eda/lattice.py`. `python.bc.evaluate` keeps all four names and delegates,
+    so M4's callers and tests are untouched. `python.bc.config` is pure constants and imports
+    cleanly without torch, so `STEERING_LATTICE_STEP` and `KL_SMOOTHING` keep their existing home
+  - `chi2_homogeneity` and the new `ks_two_sample` are used from `python/eda/authenticity.py` where
+    they already live. Nothing was reimplemented
+- [X] T014 [P] [US2] A test that the moved helpers still return what their original callers got
+  - `python/tests/test_lattice_move.py`, **nine tests**. The equivalence test compares all four old
+    names against the new module and is skipped where torch is absent, so it runs under `.venv-bc`
+    and skips under `.venv`: 8 passed 1 skipped, then 9 passed
+  - Also pinned: the lattice matches feature 002's published measurement of 41 points at 0.05,
+    quantise clips and never returns negative zero, KL of a distribution from itself is zero, and
+    **KL stays finite on a level the reference never used** while the unsmoothed form does not.
+    That last one is not hypothetical, because track1 never produces 0.95
 - [ ] T015 [US2] Build the **RL column** from the manifest: seed 42 deterministic as the named
       column. **One RL column, not three.** Three would imply three drivers
 - [ ] T016 [P] [US2] Record seeds 7 and 13 as an agreement line with their numbers, not as columns
