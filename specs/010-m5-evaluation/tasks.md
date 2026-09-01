@@ -17,8 +17,9 @@
    50 Hz trace reports a driver 3.8 times smoother than it is, because 67.1 per cent of the
    differences are structurally zero. The rate is not a detail, it is the measurement.
 3. **The artefact numbers beside the marginal comparison, in the same table, not in prose after
-   it.** Research R5. A reader who sees a chi-square of 12,385 without the 79.3 against 2.5 per
-   cent near-zero shares has been told something false about driving style.
+   it.** Research R5. A reader who sees a chi-square of 20,154 without the 58.6 against 2.5 per
+   cent near-zero shares, and the 23.5 against 87.6 per cent left-turn shares, has been told
+   something false about driving style.
 4. **The two `report.py` repairs before the tables are generated**, not after. A figure printed as
    `72.00 of 24 (300.0% of a lap)` and a "LOSS" branch that cannot report a win would have to be
    regenerated anyway.
@@ -29,12 +30,35 @@
 
 ## Phase 1: Setup and baselines
 
-- [ ] T001 [P] Record in this file the baselines every later number is read against, quoted rather
-      than recomputed: human track1 steering **79.3 per cent exact zeros**, mean **-0.0367**,
-      variance **0.02393**, n **10,615**, at **14.08 Hz**; RL 009 seed 42 deterministic steering
-      mean **-0.1862**, variance **0.03208**, near-zero **2.5 per cent**, left **87.6 per cent**;
-      scripted driver steering variance **0.04994** and **34 of 34** laps; BC lattice KL from human
-      **1.1439** unbalanced and **1.2070** balanced on 5,576 validation rows
+- [X] T001 [P] Record in this file the baselines every later number is read against, quoted rather
+      than recomputed
+  - **The human reference is the COMBINED dataset**, `dataset/dataset/dataset/driving_log.csv`,
+    which is track1 plus track2. `python/bc/config.py` sets `DATASET_NAME = "combined"`, so every
+    existing figure including M4's KL uses it. The per-track columns differ enough to change
+    conclusions, so the reference is named wherever a number appears (research R5)
+
+  | human steering | combined | track1 | track2 |
+  |---|---|---|---|
+  | n | **32,443** | 10,615 | 21,828 |
+  | mean | **-0.0209** | -0.0367 | -0.0132 |
+  | variance | **0.15149** | 0.02393 | 0.21333 |
+  | exact zeros | **58.6 %** | 79.3 % | 48.4 % |
+  | left / right | **23.5 / 18.0 %** | 17.4 / 3.2 % | 26.4 / 25.1 % |
+  | sampling rate | **14.08 Hz**, recovered from image filename stamps, median interval 0.0710 s |
+
+  - **RL 009, seed 42 deterministic**, ten held-out runs: steering mean **-0.1862**, variance
+    **0.03208**, within 0.025 of zero on **2.5 per cent**, left on **87.6 per cent**;
+    `|delta steering|` at `COMPARE_HZ` mean **0.0413**, p95 **0.2103**; **10 of 10** three-lap
+    completions, **0.00** wall contacts per run; chi-square homogeneity against combined human
+    **20,154.5**, dof 40, no pooling
+  - **Scripted driver**, 34 training seeds, `results/heuristic/runs_2026-08-16_15-27-50.csv`:
+    **34 of 34** laps, **24.00 of 24** markers, **0** wall contacts, mean lap time **23.655 s**,
+    steering variance **0.04994** as pinned in `python/rl/report.py`
+  - **BC**, `results/bc/comparison.md`: lattice KL from human **1.1439** unbalanced and **1.2070**
+    balanced, on **5,576** validation rows, with `KL_SMOOTHING = 1e-9` applied to every bin
+  - **The 50 Hz artefact**, so it is never rediscovered: differencing a raw trace gives
+    **67.1 per cent** exactly-zero deltas and a mean of **0.0110** against **0.0417** decimated to
+    the decision rate (research R7)
 - [ ] T002 [P] Confirm the three suites are green before anything changes, so a later regression is
       attributable. Record the counts, including the passed and skipped split that feature 009's
       T054 failed to capture
@@ -88,7 +112,11 @@
 - [ ] T017 [P] [US2] Build the **heuristic column** from `results/heuristic/`
 - [ ] T018 [P] [US2] Build the **BC column** from `results/bc/run_bc_balanced_v01/`, with its three
       absent cells marked absent and caused
-- [ ] T019 [P] [US2] Build the **human column** from `dataset/track1data/track1data/driving_log.csv`
+- [ ] T019 [P] [US2] Build the **human column** from the **combined** dataset,
+      `dataset/dataset/dataset/driving_log.csv`, which is track1 plus track2 and is what
+      `DATASET_NAME = "combined"` already selects. **Not a single track**: research R5 records that
+      picking track1 alone reverses the variance comparison and moves the straight-line share from
+      58.6 to 79.3 per cent
 - [ ] T020 [US2] Descriptive statistics for every column on steering, speed and `|delta steering|`:
       n, mean, variance, min, max, relative-frequency histogram, as `DESIGN.md` 7.1 lists them
 
@@ -102,6 +130,11 @@
       is not a measurement (research R7)
 - [ ] T023 [US2] **The secondary axis.** Steering level on the lattice against human: KL with the
       smoothing constant stated, and chi-square homogeneity
+- [ ] T023a [US2] **The conditional comparison `DESIGN.md` 7 already asks for**, and which the first
+      draft of the plan missed: the steering distribution **given nonzero steering**, per driver
+      against human. The design's second M5 note names it directly, so it is an obligation rather
+      than an extra. It is the one comparison of steering level that the straight-line asymmetry
+      does not dominate
 - [ ] T024 [US2] **In the same table as T023**, the near-zero share and the left-turn share for
       every driver. Ordering 3. Without them the divergence reads as a statement about style
 - [ ] T025 [P] [US2] Report the **unquantised** steering comparison once, beside the quantised one,

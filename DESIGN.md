@@ -1575,6 +1575,54 @@ pobjeđuje i mjere koju druga strana nema.
 > zatvaranja petlje koji polarni oblik rješava besplatno. Odbačeno za sada; ostaje kao
 > proširenje ako se nedostatak pravaca pokaže kao stvarna smetnja u M3.
 
+**Izmjereno pred M5, upisano 2026-09-01 prije ijedne linije koda za poređenje.** Obje napomene gore
+su napisane kao predviđanja. Sada su provjerene na politici koja stvarno vozi krugove, pa se ovdje
+upisuju brojevi umjesto očekivanja, zajedno sa tri stvari koje predviđanja nisu obuhvatila.
+
+**Prvo, predviđanje o nedostatku pravaca je tačno, i veličina je sada poznata.**
+
+| | čovjek, spojeni dataset | RL 009, deterministički |
+|---|---|---|
+| n | 32.443 | 31.202 |
+| udio nultog steeringa (čovjek), odnosno unutar 0.025 od nule (agent) | **58.6 %** | **2.5 %** |
+| skreće lijevo | 23.5 % | **87.6 %** |
+| skreće desno | 18.0 % | 12.3 % |
+| varijansa steeringa | **0.15149** | 0.03208 |
+
+Agent skreće lijevo na skoro devet od deset koraka jer se generisana petlja vozi u jednom smjeru.
+Hi-kvadrat test homogenosti nad rešetkom daje **20.154,5** uz 40 stepeni slobode. **Taj broj nije
+nalaz o stilu vožnje**, nego topologija staze i rezolucija zapisa izražene kao test. Kvantizacija na
+rešetku, koju prva napomena propisuje, rješava polovinu koja se tiče rezolucije i ne dira polovinu
+koja se tiče staze.
+
+**Odluka ostaje ona koju druga napomena već propisuje**: primarna osa poređenja je **|Δsteering|**,
+a marginalni histogram steeringa ostaje kontekst. Uz njega se u istoj tabeli navode udio nultog
+steeringa i udio skretanja lijevo, da se divergencija ne bi čitala kao tvrdnja o stilu. Uslovna
+raspodjela uz nenulti steering, koju druga napomena traži, računa se i navodi.
+
+**Drugo, referenca je spojeni dataset, i to nije formalnost.** `python/bc/config.py` postavlja
+`DATASET_NAME = "combined"`, pa svaka postojeća brojka, uključujući KL iz M4, koristi track1 plus
+track2. Razlika između staza je dovoljno velika da mijenja zaključak: track1 ima **79.3 %** nula i
+varijansu 0.02393, track2 **48.4 %** i varijansu 0.21333. Mjereno prema track1 politika izgleda
+**varijabilnija** od čovjeka, a prema spojenom datasetu je čovjek **pet puta varijabilniji**.
+**Referenca se imenuje svaki put kad se brojka navede.**
+
+**Treće, brzina uzorkovanja je dio mjere, ne detalj.** Trag iz Unityja je na 50 Hz, a agent odlučuje
+svaki četvrti fizički korak, pa se komanda drži između odluka. Diferenciranjem sirovog traga na
+50 Hz **67.1 % razlika je strukturno nula** i srednji |Δsteering| ispadne **0.0110** umjesto
+**0.0417**, dakle vozač izgleda 3,8 puta glađi nego što jeste.
+
+Zato se poređenje radi na **14.08 Hz**, što je `COMPARE_HZ` u `python/track/config.py`, sa
+preuzorkovanjem po vožnji i diferenciranjem **nakon** preuzorkovanja. Ta vrijednost je provjerena
+nezavisno: ljudski `driving_log.csv` nema kolonu vremena, ali imena centralnih slika nose milisekunde,
+i medijan razmaka izvučen iz njih je **0.0710 s**, dakle 14.08 Hz. `|Δsteering|` se računa isključivo
+kroz `report.py.steering_series`, nikad iz sirovog traga, i brzina se navodi uz svaku brojku.
+
+**Četvrto, BC kolona nema tri reda iz tabele gore, i to je svojstvo a ne propust.** BC model
+predviđa steering iz slika kamere drugog simulatora, pa nema kompletiranje kruga, nema vrijeme kruga
+i nema stazu. Te ćelije se označavaju kao odsutne sa navedenim uzrokom i **nikad se ne popunjavaju
+zamjenskom mjerom**.
+
 ### 7.1 Statistička obrada (naglasak predmeta)
 
 Predmet insistira na statističkim metodama - poređenje se izvodi statistički, ne "na oko":

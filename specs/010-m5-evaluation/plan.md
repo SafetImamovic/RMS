@@ -8,11 +8,25 @@ research finding or is marked as an owner call.
 **`|delta steering|` is the primary comparison axis. Steering level is reported as a secondary with
 its artefact quantified beside it.** Owner call, 2026-09-01, taken on R5.
 
-R5 measured the problem rather than assuming it: the human is at exact zero on **79.3 per cent** of
-track1 steps, the agent is within 0.025 of zero on **2.5 per cent**, and the agent steers left on
-**87.6 per cent** because the generated loop runs one way. A marginal steering comparison therefore
-reports track geometry with a confident test statistic attached, which is the exact artefact both
-notes in `DESIGN.md` 7 exist to prevent.
+R5 measured the problem rather than assuming it: against the **combined** human reference the human
+is at exact zero on **58.6 per cent** of steps, the agent is within 0.025 of zero on **2.5 per
+cent**, and the agent steers left on **87.6 per cent** because the generated loop runs one way. A
+marginal steering comparison therefore reports track geometry with a confident test statistic
+attached, which is the exact artefact both notes in `DESIGN.md` 7 exist to prevent.
+
+**Two corrections to the first draft of this plan, kept rather than silently edited.**
+
+First, the paragraph above originally quoted **79.3 per cent** from `track1data` alone. The
+reference is the combined dataset, per the correction in R5, and the correct figure is 58.6 per
+cent, which is what `DESIGN.md` 7 already said.
+
+Second, **this decision confirms `DESIGN.md` 7 rather than departing from it.** The second M5 note
+there, written in feature 003, already prescribes that "težina ide na metrike izvršenja, glatkoća
+|Δsteering| ... a marginalni histogram ostaje kao kontekst, ne kao glavni rezultat". The owner call
+ratifies an existing design decision and supplies the measurement of how large the distortion is.
+**It also carries an obligation this plan first missed**: that note asks for the **conditional**
+distribution given nonzero steering wherever distributions are compared. That is T023a below, not an
+optional extra.
 
 `|delta steering|` is chosen because it depends far less on where the track happens to turn, it is
 already computed for every driver by `python/rl/report.py`, and feature 005's

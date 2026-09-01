@@ -69,8 +69,13 @@ wall contacts     0.00 per run
 steering          n=8788  mean=-0.1859  sd=0.1791  var=0.03208  p95=+0.1150
 |delta steering|  n=8778  mean=+0.0413  sd=0.0649  var=0.00422  p95=+0.2103
 steering variance 0.03208 against the scripted driver's 0.04994
-chi2 homogeneity vs human: statistic=12385.3 dof=28 critical=41.3 p=0 reject_null=True
+chi2 homogeneity vs human: statistic=20154.5 dof=40 critical=55.8 p=0 reject_null=True pooled=0
 ```
+
+The chi-square figure is against the **combined** human reference, per the correction in R5. Against
+track1 alone it reads 12,385.3 with dof 28 and 12 lattice levels pooled for sparsity; against
+combined nothing needs pooling, because all 41 levels are populated. That is a second reason the
+combined column is the right reference and not merely the conventional one.
 
 **Two things fall out of that immediately.**
 
@@ -86,23 +91,41 @@ M5.
 
 ## R5: the marginal steering comparison is measuring the track, not the driver
 
-This is the finding that shapes the feature, and it is worse than `DESIGN.md` 7 anticipated.
+This is the finding that shapes the feature.
 
-| | human, track1 | RL 009, deterministic |
-|---|---|---|
-| n | 10,615 | 31,202 |
-| mean | -0.0367 | **-0.1862** |
-| variance | 0.02393 | 0.03208 |
-| exact zero, or within 0.025 of zero | **79.3 %** | **2.5 %** |
-| steering left | 17.4 % | **87.6 %** |
-| steering right | 3.2 % | 12.3 % |
+**Correction to the first version of this section, kept rather than silently edited.** It was
+written against `track1data` alone and claimed the human straight-line share was 79.3 per cent,
+"worse than `DESIGN.md` 7 anticipated". That was wrong. `python/bc/config.py` sets
+`DATASET_NAME = "combined"`, and the human reference for every existing figure, including M4's KL,
+is **track1 plus track2**, which is the file at `dataset/dataset/dataset/driving_log.csv`. Its
+straight-line share is **58.6 per cent**, exactly the number `DESIGN.md` 7 already quotes. The
+design was right and the first reading of this section was an artefact of picking one track.
 
-`DESIGN.md` 7 warned that generated tracks always turn while the human drove straight 58.6 per cent
-of the time. **On track1 the human figure is 79.3 per cent exact zeros**, and the agent is within
-0.025 of zero on 2.5 per cent of steps. The agent also turns **left on 87.6 per cent** of steps,
-because the generated loop is driven in one direction.
+| | human, combined | human, track1 | human, track2 | RL 009, deterministic |
+|---|---|---|---|---|
+| n | **32,443** | 10,615 | 21,828 | 31,202 |
+| mean | **-0.0209** | -0.0367 | -0.0132 | **-0.1862** |
+| variance | **0.15149** | 0.02393 | 0.21333 | **0.03208** |
+| exact zero, or within 0.025 of zero | **58.6 %** | 79.3 % | 48.4 % | **2.5 %** |
+| steering left | **23.5 %** | 17.4 % | 26.4 % | **87.6 %** |
+| steering right | **18.0 %** | 3.2 % | 25.1 % | 12.3 % |
 
-**So the chi-square statistic of 12,385 above is not a finding about driving style.** It is track
+**The combined column is the reference. The two per-track columns are shown only because they
+differ so much** that a future reader who picks one will get a different answer, which is how this
+error happened in the first place.
+
+The finding survives the correction and is still the thing that shapes the feature: the human is
+straight on **58.6 per cent** of steps while the agent is within 0.025 of zero on **2.5 per cent**,
+and the agent turns **left on 87.6 per cent** because the generated loop is driven in one direction
+against the human's near-balanced 23.5 against 18.0.
+
+**One comparison reverses under the correction, and it matters.** Against track1 the RL policy
+looked *more* variable than the human, 0.03208 against 0.02393. Against the combined reference the
+human is **five times more variable**, 0.15149 against 0.03208. Any statement about whose steering
+is more settled depends entirely on which human column is used, so the reference is named every
+time the figure appears.
+
+**So the chi-square statistic of 20,154 above is not a finding about driving style.** It is track
 geometry and recording resolution restated as a test. Quantising onto the lattice, which
 `DESIGN.md` 7 prescribes, fixes the resolution half and does nothing about the geometry half. A
 report presenting that number as "RL drives unlike a human" would be confidently wrong, and it is
