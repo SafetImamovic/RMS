@@ -59,15 +59,48 @@
   - **The 50 Hz artefact**, so it is never rediscovered: differencing a raw trace gives
     **67.1 per cent** exactly-zero deltas and a mean of **0.0110** against **0.0417** decimated to
     the decision rate (research R7)
-- [ ] T002 [P] Confirm the three suites are green before anything changes, so a later regression is
+- [X] T002 [P] Confirm the three suites are green before anything changes, so a later regression is
       attributable. Record the counts, including the passed and skipped split that feature 009's
       T054 failed to capture
-- [ ] T003 Write `DESIGN.md` 7 and 7.1 updates in a `docs:` commit **before** any comparison code.
+  - Run 2026-09-01 from the repository root. **Counts taken from `--junit-xml` rather than from the
+    terminal summary**, because piping pytest through `tail` is what lost the split in 009's T054
+    and it lost it again here on the first two attempts
+
+  | suite | tests | passed | skipped | failures | errors | time |
+  |---|---|---|---|---|---|---|
+  | `.venv` | **379** | **376** | **3** | 0 | 0 | 256 s |
+  | `.venv-bc` | **430** | **430** | **0** | 0 | 0 | 259 s |
+
+  - Against feature 009's T004 baseline of **362 passed plus 3 skipped** and **416 passed**, both
+    sides are **+14 passed** with the skip count unchanged. The three skips are the torch dependent
+    modules skipping cleanly under `.venv`, which is the behaviour `ENVIRONMENT.md` describes
+  - **A correction to 009's T054, recorded because it is the same file's own history.** That task
+    wrote "`.venv` collects 376 tests", a figure derived from `--collect-only`. The true split at
+    that commit was 376 passed and 3 skipped out of 379, so the number it quoted was the passed
+    count by coincidence rather than the collection total. Nothing downstream depended on it
+  - **EditMode**: run by the owner and reported as all passing, before this feature changed
+    anything. No C# has been touched on this branch
+- [X] T003 Write `DESIGN.md` 7 and 7.1 updates in a `docs:` commit **before** any comparison code.
       Principle V. Three things the design does not currently say: that the primary axis is
       `|delta steering|` and why the marginal steering comparison cannot carry the conclusion
       (research R5), that the comparison rate is 14.08 Hz and why differencing at 50 Hz is wrong
       (research R7), and that the BC column has three structurally absent cells rather than missing
       ones (research R6)
+  - Written into `DESIGN.md` 7, after the two existing M5 notes and before `### 7.1`, in Bosnian to
+    match the document. Four blocks: the straight-line prediction confirmed with numbers and the
+    statement that chi-square 20,154.5 is topology and resolution rather than style; the combined
+    dataset as the reference with the track1 and track2 columns that reverse the variance
+    comparison; 14.08 Hz with the 67.1 per cent structurally zero deltas and the independent
+    verification from image filename stamps; and BC's three absent cells as a property
+  - **The task's first premise was wrong and the correction matters more than the task.** It says
+    the design "does not currently say" the primary axis is `|delta steering|`. It already did.
+    The second M5 note, written in feature 003, prescribes "težina ide na metrike izvršenja,
+    glatkoća |Δsteering| ... a marginalni histogram ostaje kao kontekst, ne kao glavni rezultat".
+    So this feature's axis decision **ratifies an existing design decision** and adds the
+    measurement of how large the distortion is, rather than making a new call
+  - **That note also carries an obligation the plan first missed**: it asks for the **conditional**
+    distribution given nonzero steering wherever distributions are compared. Added as T023a
+  - No line removed from `DESIGN.md`, no em dash
 
 ## Phase 2: make the traces addressable (US1)
 
