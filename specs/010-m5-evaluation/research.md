@@ -185,3 +185,49 @@ constant already in `config.py` exactly.
 
 **Consequence for the plan**: `|delta steering|` is only ever computed through `steering_series`,
 never from a raw trace, and the rate is named wherever the figure is reported.
+
+## R8: the human's steering is a discrete input device, and it dominates the primary axis
+
+Found 2026-09-01 while building the four columns, after the axis had been chosen. It is the same
+class of problem as R5 and R7 and it lands on `|delta steering|`, which is the axis the plan made
+primary.
+
+| `|delta steering|` at 14.08 Hz | mean | median | p95 | exactly zero | at or above 0.05 |
+|---|---|---|---|---|---|
+| RL 009 deterministic | 0.0413 | 0.0127 | 0.2103 | 9.2 % | 23.7 % |
+| heuristic | 0.0174 | 0.0075 | 0.0621 | 5.2 % | 5.9 % |
+| BC | 0.0248 | 0.0187 | 0.0693 | 0.0 % | 11.4 % |
+| **human, combined** | **0.1112** | **0.0000** | **0.5500** | **55.3 %** | **44.2 %** |
+
+**The human is the least smooth driver by a factor of 2.7 on the mean, and its median is zero.**
+Those two facts together say the distribution is not unimodal and the mean is the wrong summary of
+it.
+
+**What it actually is.** Of the human's 14,517 nonzero steering changes, **67.8 per cent land
+exactly on the 0.05 lattice**, and the two commonest values are **0.15 at 35.9 per cent** and
+**0.20 at 31.1 per cent**, being jumps of three and four lattice steps. A further 4.1 per cent are
+exactly 1.00, which is a full-lock reversal. The RL policy's nonzero changes land on that grid
+**0.0 per cent** of the time.
+
+So the human record is: hold at exactly zero for most of the drive, then jump by three or four
+lattice steps at once. **That is the signature of a discrete input device**, a keyboard or a
+stepped control, not of a hand on a continuous wheel.
+
+**Consequence, and it is not that the axis was the wrong choice.** `|delta steering|` remains far
+less track-dependent than steering level, which is why it was chosen. But a KS test between the
+human column and any automated driver on this axis will reject with a large effect, and **the
+finding would be about how the steering was entered rather than about how the car was driven**.
+Reporting "the RL policy is smoother than the human" without that sentence would be true and
+misleading in the same way the chi-square of 20,154 is true and misleading.
+
+**What the plan must therefore do**, and this is settled here rather than left to the writeup:
+
+1. Report **median and the full shape** beside the mean on this axis, never the mean alone.
+2. Report the on-grid share for every driver in the same table, as the artefact number, exactly as
+   R5's near-zero and left-turn shares sit beside the steering-level comparison.
+3. Report the comparison **twice**: once on raw `|delta steering|`, and once after quantising every
+   driver onto the human lattice before differencing, which puts all four on the human's recording
+   resolution. That is the same medicine `DESIGN.md` 7 already prescribes for steering level,
+   applied to the axis that inherited the problem.
+4. Read the **RL against heuristic against BC** comparison as the one that is free of this, because
+   all three are continuous outputs recorded by the same machinery.

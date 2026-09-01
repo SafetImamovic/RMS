@@ -35,12 +35,29 @@ from python.track import compare_drive
 from python.track import config as track_config
 
 
-def _resampled_run(frame: pd.DataFrame, steering_column: str, hz: float) -> np.ndarray:
-    """One run's steering, on the uniform grid, in order."""
-    work = frame.rename(columns={steering_column: "steering"}) if steering_column != "steering" else frame
+def _resampled_run(
+    frame: pd.DataFrame, steering_column: str, speed_column: str | None, hz: float
+) -> pd.DataFrame:
+    """One run's steering and speed, on the uniform grid, in order.
+
+    Speed is carried because `DESIGN.md` 7.1 asks for descriptive statistics on it as well as on
+    steering, and it is resampled by the same nearest-sample rule so the two series share a clock.
+    """
+    renames: dict[str, str] = {}
+    if steering_column != "steering":
+        renames[steering_column] = "steering"
+    if speed_column and speed_column != "speed":
+        renames[speed_column] = "speed"
+    work = frame.rename(columns=renames) if renames else frame
+
     if "t" not in work or "steering" not in work:
         raise KeyError(f"trace needs 't' and {steering_column!r}, has {list(frame.columns)[:8]}")
-    return compare_drive.resample(work, hz)["steering"].to_numpy(dtype=float)
+
+    out = compare_drive.resample(work, hz)
+    result = pd.DataFrame({"steering": out["steering"].to_numpy(dtype=float)})
+    if "speed" in out:
+        result["speed"] = out["speed"].to_numpy(dtype=float)
+    return result
 
 
 def export_rl(
@@ -67,8 +84,9 @@ def export_rl(
     rows: list[pd.DataFrame] = []
     for seed, name in zip(sweep["seeds"], sweep["traces"]):
         frame = pd.read_csv(drive_logs / name)
-        steer = _resampled_run(frame, "steering", hz)
-        rows.append(pd.DataFrame({"run": f"seed{seed}", "steering": steer}))
+        run = _resampled_run(frame, "steering", "speed", hz)
+        run.insert(0, "run", f"seed{seed}")
+        rows.append(run)
 
     return pd.concat(rows, ignore_index=True)
 
@@ -96,8 +114,9 @@ def export_heuristic(
             if controller not in present:
                 continue
         seed = int(frame["seed"].iloc[0]) if "seed" in frame else -1
-        steer = _resampled_run(frame, "applied_steer", hz)
-        rows.append(pd.DataFrame({"run": f"seed{seed}_{path.stem}", "steering": steer}))
+        run = _resampled_run(frame, "applied_steer", "speed_ms", hz)
+        run.insert(0, "run", f"seed{seed}_{path.stem}")
+        rows.append(run)
 
     if not rows:
         raise LookupError(f"no {controller} traces under {traces_dir}")
