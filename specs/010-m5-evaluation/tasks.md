@@ -104,19 +104,47 @@
 
 ## Phase 2: make the traces addressable (US1)
 
-- [ ] T004 [US1] Fix `DriveLogger.sourceLabel` in `Evaluation.unity` so future traces carry their
+- [X] T004 [US1] Fix `DriveLogger.sourceLabel` in `Evaluation.unity` so future traces carry their
       run id. **Do not rewrite the existing 60.** Their content is correct and rewriting recorded
       data to repair a label is a worse defect than mapping around it
-- [ ] T005 [US1] Write `results/rl/trace_manifest.json`: for each of the six feature 009 sweeps, the
+  - **Fixed in code rather than in the scene, because setting the scene field re-arms the same
+    trap.** A serialised label holds whatever the scene was last saved with, which is exactly how
+    six sweeps came to be stamped `ppo_car_spread_a_sampling`. Added
+    `DriveLogger.BeginRun(string label)`, which takes the label from the caller and falls back to
+    the serialised value when passed null or empty, so scenes that never set one keep working
+  - `DrivingAgent` now calls `trace.BeginRun(runId)` at the one site that opens an evaluation
+    trace, so the file describes itself and cannot go stale
+  - The existing 60 traces are untouched
+  - **Compile verified rather than assumed**: `Assets/Refresh` rebuilt `SelfDrivingSim.dll` and
+    `SelfDrivingSim.EditModeTests.dll`, console holds **zero errors and zero warnings**
+- [X] T005 [US1] Write `results/rl/trace_manifest.json`: for each of the six feature 009 sweeps, the
       run id, the inference mode, the eval CSV filename, and the ten trace filenames **in seed
       order 1001 to 1010**
-- [ ] T006 [US1] Derive that mapping from filename timestamps, not from the `source` column, and
+  - Written by `python/rl/trace_manifest.py`, committed, so the mapping is regenerated rather than
+    hand-maintained. **Six sweeps, 60 traces, no file bound twice**
+- [X] T006 [US1] Derive that mapping from filename timestamps, not from the `source` column, and
       record in the manifest that the `source` column is known wrong and why
-- [ ] T007 [P] [US1] A test asserting the manifest names ten existing files per sweep, that no file
+  - **A timestamp window alone is not sufficient and the task's premise was too weak.** Any window
+    wide enough to hold a sweep also catches a neighbouring file: two of the six sweeps returned 11
+    and 12 candidates for 10 runs. The manifest instead matches each trace to an evaluation row by
+    **content**, requiring the trace's final `t` to equal that row's `duration_s` within 0.06 s,
+    consumed in run order. All 60 matched
+  - That turns the manifest into a verification rather than an assumption: a missing, truncated or
+    misordered trace fails loudly instead of binding the wrong file silently
+  - The manifest carries a `source_column_is_wrong` field stating the cause, so a reader who opens
+    a trace and sees `ppo_car_spread_a_sampling` finds the explanation without rediscovering it
+- [X] T007 [P] [US1] A test asserting the manifest names ten existing files per sweep, that no file
       appears in two sweeps, and that the six eval CSVs it names exist
-- [ ] T008 [P] [US1] A test pinning the corroboration that makes the mapping trustworthy: seed 42's
+  - `python/tests/test_trace_manifest.py`, plus two the task did not ask for: that the seed list is
+    1001 to 1010 in order, since seed order is what binds trace N to row N, and that every trace's
+    duration still matches its row when both are read off disk. Building and verifying are not the
+    same thing
+- [X] T008 [P] [US1] A test pinning the corroboration that makes the mapping trustworthy: seed 42's
       last sampling trace is about 2 s after its predecessor, matching the seed 1009 wall contact
       at 7.16 s, where every other gap is about 16 s
+  - Pinned. The test asserts exactly one wall contact in that sweep, that it is seed 1009 at under
+    10 s, that the gap **following** it is under 5 s, and that every other gap exceeds 10 s
+  - **Six tests, all passing.**
 
 **Checkpoint**: every later number can name the exact files it came from.
 
