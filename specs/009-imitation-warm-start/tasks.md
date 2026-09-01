@@ -598,12 +598,23 @@ here: whatever Phase 6 measured, the next work item is M5 and there is no featur
     nothing
 - [X] T055 [P] Check every file this feature touched for em dashes and for the writing rules in the
       constitution's style section
-- [ ] T056 Merge `009-imitation-warm-start` into `develop` with `--no-ff`
-- [ ] T057 **Outstanding milestone merges and tags.** `master` is 164 commits behind `develop` and
+- [X] T056 Merge `009-imitation-warm-start` into `develop` with `--no-ff`
+  - Merged 2026-09-01 as `9530633`, thirteen commits, no conflicts. `develop` was a strict ancestor
+- [X] T057 **Outstanding milestone merges and tags.** `master` is 164 commits behind `develop` and
       only `v0.1-m1` exists. M2, M3 and M4 all closed without their merge or their tag. Merge and
       tag `v0.2-m2`, `v0.3-m3` and `v0.4-m4` so a gate is demonstrable from a clean clone, which is
       what the constitution's Milestone Gates section actually requires
-- [ ] T058 Open the M5 feature: evaluation and comparison, RL against BC against the human dataset,
+  - Done 2026-09-01. **`master` was 178 behind, not 164**, because features 008 and 009 landed
+    after that count was written. It is now level with `develop` through one `--no-ff` merge,
+    `dabc8d5`
+  - **Each tag points at the commit where that gate became demonstrable**, not at today's tip, so a
+    checkout of a tag gives the state that met it: `v0.2-m2` on `aaf0b76`, `v0.4-m4` on `6556479`,
+    `v0.3-m3` on `9530633`. All four tags verified reachable from `master`
+  - **M4 closed before M2 and the tag names hide it.** `6556479` is dated 2026-08-08 and `aaf0b76`
+    2026-08-09, and neither is an ancestor of the other; they were parallel lines that joined
+    later, which `DESIGN.md` 9 explicitly permits. The numeric order of the tags contradicts the
+    chronological order of the gates, and that is recorded here rather than left to be rediscovered
+- [X] T058 Open the M5 feature: evaluation and comparison, RL against BC against the human dataset,
       the steering-distribution work in `DESIGN.md` 7 and 7.1, `results/plots`, and the README
       reproduction recipe verified end to end. It is the submission deliverable and it is at zero
 
