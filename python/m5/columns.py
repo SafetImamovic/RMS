@@ -49,6 +49,11 @@ class DriverColumn:
     abs_delta_steering: np.ndarray
     speed: np.ndarray | None
     runs: int
+
+    # Samples per run, in the order they appear in `steering`. Carried so any consumer that needs
+    # to re-derive differences, for instance after quantising, can honour the same seam rule
+    # instead of differencing straight through a run boundary.
+    run_sizes: tuple[int, ...]
     laps_completed: int | None
     laps_possible: int | None
     lap_time_s: float | None
@@ -87,6 +92,11 @@ class DriverColumn:
         return float(np.mean(self.steering > 0))
 
 
+def run_sizes_of(frame: pd.DataFrame) -> tuple[int, ...]:
+    """Samples per run, in file order."""
+    return tuple(int(len(g)) for _, g in frame.groupby("run", sort=False))
+
+
 def deltas_within_runs(frame: pd.DataFrame, column: str = "steering") -> np.ndarray:
     """`|delta|` per run, concatenated. Never across a run boundary."""
     parts = [
@@ -121,6 +131,7 @@ def _driving_column(
         abs_delta_steering=deltas_within_runs(frame),
         speed=speed,
         runs=int(frame["run"].nunique()),
+        run_sizes=run_sizes_of(frame),
         laps_completed=laps,
         laps_possible=int(frame["run"].nunique()) if laps is not None else None,
         lap_time_s=lap_time,
@@ -163,6 +174,7 @@ def bc_column(root: Path, run_id: str = "bc_balanced_v01") -> DriverColumn:
         abs_delta_steering=deltas_within_runs(frame),
         speed=None,
         runs=int(frame["run"].nunique()),
+        run_sizes=run_sizes_of(frame),
         laps_completed=None,
         laps_possible=None,
         lap_time_s=None,
@@ -191,6 +203,7 @@ def human_column(root: Path, csv: Path | None = None) -> DriverColumn:
         abs_delta_steering=deltas_within_runs(frame),
         speed=frame["speed"].to_numpy(dtype=float),
         runs=int(frame["run"].nunique()),
+        run_sizes=run_sizes_of(frame),
         laps_completed=None,
         laps_possible=None,
         lap_time_s=None,
