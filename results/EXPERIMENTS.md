@@ -561,3 +561,509 @@ cloning policy that M4 produces anyway.
 **T050 has no winner at any budget, and is recorded as unsatisfiable at this reward table** rather
 than left open. Phase 5's outcome is negative and specific: three one-change candidates, a measured
 noise floor, and a named reason none of them worked.
+
+---
+
+### The agent could not see its own track, and every number above was measured that way
+
+Feature 009 built a demonstration scene and drove one training seed through it. The car went
+straight into a barrier at full throttle. The trace said why: `steering` was exactly `0.00000` on
+every row and `target_speed` was pinned at `10.0`, the vehicle maximum.
+
+Read live in play mode, `CarAgent.RayDistancesNorm` was **1.0 in all thirteen directions** while
+`Physics.OverlapSphere` at the same instant returned both barrier `MeshCollider`s within 25 m. The
+car was on the surface, at its marker, between two walls, reporting an empty road.
+
+**Cause.** `CarAgent.IsSelf` ended with `collider.transform.root == transform.root`.
+`TrainingArea.prefab` makes `Car` and `Track` siblings under one area root, so the car's own
+barriers, surface and checkpoints shared its root and every hit on them was discarded as the car
+sensing itself. The `attachedRigidbody` test above it already caught every collider actually on the
+car; the root test only added the rest of the area. Fixed to
+`collider.transform.IsChildOf(transform)`.
+
+**Why it hid for four features.** An all-clear fan is a symmetric fan. `RayControllers` returns
+exactly zero steering for it and the sight limit returns `vMaxMs`, so a blind car drives straight
+and fast into a wall, which reads as a policy that has not learned to steer. Collisions were
+unaffected, so wall contacts were recorded normally and the end-reason mix looked plausible
+throughout. Nothing in the instrumentation was wrong; the observation feeding it was.
+
+**Scope.** `Evaluation.unity` has the same layout as the prefab and produced the held-out figures
+for features 006, 007 and 008. `Training.unity` shares it too. Every RL run in this log was trained
+and evaluated through this filter. Whether the M3 result is a finding about the reward table or an
+artefact of a sensor that never saw a wall is **not settled by this entry** and is not feature
+009's to settle.
+
+**What the fix demonstrably changed, on the scripted driver.** Same scene, same seed, before and
+after: thirteen rays clear at 20 m becomes twelve of thirteen hitting between 2.77 m and 12.96 m,
+and the steering command goes from a constant zero to a varying one. Across the 34 training seeds
+the driver then completed **34 of 34** three-lap runs with **zero wall contacts**, at the agent's
+12.5 Hz decision period. Full figures in `results/rl/demo_cadence.md`.
+
+### Pre-registered: does M3's negative result survive the sensing fix?
+
+**Written before launch.** Run id `ppo_car_009_sighted_probe`, seed 42,
+`config/ppo_car_sighted_probe.yaml`, which differs from `config/ppo_car.yaml` in `max_steps` alone,
+1,000,000 rather than 5,000,000. No `behavioral_cloning` block. The reward table is untouched,
+`wallContactBudget` is 0 and `MaxStep` is 6000, so this is feature 008's configuration at a fifth of
+the budget with one thing changed that is not in the config at all: the agent can now see its own
+barriers.
+
+**Why a short run is the right instrument.** Feature 009's remaining work is a 5M-step warm start
+whose purpose is to rescue a policy that could not learn to drive. If the policy could not learn
+because it was blind, that work answers a question that no longer exists. One million steps is
+enough to see whether the failure mode has changed, and cheap enough that being wrong about it
+costs an hour rather than a day.
+
+**Read against feature 008 at the same step count**, not against its final numbers. The comparison
+is markers per episode and the end-reason mix at 1M, and the baseline for both is
+`results/ppo_car_008_budget`.
+
+**The two outcomes, and what each licenses.**
+
+- **The failure mode is unchanged.** M3's result stands on its own, the reward-side conclusion
+  survives with its most obvious confound eliminated, and feature 009 proceeds to T024 with a
+  stronger closeout than it could otherwise have written.
+- **The policy starts making progress.** M3's three failures were measured through a sensor fault
+  and the milestone's verdict is not safe to write from features 006 to 008. The imitation warm
+  start is then not obviously needed, and the 2026-08-28 decision that capped M3 at feature 009
+  was taken on a premise that no longer holds. That is an owner decision, not a feature decision.
+
+Neither outcome is a milestone figure. This run is a diagnostic and is recorded as one.
+
+### The fix was real and the milestone still fails: a sighted agent does not drive either
+
+`ppo_car_009_sighted_probe`, 1,000,000 steps in 1294 s, 773 steps/s, seed 42, no
+`behavioral_cloning`. Read against `ppo_car_008_budget` at the same step count.
+
+| at 1M steps | 008, blind | 009 probe, sighted |
+|---|---|---|
+| markers per episode, last 10 summaries | 0.3955 | **0.2247** |
+| markers per episode, whole run | 0.3745 | **0.2649** |
+| cumulative reward | -9.3390 | **-4.4739** |
+| episode length | 583.0 | 498.8 |
+| ended on wall contact | 5.03 | **12.76** |
+| ended stalled | 9.63 | 9.61 |
+| wall contacts per episode | 1.3445 | **0.4718** |
+| laps completed | none | **none** |
+
+**The pre-registered first outcome holds. M3's negative result survives the sensing fix.** Markers
+per episode did not rise, it fell, and no run completed a lap. The policy that could not learn to
+drive blind does not learn to drive sighted, at least not in a fifth of feature 008's budget.
+
+**The failure changed shape, and the reward improvement is arithmetic rather than driving.** The
+sighted policy ends far more episodes on wall contact, 12.76 against 5.03, while accumulating
+**fewer** contacts per episode, 0.4718 against 1.3445, over shorter episodes. It reaches a wall
+sooner and terminates there instead of grazing repeatedly. Cumulative reward rises from -9.34 to
+-4.47 largely because a shorter episode pays the per-step cost fewer times. This is exactly the
+trade feature 008 was caught by and named, applied here to this run's own reading: a failure that
+moves is not a failure that is fixed.
+
+**What this does not establish.** One seed, one fifth of the budget, against a run-mean noise floor
+of sd 0.0924 measured in feature 007. The 0.11 fall in markers per episode sits close enough to
+that band to be called suggestive rather than measured. The negative is the solid part: nothing in
+this curve resembles a policy approaching a lap.
+
+**Consequence for feature 009.** The warm start proceeds. Its closeout is now stronger than it could
+otherwise have been, because the most obvious confound in M3's three failures has been eliminated by
+measurement rather than left open at the defence. The sensing fault remains a real defect that was
+present for features 006 to 008; it was not the cause of the milestone failure.
+
+### The demonstration: 34 training seeds, 34,000 decisions, sampled at the agent's clock
+
+`unity/SelfDrivingSim/Assets/Demonstrations/heuristictrain34.demo`, recorded 2026-08-29 from
+`HeuristicDriver` through `DrivingAgent.Heuristic` with `BehaviorType` Heuristic Only and no model
+assigned.
+
+| | |
+|---|---|
+| Observation | `(19,)`, `VectorSensor_size19` |
+| Action | 2 continuous |
+| Info/action pairs | 34,000 |
+| Episodes | 65 |
+| Summed reward | 4118.14 |
+| File size | 4.42 MB |
+| Seeds | the 34 training seeds, `results/rl/demo_seeds.json` |
+| Runs completed | 34 of 34, zero wall contacts |
+
+**Sampled at 12.5 Hz, not 50 Hz, and that is correct rather than a compromise.** The demonstration
+write sits inside `SendInfoToBrain`, which only runs on a decision step, so at `DecisionPeriod: 4`
+the recorder physically cannot sample faster (research R2). The policy that will be trained from
+this file also acts at 12.5 Hz, so the demonstration and the policy share a clock. The scripted
+driver decides at 50 Hz and `results/rl/demo_cadence.md` measures what it loses by being sampled
+at a quarter of that: nothing, in laps.
+
+**The file pairs each observation with the previous decision's command.** This is a property of
+ML-Agents, not of this project's code, and it is not configurable without patching
+`Library/PackageCache` (research R5). At `DecisionPeriod: 4` that is an 80 ms shift. It is written
+down here so nobody later reads the file as `(obs_t, a_t)`.
+
+**65 episodes against 34 runs** because each run ends one episode and each track swap ends
+another.
+
+**Declared overrun.** `NumStepsToRecord` was 34,000 and the 34 runs account for about 33,509
+decision steps, so roughly **491 steps, 1.5 per cent of the file**, are the expert continuing to
+drive the final seed after the sweep finished. Seed 40 is therefore slightly over-represented. The
+alternative was a cap below the sweep's length, which would have truncated a real run instead.
+
+**The first recording attempt was discarded.** `NumStepsToRecord` was 0, meaning record
+indefinitely, and `SweepRunner` finishing does not stop `DrivingAgent` from starting new episodes.
+The recorder ran for about four hours past the sweep and produced a 26.9 MB file dominated by one
+seed. It was deleted rather than trimmed, because a `.demo` is a protobuf stream and a partial
+delete would have been unauditable.
+
+### Pre-registered: the imitation warm start
+
+**Written before launch, 2026-08-30.** Run id `ppo_car_009_bc`, seed 42, `config/ppo_car.yaml`,
+5,000,000 steps, `--torch-device=cuda`.
+
+**The one change is a `behavioral_cloning` block.** `git diff --stat config/ppo_car.yaml` reports 47
+insertions and 0 deletions, so no hyperparameter above it moved: `batch_size` 2048, `buffer_size`
+20480, `learning_rate` 3.0e-4 linear, `beta` 5.0e-3, `epsilon` 0.2, `lambd` 0.95, `num_epoch` 3,
+`hidden_units` 256, `num_layers` 2, `max_steps` 5,000,000, `time_horizon` 128, and `extrinsic` at
+gamma 0.99 strength 1.0. Read back through `RunOptions.from_dict` rather than by eye.
+
+**The three chosen values, and why each is what it is.** All three were fixed before the run and
+none may be revisited after it (FR-008, ordering rule 4).
+
+| value | chosen | why |
+|---|---|---|
+| `steps` | **500,000** | The anneal schedule is `LINEAR` only above zero (research R8). The default 0 would apply the imitation loss at full strength for all 5M steps, which measures how well PPO copies the scripted driver. At 500,000 the loss decays over the first tenth of the budget and the rest is ordinary RL. |
+| `strength` | **0.5** | Half weight. The demonstration drives 34 of 34 training laps but the scripted driver is not the policy M3 is looking for, so the term guides the early policy rather than defining it. |
+| `samples_per_update` | **2048** | The default 0 iterates the whole demonstration buffer per update: 16 minibatches per epoch, three epochs, every PPO update. At 2048 it is one. SC-009 compares throughput against 903 and 927 steps/s and a sixteenfold imitation cost would swamp that. |
+
+`num_epoch` and `batch_size` are left unset and inherit 3 and 2048 from the trainer, so the BC
+update rides the PPO update's shape rather than adding two more chosen numbers.
+
+**The demonstration** is `heuristictrain34.demo`, the 34 training seeds only, 34,000 info/action
+pairs at 12.5 Hz, committed through LFS and described in the section above. The held-out seeds are
+absent by construction and `python/tests/test_demo_seeds.py` asserts it.
+
+**The environment is feature 007's terminal with feature 008's step limit**, confirmed by reading
+rather than assuming: `MaxStep: 6000` at `TrainingArea.prefab:408`, and `wallContactBudget` **0**
+from the initialiser at `DrivingAgent.cs:101`. The field is not serialized into the prefab at all,
+so the budget is a source value rather than a scene value; that is how feature 008 varied it and it
+is recorded here because reading only the prefab would not show it.
+
+**What will be read, fixed now.**
+
+- **Markers per episode against 1.4987**, feature 007's figure, and against the **0.035** gate. The
+  gate's caveat travels with it in the same breath: `results/rl/progress_spread.md` holds that
+  clearing it is credible, that failing to clear it is weaker evidence than it looks, and that a
+  result landing near it earns a fresh three-run spread rather than a verdict.
+- **The end-reason mix whole.** A fall in the wall share appearing as a rise in the stall share is a
+  traded failure, not a fixed one. Feature 008 fell into exactly that and named it.
+- **Cumulative reward against 007 and 008**, with the diff backing the comparability claim (SC-011).
+- **Throughput against 903 and 927 steps per second** (SC-009).
+- **`Losses/Pretraining Loss` over the whole run**, not only at the start. It should fall and then
+  stop updating once the anneal reaches its floor. Its **absence in the first summaries means the
+  demonstration never loaded**, in which case the run is measuring feature 007 again and is killed
+  rather than read.
+
+**One comparability limit, stated before the numbers rather than after them.** The reward table is
+untouched and the diff over `Assets/Scripts/` since `be2f9c4` contains no reward-bearing line, so
+cumulative reward is measured in the same units as 007 and 008. The **agent is not the same agent**:
+`CarAgent.IsSelf` was fixed in `3017764` and this policy can see its own barriers, which 007 and 008
+could not. `ppo_car_009_sighted_probe` is the like-for-like sighted baseline at 1M steps and is the
+honest comparison for the early curve; 1.4987 remains the milestone figure and is read as one.
+
+### The warm start works: `ppo_car_009_bc`
+
+`ppo_car_009_bc`, 5,000,000 steps in 7336.6 s, seed 42, `config/ppo_car.yaml` with the
+`behavioral_cloning` block pre-registered above. Read against the values fixed before it ran.
+
+| whole run | 007 `progress` | 008 `budget` | 009 probe, no BC | **009 `bc`** |
+|---|---|---|---|---|
+| markers per episode | 1.4987 | 0.5297 | 0.2649 | **2.6321** |
+| markers per episode, last 10 summaries | 2.7754 | 0.7805 | 0.2247 | **3.5421** |
+| cumulative reward, last 10 | -1.2612 | -6.6515 | -4.4104 | **+0.0887** |
+| episodes ending in three completed laps | 8 | 0 | 0 | **77** |
+| laps in the last 10 summaries | 0 | 0 | 0 | **6** |
+| steps per second | 903 | 927 | 782 | **687** |
+
+**The 0.035 gate is cleared by a factor of about thirty.** Markers per episode is **2.6321** against
+**1.4987**, a rise of **1.1334**. The gate's caveat is named here rather than in a footnote:
+`results/rl/progress_spread.md` holds that clearing it is credible, that failing to clear it is
+weaker evidence than it looks, and that a result landing *near* it earns a fresh three-run spread
+rather than a verdict. This result does not land near it, so no spread is owed.
+
+**The end-reason mix, read whole, is not a traded failure.** Against feature 007: the wall share
+fell from 59.07 to **57.10 per cent** and the stall share *also* fell, from 27.41 to **24.90 per
+cent**. Feature 008's pattern, where the wall share fell only because the stall share rose, does not
+appear here. Track swaps are flat at 13.46 against 13.11 per cent. What rose is the step-limit share
+and the lap share.
+
+**One comparability limit on that mix.** Feature 007 ran with no `MaxStep` at all, so it has no
+step-limit category; 009 has 008's 6000. The 4.37 per cent of 009's episodes that end on the step
+limit have no counterpart in 007's denominator, so the shares are close but not strictly like for
+like. The direction of the markers finding survives it, because truncating long episodes can only
+lower markers per episode, not raise it.
+
+**The learning curve is monotone, which none of the previous three were.**
+
+| steps | laps completed | mean markers per episode |
+|---|---|---|
+| 0 - 500k | 0 | 0.3137 |
+| 500k - 1M | 0 | 0.7489 |
+| 1M - 1.5M | 0 | 1.7594 |
+| 1.5M - 2M | 1 | 2.5320 |
+| 2M - 2.5M | 9 | 3.4274 |
+| 2.5M - 3M | 5 | 2.9580 |
+| 3M - 3.5M | 10 | 3.2878 |
+| 3.5M - 4M | 14 | 3.6568 |
+| 4M - 4.5M | 17 | 3.8238 |
+| 4.5M - 5M | **21** | 3.7205 |
+
+Laps are still arriving at the end of the budget and markers are still near their maximum, so the
+run is not obviously converged. That is an observation, not a case for a longer budget.
+
+**The sensing fix is not what did this, and the probe is why that can be said rather than assumed.**
+At a matched 1,000,000 steps, with identical sensing and identical config apart from the BC block:
+
+| at 1M steps | 009 probe, no BC | 009 `bc` |
+|---|---|---|
+| markers per episode, whole | 0.2649 | **0.5470** |
+| markers per episode, last 10 | 0.2247 | **1.0571** |
+| cumulative reward, last 10 | -4.4104 | **-3.7469** |
+
+The sighted probe was *worse* than blind feature 008 at the same point. The warm start is the
+difference.
+
+**Cumulative reward is positive for the first time in this project**, +0.0887 over the last ten
+summaries against -1.2612 for 007 and -6.6515 for 008. The comparison is backed rather than
+asserted: `git diff be2f9c4..HEAD -- unity/SelfDrivingSim/Assets/Scripts/` contains **no
+reward-bearing line**, so the reward table that produced these three numbers is the same table
+(SC-011).
+
+**Throughput is 687 steps per second against 903 and 927** (SC-009), and the loss splits in two.
+The sighted probe, which has no BC module at all, ran at **782**, so roughly half the fall predates
+this feature and belongs to the sensing fix restoring ray hits that were previously discarded. The
+BC module accounts for the rest, 782 to 687. Both runs were on the same machine but in different
+sessions, so this attribution is a reading of two measurements rather than a controlled one.
+
+**`Losses/Pretraining Loss` behaves as R8 describes, in the part that matters** (T041). It is
+present from the first PPO update at step 30,000, non-zero through step **520,000**, and exactly
+**0.0 from step 540,000 to the end** without exception, which is the module declining to update once
+the linear anneal drives its learning rate below 1e-10. `steps: 500000` did what it was set to do.
+
+**What it does not do is fall much.** 1.2502 at 30,000 against 1.1186 at 520,000, about eleven per
+cent, wandering rather than descending. The task expected a fall and then a cut-off; it got a
+shallow drift and then a cut-off. A reading, offered as one: the policy is being pulled by PPO and
+by the expert at the same time, and at `strength: 0.5` over 500,000 steps it never sits still long
+enough to fit the demonstration closely. Whether a deeper fit would help is not answerable from this
+run and is not asked of it.
+
+**What this does not establish.** 77 lap endings out of 14,607 episodes is **0.53 per cent**, on
+training tracks the demonstration was recorded from. The milestone bar is 80 per cent on the ten
+held-out seeds and this entry says nothing about it. One seed, one run, no spread. The held-out
+evaluation in Phase 6 is the number that decides M3, and it has not been measured yet.
+
+### The held-out column: M3's bar is met, in both inference modes
+
+`ppo_car_009_bc-5000101.onnx`, the final checkpoint of the run above, on the ten held-out seeds in
+`Assets/Scenes/Evaluation.unity`. `lapsToComplete` is **3**, so every completed row below is three
+laps, and `checkpoints_awarded` of 72 is 24 markers taken three times. The two inference modes are
+reported separately and are never averaged.
+
+| held-out, 10 seeds | 006 `spread_a` | 007 `progress` | **009 `bc`** |
+|---|---|---|---|
+| laps, deterministic | 0/10 | 0/10 | **10/10** |
+| laps, sampling | 0/10 | 0/10 | **9/10** |
+| markers, deterministic | 0.00 | 6.20 of 24 | **24.0 of 24** |
+| markers, sampling | 0.00 | 4.60 of 24 | **22.3 of 24** |
+| wall contacts, deterministic | 0 | 10 | **0** |
+| wall contacts, sampling | 0 | 10 | **1** |
+| end reason, deterministic | Stalled x10 | WallContact x10 | **LapsCompleted x10** |
+| end reason, sampling | Stalled x10 | WallContact x10 | **LapsCompleted x9, WallContact x1** |
+
+**SC-007 is met and SC-008 is met.** SC-007 asked for at least one completed lap on held-out track
+in either mode; there are nineteen across the two. SC-008 is the milestone bar of 80 per cent of
+seeds completing a lap, restated unchanged from feature 006's SC-002 and failed three times before
+this. It stands at **100 per cent deterministic** and **90 per cent sampling**. Both clear it.
+
+The markers rows are capped at 24 so they can be read against feature 007's column, which was
+measured on policies that never finished a lap. Uncapped, the deterministic mean is 72.0 of 72 and
+the sampling mean is 65.5.
+
+**Per seed.** Deterministic: 72, 72, 72, 72, 72, 72, 72, 72, 72, 72. Sampling: 72, 72, 72, 72, 72,
+72, 72, 72, **7**, 72. The single sampling failure is seed **1009**, a wall contact at 7 markers
+after 7.16 s, which is the same first-quarter crash that was feature 007's only outcome.
+
+**Sampling is worse than deterministic, and the gap is now small.** Nine of ten against ten of ten,
+22.3 markers against 24.0. Feature 007 measured the same direction at 4.60 against 6.20. What has
+changed is the size: a policy that is doing the task well loses one seed to injected noise where a
+policy doing it badly lost a quarter of its markers.
+
+**Where the noise goes is the steering, and the lap survives it.** |dsteer| P95 is **0.2870**
+deterministic against **0.8277** sampling, and sign changes are **0.3941/s** against **4.2592/s**,
+a factor of 10.8. The sampled policy saws at the wheel roughly eleven times as often and still
+completes three laps on nine of ten tracks. The deterministic figure of 0.3941/s is the number to
+carry into M5's steering comparison, not the sampled one.
+
+**The policy is faster than the expert it was warm started from.** Three laps in **62.425 s** mean
+deterministic, 20.808 s per lap, against the scripted driver's **26.266 s** per lap in
+`results/rl/demo_cadence.md`. That is about 9.6 m/s against 7.6 m/s, near enough 26 per cent
+quicker. Behavioural cloning seeded the policy and PPO then optimised past the demonstrator, which
+is the outcome the auxiliary-loss form of BC is supposed to allow and the pure-imitation form is
+not. The comparison is across seed sets, expert on the 34 training seeds and policy on the ten
+held-out ones, and it survives that only because the generator produces near constant length
+tracks: the ten held-out tracks measure **198.5 m to 201.6 m**, a spread of 1.6 per cent.
+
+**That constant length is also why the lap times look suspiciously alike** and are not a defect.
+Ten different tracks, ten times within 0.9 s of each other, is what a constant speed policy does on
+loops of near identical circumference. It was checked before the result was believed.
+
+**Two comparability limits, both stated because neither changes the verdict.** Feature 007's
+held-out column was measured before the ray self-filter fix of `3017764`, so its 6.20 was produced
+by an agent that could not see its own track; the honest reading of the 007 column is a lower bound
+on what that configuration could have done. And this evaluation runs with `MaxStep = 6000`, which
+007's did not have; at 62 s of three-lap driving against a 480 s limit it was never close to firing.
+
+**What this does not establish.** One training seed, one run, one checkpoint, ten evaluation tracks
+from one generator. It says M3's bar is met by this policy on this track distribution. It does not
+say the reward table was ever the problem, and the M3 closeout is where that is argued.
+
+### Pre-registered: is the held-out pass a property of the policy or of seed 42?
+
+Written **before** either run is launched, on 2026-08-31, so the reading cannot be chosen after the
+numbers are in.
+
+M3's bar is met above on **one training seed**. `results/rl/progress_spread.md` measured the
+run-to-run noise of this setup and its whole point is that a single run is a weak claim. The bar is
+a milestone and the thesis will be defended on it, so it gets a spread.
+
+**Two more runs: `ppo_car_009_bc_s7` and `ppo_car_009_bc_s13`.** 5,000,000 steps each,
+`config/ppo_car.yaml` byte for byte as it stands at commit `5784a8d`, `behavioral_cloning` block
+included, the same `heuristictrain34.demo`. **`--seed` is the only thing that differs**, at 7 and
+13 against 42. Same machine, same scene, same reward table.
+
+**What counts as agreement.** Each run's final checkpoint is evaluated on the ten held-out seeds in
+**deterministic** inference, and the criterion is the milestone's own: **at least 80 per cent of
+seeds completing three laps**. Three of three runs clearing it says M3's pass is a property of the
+method. Sampling inference is run and reported for each, but the milestone is read off
+deterministic, as it was above.
+
+**What counts as disagreement, and it is written now rather than argued later.** If any run lands
+below 80 per cent, the honest report is a **range across seeds**, not a mean and not the best of
+three, and the M3 closeout says the method clears the bar on some seeds and not others. One run out
+of three failing does not retract the pass and does not confirm it; it changes the claim from "the
+method works" to "the method works often", and that sentence goes into `DESIGN.md` in those words.
+
+**Also recorded per run, for comparison with the seed 42 column**: markers per episode over the
+whole run and over the last ten summaries, cumulative reward over the last ten, the count of
+three-lap episodes, and the end-reason mix. These are the training-side numbers, and they are
+secondary. The held-out percentage is what this spread exists to test.
+
+**What this spread does not do.** Three seeds is not a distribution, the evaluation tracks are the
+same ten in every run, and no run uses a different generator. It answers whether seed 42 was lucky.
+It does not answer whether the ten held-out tracks are representative, which is a separate question
+and belongs to M5.
+
+### The spread's answer: seed 42 was not lucky, and it was the weakest of the three
+
+The runs pre-registered above, read against the criterion fixed before they were launched.
+`ppo_car_009_bc_s7` and `ppo_car_009_bc_s13`, 5,000,000 steps each, `config/ppo_car.yaml` as at
+commit `5784a8d`, `--seed` the only difference.
+
+**Held-out, ten seeds, `lapsToComplete: 3`. The milestone is read off deterministic.**
+
+| | seed 42 | seed 7 | seed 13 |
+|---|---|---|---|
+| laps, deterministic | **10/10** | **10/10** | **10/10** |
+| laps, sampling | 9/10 | **10/10** | **10/10** |
+| markers, deterministic, capped at 24 | 24.00 | 24.00 | 24.00 |
+| markers, sampling, capped at 24 | 22.30 | 24.00 | 24.00 |
+| wall contacts, deterministic | 0 | 0 | 0 |
+| wall contacts, sampling | 1 | 0 | 0 |
+| three-lap time, deterministic | 62.425 s | 62.683 s | 62.551 s |
+| \|dsteer\| P95, deterministic | 0.2870 | 0.1709 | 0.3306 |
+
+**The agreement condition is met, three of three.** The pre-registration said three of three runs
+clearing 80 per cent deterministic says M3's pass is a property of the method rather than of seed
+42. All three clear it at **100 per cent**, with **zero wall contacts in thirty deterministic
+runs**. The disagreement wording written in advance does not apply and is not used.
+
+**Sampling, reported separately as US4 requires and never averaged with the above**: 9/10, 10/10,
+10/10. Seed 42's single failure on seed 1009 is the only lap lost anywhere in the spread, sixty
+evaluation runs in total. Both later seeds complete that track under noise.
+
+**Seed 42 was the weakest of the three, which is the opposite of the worry that motivated this.**
+It is the only one to drop a sampling seed and it has the lowest cumulative reward of the three.
+The spread was run because a single-seed milestone claim is thin; it turns out the single seed
+understated the method.
+
+**The training-side numbers do not rank the seeds the way the held-out numbers do, and that is the
+most useful thing this spread produced.**
+
+| whole run | seed 42 | seed 7 | seed 13 |
+|---|---|---|---|
+| markers per episode | 2.6321 | 2.4851 | **2.3210** |
+| markers per episode, last 10 | 3.5421 | 3.8649 | **4.5105** |
+| cumulative reward, last 10 | 0.0887 | 1.0062 | **1.1906** |
+| episodes ending in three laps | **77** | 47 | 34 |
+| wall share | 57.10 % | 58.63 % | 56.97 % |
+| stall share | 24.90 % | 23.73 % | 25.16 % |
+
+**Training lap count runs backwards against held-out result here.** Seed 42 finished 77 three-lap
+episodes in training and is the weakest on held-out track; seed 13 finished 34 and is among the
+strongest. Markers per episode over the whole run tells the same inverted story, while markers over
+the **last ten summaries** and cumulative reward over the last ten both rank the seeds in the order
+the held-out column does. The reading offered, and it is a reading: a whole-run aggregate averages
+in the early policy, so a run that spends longer learning and ends better scores worse on it than a
+run that plateaus early. **Three seeds is not enough to call this a law**, and it is recorded as an
+observation with its n stated.
+
+**Why it matters beyond this feature.** Features 006, 007 and 008 were argued largely on whole-run
+training aggregates, because no policy of theirs ever finished a lap to be measured any other way.
+This spread shows those aggregates ranking three policies in the wrong order on the one criterion
+the milestone cares about. It does not overturn their conclusions, which were about failures so
+large no ranking was needed. It does mean the M3 closeout should say which of its numbers are
+whole-run aggregates and which are end-of-run, and should not lean on the former.
+
+**One process note, recorded because it cost a run.** Seed 7's first attempt died at 1,270,000 of
+5,000,000 when the Unity editor terminated and took the detached trainer's socket with it
+(`BrokenPipeError`, then `EOFError`). `run_logs/training_status.json` had not been written, so
+`--resume` would have restored the weights but restarted the step counter and the behavioural
+cloning anneal, which is a different schedule from the one seed 42 got. It was restarted clean
+instead rather than silently breaking the "`--seed` is the only difference" condition this spread
+depends on. The partial log is kept as `ppo_car_009_bc_s7.killed_at_1270k.log`, and its orphaned
+checkpoints are quarantined in that run's `stale_killed_at_1270k/` so nothing can select them by
+step number later. This is the second run the project has lost to the editor, after feature 007's
+at 1,440,000. A headless player build driven by `mlagents-learn --env=` would remove the editor
+from the loop and is the standing fix, not yet done.
+
+**What the spread still does not establish.** The same ten evaluation tracks in every run, one
+generator, one track distribution, three seeds. It answers whether seed 42 was lucky. It does not
+answer whether these ten tracks are representative, which belongs to M5.
+
+## M3 closing summary
+
+Written 2026-09-01, when the milestone closed. The full entries for each run are above; this is the
+one table the milestone is read from.
+
+| feature | run | one change | markers/ep | held-out laps, deterministic |
+|---|---|---|---|---|
+| 006 | `ppo_car_spread_a` | baseline reward table | 0.0000 | 0/10 |
+| 006 | `ppo_car_wall_lo` | wall penalty -5.0 to -1.0 | worse by 0.3185 | not evaluated |
+| 007 | `ppo_car_007_progress` | dense progress term added | 1.4987 | 0/10 |
+| 008 | `ppo_car_008_budget` | wall terminal lifted, budget 3 | 0.5297 | not evaluated |
+| 009 | `ppo_car_009_sighted_probe` | sensing fix, no warm start, 1M only | 0.2649 | not evaluated |
+| **009** | **`ppo_car_009_bc`** | **`behavioral_cloning` block** | **2.6321** | **10/10** |
+| **009** | **`ppo_car_009_bc_s7`** | **seed 7** | **2.4851** | **10/10** |
+| **009** | **`ppo_car_009_bc_s13`** | **seed 13** | **2.3210** | **10/10** |
+
+**M3 is MET.** SC-001 at **30/30 = 100.0 per cent** deterministic (bar 95) and 29/30 = 96.7 per cent
+sampling. SC-002 at **30/30 = 100.0 per cent** deterministic (bar 80) and 29/30 = 96.7 per cent
+sampling. Thirty runs is ten held-out seeds times three training seeds. `lapsToComplete` is 3, so
+SC-002 was measured three times stricter than it asks.
+
+**The reward table was never the binding constraint.** Feature 006 exonerated the wall penalty's
+weight, feature 008 exonerated its terminal, feature 007 showed a dense signal works without moving
+the milestone, and feature 009 moved the milestone without touching a single weight. Two of four
+features exonerated the thing they changed, which is a finding about the reward table rather than a
+run of bad luck. The constraint was exploration, and a demonstration removed it.
+
+**Carried forward as unfinished, not as failure.** The 5M sighted probe that would fully separate
+reward from exploration from sensing was not run, so that separation is partial. Generalisation
+beyond these ten tracks from one generator is unshown. And whole-run training aggregates ranked the
+three seeds backwards against held-out result, so future readings should say which numbers are
+whole-run and which are end-of-run.

@@ -132,20 +132,16 @@ PrefabInstance:
       value: TrainingArea
       objectReference: {fileID: 0}
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
-      propertyPath: m_Model
-      value: 
-      objectReference: {fileID: 5022602860645237092, guid: 2ae226b1df5967844abd75851cadc7d5, type: 3}
-    - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_BehaviorType
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_DeterministicInference
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: runId
-      value: ppo_car_009_bc_s13_sampling
+      value: heuristic_weighted_12hz
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: trace
@@ -211,6 +207,27 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1632542837}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542838}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542839}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542846}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542845}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542849}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542848}
+    - targetCorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1632542847}
   m_SourcePrefab: {fileID: 100100000, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
 --- !u!114 &682781362 stripped
 MonoBehaviour:
@@ -267,6 +284,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 504f1b85aebfa2442b7c2840e417c048, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.TrackBuilder
+--- !u!114 &682781367 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1942290961503588355, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+  m_PrefabInstance: {fileID: 682781361}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d117e02baba342246b64db9d58c3c508, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Track.CheckpointRing
+--- !u!4 &682781368 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8272110868897777129, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
+  m_PrefabInstance: {fileID: 682781361}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1141980884
 GameObject:
   m_ObjectHideFlags: 0
@@ -301,7 +334,7 @@ MonoBehaviour:
   placer: {fileID: 682781364}
   car: {fileID: 682781363}
   agent: {fileID: 682781362}
-  seedSet: 1
+  seedSet: 0
   maxSeeds: 0
   repeatsPerSeed: 1
   controllers: 00000000
@@ -334,6 +367,7 @@ GameObject:
   - component: {fileID: 1160362520}
   - component: {fileID: 1160362519}
   - component: {fileID: 1160362518}
+  - component: {fileID: 1160362521}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -415,6 +449,85 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1160362521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1160362517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb33ff297c6136244a33b6d692915017, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Environment.CameraRig
+  target: {fileID: 682781368}
+  views:
+  - name: Cockpit
+    kind: 0
+    pivotOffset: {x: -0.35, y: 1.25, z: 0.9}
+    distanceM: 8
+    pitchDeg: 14
+    fovDeg: 70
+    yawFollowPerSecond: 6
+    followSmoothTime: 0
+    minDistanceM: 2
+    maxDistanceM: 25
+  - name: Bumper
+    kind: 0
+    pivotOffset: {x: 0, y: 0.45, z: 2.15}
+    distanceM: 8
+    pitchDeg: 14
+    fovDeg: 82
+    yawFollowPerSecond: 6
+    followSmoothTime: 0
+    minDistanceM: 2
+    maxDistanceM: 25
+  - name: Chase near
+    kind: 1
+    pivotOffset: {x: 0, y: 1, z: 0}
+    distanceM: 6.5
+    pitchDeg: 12
+    fovDeg: 60
+    yawFollowPerSecond: 7
+    followSmoothTime: 0.08
+    minDistanceM: 2
+    maxDistanceM: 25
+  - name: Chase far
+    kind: 1
+    pivotOffset: {x: 0, y: 1.2, z: 0}
+    distanceM: 11
+    pitchDeg: 18
+    fovDeg: 60
+    yawFollowPerSecond: 4.5
+    followSmoothTime: 0.08
+    minDistanceM: 2
+    maxDistanceM: 25
+  - name: Free orbit
+    kind: 2
+    pivotOffset: {x: 0, y: 1, z: 0}
+    distanceM: 8
+    pitchDeg: 14
+    fovDeg: 60
+    yawFollowPerSecond: 6
+    followSmoothTime: 0.08
+    minDistanceM: 2
+    maxDistanceM: 25
+  startViewIndex: 2
+  yawDegPerPixel: 0.16
+  pitchDegPerPixel: 0.12
+  invertPitch: 0
+  minPitchDeg: -5
+  maxPitchDeg: 80
+  firstPersonYawLimitDeg: 120
+  firstPersonPitchLimitDeg: 45
+  zoomMetresPerNotch: 1.2
+  recentreDelayS: 1.5
+  recentreMinSpeedMs: 2
+  recentreDegPerSecond: 90
+  angleLerpPerSecond: 18
+  lockCursor: 1
+  minHeightAboveTargetM: 0.4
 --- !u!1 &1632542836 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1027774588058591962, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
@@ -432,9 +545,139 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15baccccfe95a8349b1e39052d52f2d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveLogger
-  sourceLabel: ppo_car_spread_a_sampling
-  minKeepSeconds: 2
+  sourceLabel: heuristic_train34
+  minKeepSeconds: 0
   flushEveryRows: 256
+--- !u!114 &1632542838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9473cf4bc3c7b8c4cb71ff90a53bd075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Agent.HeuristicDriver
+  strategy: 1
+  engaged: 0
+  agent: {fileID: 682781362}
+  car: {fileID: 682781363}
+  ring: {fileID: 682781367}
+  track: {fileID: 682781366}
+  placer: {fileID: 682781364}
+  repeatableStart: 1
+  lapsToComplete: 1
+  timeLimitS: 120
+  noProgressLimitS: 60
+  endOnWallContact: 1
+  reactionMode: 0
+  reactionTimeS: 0
+  commandSmoothingS: 0
+  criticalDistanceNorm: 0.35
+  writeTrace: 0
+  writeRunRecord: 1
+--- !u!114 &1632542839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2902496c0120472b90269f94a0aec7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Demonstrations.DemonstrationRecorder
+  Record: 0
+  NumStepsToRecord: 34000
+  DemonstrationName: heuristic_train34
+  DemonstrationDirectory: Assets/Demonstrations
+--- !u!114 &1632542845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce6b71a9316755044a7014a51aa64e4e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveHud
+  visible: 1
+  fontSize: 13
+  language: 0
+  panelWidth: 340
+--- !u!114 &1632542846
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbab46b44bb6a5b42a8114c2addd7058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Logging.DriveTelemetry
+  car: {fileID: 0}
+  profileFileName: vehicle_profile.json
+--- !u!114 &1632542847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18c57d05b87e3944f9b862495293943b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Vehicle.StabilityMonitor
+  tiltThresholdDeg: 45
+  idleWindowS: 10
+  idleDriftM: 0.1
+  idleSpeedMs: 0.05
+  upsideDownDeg: 120
+  stuckSecondsS: 3
+  minRunDurationS: 60
+  consecutiveRunsForSwitch: 3
+--- !u!114 &1632542848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a78842c713a1654d808dcc09fad19a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Agent.ObservationProbe
+  agent: {fileID: 682781362}
+  ring: {fileID: 682781367}
+  builder: {fileID: 682781366}
+  includeMetres: 1
+--- !u!114 &1632542849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632542836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bb095e57e3a56d48940e4b2be6e14ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: SelfDrivingSim::SelfDrivingSim.Agent.ObservationDebug
+  agent: {fileID: 682781362}
+  ring: {fileID: 682781367}
+  visible: 1
+  fontSize: 12
+  panelWidth: 400
+  drawRays: 1
 --- !u!1 &2072435264
 GameObject:
   m_ObjectHideFlags: 0

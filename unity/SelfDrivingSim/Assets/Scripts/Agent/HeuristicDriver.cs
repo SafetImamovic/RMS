@@ -800,8 +800,22 @@ namespace SelfDrivingSim.Agent
         /// Nothing here reads the track, the ring or the clock. Given the same distance array and
         /// the same speed it returns the same command, which is what makes the strategies testable
         /// in isolation and what keeps FR-001 checkable by reading rather than by trusting.
+        ///
+        /// **Public because <see cref="DrivingAgent"/> calls it from its heuristic callback**
+        /// (feature 009). That callback used to return zeros and its comment refused to copy this
+        /// method into itself, because two implementations of the baseline would leave the M5
+        /// comparison without a single answer. Calling keeps the objection satisfied: the control
+        /// law still exists exactly here.
+        ///
+        /// **The caller's clock is not this component's clock.** <c>FixedUpdate</c> calls this at
+        /// 50 Hz; the agent calls it once per decision, so at <c>DecisionPeriod: 4</c> that is
+        /// 12.5 Hz. In <see cref="ReactionMode.Immediate"/> that costs nothing, because the
+        /// steering is a pure function of the current rays. In <see cref="ReactionMode.Delayed"/>
+        /// it does not: the delay ring advances once per call, so the same reaction time becomes
+        /// four times longer on the agent's clock. Demonstrations are recorded in Immediate mode
+        /// for that reason (specs/009-imitation-warm-start/research.md, R4).
         /// </summary>
-        private Vector2 Decide()
+        public Vector2 Decide()
         {
             EnsureAngles();
 

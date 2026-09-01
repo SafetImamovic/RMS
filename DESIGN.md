@@ -760,6 +760,82 @@ krugova i 6.20 od 24 markera. Ono što je ovaj feature dodao nije korak prema mi
 uklanjanje jednog objašnjenja: **ni kazna ni terminal nisu vezujuće ograničenje**, jer je kaznu
 oslobodio `ppo_car_wall_lo` u feature-u 006, a terminal ovaj run.
 
+**Feature 009 uzima treći lijek, i morao ga je prvo ispraviti (upisano pri planiranju, 2026-08-28).**
+Gore navedena tri lijeka su: kurikulum bliže markeru, gušći signal napretka, i topli start iz BC
+politike. Feature 007 je uzeo drugi. Ovaj feature uzima treći, a **treći lijek onako kako je gore
+napisan ne postoji**, i to se kaže naglas umjesto da se tiho zamijeni nečim drugim.
+
+**Zašto ne postoji: observacija.** BC pipeline iz §6 trenira CNN nad **slikama kamere** iz Kaggle
+dataseta. `DrivingAgent` čita **vektor od 19 vrijednosti** iz lepeze od 13 zraka, plus brzine i
+skalarne proizvode kursa (§4.3). Dva prostora observacija nemaju nijednu zajedničku dimenziju, pa u
+BC mreži ne postoji težina koja agentu išta znači, niti u datasetu postoji demonstracija koju bi
+agent mogao vidjeti. Rečenica iz M3 zatvaranja je napisana prije nego što je iko uporedio ta dva
+ulaza.
+
+**Zamjena, i zašto je jedina.** `HeuristicDriver` (feature 005, §4.7) čita **istih 19 vrijednosti**
+kroz istu lepezu, piše u isti `CarController`, i završava **34 od 34 trening seeda** (§4.7.2). To je
+jedini vozač u projektu koji je istovremeno stručan i u agentovom prostoru observacija. Demonstracije
+se snimaju iz njega.
+
+**Topli start nije nagrada, i zato ova tabela ostaje netaknuta.** `behavioral_cloning` je pomoćni
+gubitak nad politikom, ne signal nagrade: uči politiku da preslika komandu stručnjaka, a ne mijenja
+šta se plaća. Zato kumulativna nagrada iz runa feature-a 009 ostaje uporediva sa 007 i 008, što je
+tvrdnja koju potkrepljuje diff nad ovom tabelom a ne rečenica. **GAIL bi dodao naučen signal
+nagrade**, promijenio ovu tabelu i uništio to poređenje, pa je izvan obima i imenovan kao naredni
+feature ako ikad zatreba.
+
+**Dva ograničenja koja demonstracije nose, izmjerena a ne pretpostavljena.** Prvo, snimak nastaje
+samo na koracima odluke, a `DecisionPeriod` je 4, pa je demonstracija stručnjak uzorkovan na
+**12.5 Hz** dok on sam odlučuje na 50 Hz. Zbog toga se **34 od 34 ne prenosi automatski** i mjeri se
+ponovo prije nego što se išta snimi u količini; ako padne, feature staje i to prijavljuje, jer bi
+spuštanje `DecisionPeriod`-a promijenilo takt na kojem je mjereno cijelo M3. Drugo, ML-Agents upisuje
+observaciju zajedno sa komandom **prethodne** odluke, pa `.demo` nosi par `(obs_t, a_{t-1})`, dakle
+pomak od 80 ms na `DecisionPeriod: 4`. To je svojstvo alata, ne postupka snimanja, i zapisano je da
+se datoteka kasnije ne bi čitala kao `(obs_t, a_t)`.
+
+**Obim M3, odlučeno 2026-08-28.** M3 se zatvara ovim feature-om, bez obzira šta izmjeri. Kurikulum,
+prvi od tri lijeka, **ostaje neuzet** i nije naredni feature: četiri od pet milestone-a su odlučena
+dok je M5 na nuli, a M5 je ono što se predaje. Ako run feature-a 009 padne blizu praga od 0.035,
+`results/rl/progress_spread.md` već propisuje jedini dozvoljeni nastavak, a to je svjež spread od tri
+runa umjesto presude.
+
+**Ishod, upisan 2026-09-01 nakon runa feature-a 009 i spreada od tri seeda.** Topli start je prošao,
+i prošao je ubjedljivo. `ppo_car_009_bc`, jedna izmjena u odnosu na `ppo_car_007_progress` (blok
+`behavioral_cloning` nad demonstracijom iz `HeuristicDriver`-a), dao je **2.6321 markera po epizodi
+naspram 1.4987**, prvu pozitivnu kumulativnu nagradu u projektu (**+0.0887** na zadnjih deset
+sažetaka naspram -1.2612 kod 007 i -6.6515 kod 008), i **10 od 10 krugova na deset izdvojenih
+seedova**. Spread od tri seeda (42, 7, 13), sa `--seed` kao jedinom razlikom, daje **10/10
+determinističkih na sva tri**, uz **nula dodira zida u trideset determinističkih vožnji**.
+
+**Ova tabela u feature-u 009 nije mijenjana, i to je ono što poređenje sa 007 i 008 čini validnim.**
+`git diff be2f9c4..HEAD -- unity/SelfDrivingSim/Assets/Scripts/` ne sadrži nijednu liniju koja nosi
+nagradu. Tvrdnja je potkrijepljena diffom, ne rečenicom.
+
+**Četiri feature-a M3, jedna tabela, i šta je svaki od njih eliminisao.**
+
+| feature | šta je mijenjao | ishod | šta je eliminisano |
+|---|---|---|---|
+| 006 | kaznu za zid, -5.0 na -1.0 (`ppo_car_wall_lo`) | -0.3185, dakle lošije | **težina kazne nije vezujuće ograničenje** |
+| 007 | dodao gusti član napretka | 0 na 1.4987 markera, ali 0 od 10 krugova | rijetkost nagrade nije jedini uzrok |
+| 008 | terminal na zidu, budžet 3 | 0.5297 markera, povratak zaglavljivanju | **terminal nije ograničenje nego je bio noseći** |
+| 009 | topli start iz demonstracija | 2.6321 markera, 10 od 10 krugova | ograničenje je bilo **istraživanje prostora** |
+
+**Dva od ta četiri su oslobodila upravo ono što su mijenjala, i to je rezultat o tabeli rewarda a ne
+niz neuspjeha.** Feature 006 je oslobodio težinu kazne, feature 008 terminal; oba su dijelovi istog
+reda za zid i oba su izmjerena umjesto pretpostavljena. Feature 007 je pokazao da mehanizam gustog
+signala radi dok milestone i dalje ne prolazi. Tek je 009 pomjerio milestone, i pomjerio ga je **ne
+dirajući nijednu težinu**. Zajedno ta četiri reda nose jedan zaključak: **tabela rewarda iz ovog
+poglavlja nikad nije bila vezujuće ograničenje M3. Ograničenje je bilo istraživanje prostora, a
+demonstracija ga je uklonila.**
+
+**Jedno ograničenje tog zaključka, rečeno ovdje jer se inače ne vidi iz brojeva.** Ispravka `IsSelf`
+filtera (commit `3017764`) je između feature-a 008 i 009 vratila agentu poglede na vlastitu stazu,
+pa 006, 007 i 008 **nisu mjereni istim senzorima** kao 009. Sonda `ppo_car_009_sighted_probe`, ista
+konfiguracija kao 007 sa ispravnim senzorima i bez toplog starta, bila je na 1.000.000 koraka
+**lošija** od slijepog feature-a 008, što govori da ispravka senzora sama ne objašnjava pomak. Ta
+sonda nije vožena do 5.000.000 koraka, pa je razdvajanje uzroka na reward, istraživanje i senzore
+**djelimično a ne potpuno**, i tako je i zapisano.
+
 ### 4.6 Kraj epizode
 - Sudar sa zidom **kad se potroši budžet kontakata** (feature 008), ili
 - 60 s bez novog checkpointa (zaglavljen), ili
@@ -993,6 +1069,39 @@ citira mora biti provjerljiv iz repozitorija, a slika sa nečijeg ekrana to nije
 vozača. Evaluacija za M5 se radi **deterministički**, jer su i heuristika i BC deterministični, a
 razlika između dva načina se mjeri i zapisuje umjesto da se pretpostavi.
 
+**Imitacija kao ulaz trenera, ne kao član nagrade (feature 009, odlučeno prije koda, 2026-08-28).**
+`config/ppo_car.yaml` dobija blok `behavioral_cloning` i ništa više. Blok nosi `demo_path` do
+snimljene datoteke, `strength: 0.5`, `steps: 500000` i `samples_per_update: 2048`; `num_epoch` i
+`batch_size` se nasljeđuju od trenera, i to je odluka a ne propust. Tabela nagrade iz §4.5 se ne
+dira, budžet kontakata ostaje 0 i `MaxStep` ostaje 6000, pa je poređenje feature-ov 007 terminal sa
+feature-ovom 008 granicom koraka.
+
+**`steps` je ono što ovo čini toplim startom, a ne imitacionim runom.** Raspored gubitka je linearan
+samo ako je `steps` iznad nule; na podrazumijevanoj nuli je konstantan, pa bi se imitacioni gubitak
+primjenjivao punom snagom kroz svih 5.000.000 koraka i run bi mjerio imitaciju umjesto potkrepljenja.
+Vrijednost 500.000 je desetina budžeta: gubitak se ugasi kroz prvu desetinu, a preostalih devet
+desetina su čist PPO nad nepromijenjenom tabelom. `samples_per_update` se postavlja iz istog razloga
+u drugom smjeru: na podrazumijevanoj nuli svaki update prolazi cijeli bafer demonstracija, što se
+vidi na propusnosti runa, a 2048 poklapa `batch_size` trenera pa jedan update košta jedan batch.
+
+**Jeftina provjera da je topli start uopšte primijenjen.** Trener piše `Losses/Pretraining Loss` u
+TensorBoard. Ako te serije nema ili stoji na nuli, demonstracija se nije učitala i run mjeri feature
+007 pod drugim imenom. Gleda se u prvih nekoliko sumarija, ne na kraju.
+
+**Heuristički režim agenta sad delegira, i to ne pravi drugu implementaciju baseline-a.**
+`DrivingAgent.Heuristic` je do feature-a 009 vraćao nule, a komentar iznad njega je izričito odbijao
+da se skriptirani vozač prepiše u taj callback, jer bi projekat time dobio dva baseline-a i poređenje
+u M5 ne bi imalo jedan odgovor. **Ta zamjerka ostaje zadovoljena: callback zove
+`HeuristicDriver.Decide()` umjesto da ga kopira**, pa implementacija upravljačkog zakona i dalje
+postoji tačno na jednom mjestu. Dok je agent izvor odluke, `HeuristicDriver` je iskopčan i ne piše u
+`CarController.ScriptedMove`, čime FR-004 feature-a 005 o jednom izvoru upravljanja ostaje na snazi
+umjesto da se ponovo otkriva.
+
+**Demonstracije se snimaju samo sa trening seedova.** Krug na neviđenoj stazi je kriterij koji je
+ovaj projekat promašio tri puta; pokazati politici stručne putanje baš na tih deset izdvojenih
+seedova bi odgovaralo na drugo pitanje. Lista seedova se commituje uz `.demo`, a datoteka ide kroz
+LFS, da bi run bio ponovljiv iz čistog klona a ne iz postupka koji neko mora ponovo odraditi.
+
 
 ### 5.1 Izmjereno (M3, feature 006, upisano nakon runova)
 
@@ -1033,6 +1142,46 @@ ostaje, ali sada sa izmjerenom razlikom umjesto sa pretpostavkom.
 upravljanja **0.04557 naspram 0.04994 skriptiranog vozača**, dakle devet posto razlike, a završava
 **0 od 10 krugova naspram 34 od 34**. Varijansa upravljanja sama ne razlikuje vozača koji vozi krug
 od vozača koji se ne pomjeri sa starta. Detalji u `results/rl/rl_steering.md`.
+
+### 5.2 Zatvaranje M3 (upisano 2026-09-01, nakon feature-a 009 i spreada)
+
+**Verdikt: M3 je ISPUNJEN.** Oba kriterija koja je feature 006 napisao prije koda su prošla, i to u
+obje inferencijske grane. Kriteriji se citiraju u obliku u kojem su napisani, ne prepravljeni da
+odgovaraju rezultatu, jer to SC-001 izričito traži.
+
+| kriterij | prag | deterministička | uzorkujuća | ishod |
+|---|---|---|---|---|
+| SC-001, tri kruga bez dodira zida | 95 posto epizoda | **30/30 = 100.0 posto** | 29/30 = 96.7 posto | **ISPUNJEN** |
+| SC-002, bar jedan krug na izdvojenim seedovima | 80 posto seedova | **30/30 = 100.0 posto** | 29/30 = 96.7 posto | **ISPUNJEN** |
+
+Trideset vožnji je deset izdvojenih seedova puta tri trening seeda (42, 7 i 13). `lapsToComplete` je
+**3**, pa je svaka upisana vožnja tri kruga, i SC-002 je time mjeren strože nego što traži: tražio je
+jedan krug, izmjereno je tri. Jedina izgubljena vožnja u šezdeset evaluacionih vožnji je seed 1009
+pod uzorkujućom inferencom na trening seedu 42.
+
+**Put do ovoga je bio tri neuspjeha i jedan pogodak**, i tabela u §4.5 kaže šta je svaki od njih
+eliminisao. Sažeto: tabela rewarda nije bila kriva, nego istraživanje prostora.
+
+**Šta ostaje otvoreno, imenovano kao otvoreno a ne kao naredni feature.** M3 je zatvoren odlukom od
+2026-08-28 i feature 010 se ne piše.
+
+1. **Sadržaj observacije, klasa politike i vozilo nikad nisu ni testirani.** U ranijim verzijama
+   ovog zatvaranja bili su navedeni kao preostali osumnjičeni za neuspjeh. Neuspjeha više nema, pa
+   oni nisu osumnjičeni nego jednostavno nepromijenjene varijable. Ako neko kasnije traži bolju
+   politiku a ne prolaznu, to su tri ručke koje niko nije dirao.
+2. **Generalizacija izvan ovih deset staza nije pokazana.** Isti generator, ista raspodjela, deset
+   staza dužine 198.5 do 201.6 m. Rezultat kaže da politika vozi ovu raspodjelu, ne bilo koju.
+3. **Razdvajanje senzora od istraživanja je djelimično.** Sonda iz §4.5 je vožena do 1.000.000
+   koraka umjesto do 5.000.000. Run od 5M te sonde je jedina mjera koja bi to zatvorila.
+4. **Agregati po cijelom runu su rangirali tri seeda pogrešno** u odnosu na rezultat na izdvojenim
+   stazama: seed 42 ima najviše završenih krugova u treningu (77) i najslabiji je izvan njega, seed
+   13 ima najmanje (34) i među najjačima je. Mjere sa kraja runa rangiraju ispravno. Feature-i 006
+   do 008 su argumentovani upravo agregatima po cijelom runu. To ne obara njihove zaključke, jer su
+   njihovi neuspjesi bili preveliki da bi rang išta značio, ali svaki budući zaključak treba reći
+   koji su mu brojevi sa cijelog runa a koji sa kraja. Uzorak je tri seeda i tako je zapisano.
+
+**Naredni posao je M5**, evaluacija i poređenje RL naspram BC naspram ljudskog dataseta, sa
+`results/plots` i provjerenim receptom u README. M5 je na nuli i on je ono što se predaje.
 
 ## 6. BC pipeline (PyTorch, CUDA)
 

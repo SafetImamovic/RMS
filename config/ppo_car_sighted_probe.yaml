@@ -1,0 +1,72 @@
+# DIAGNOSTIC COPY of config/ppo_car.yaml. One line differs: max_steps, 5000000 -> 1000000.
+#
+# Feature 009 found that CarAgent.IsSelf discarded every ray hit on the car's own track, so the
+# agent trained blind through features 006, 007 and 008 (results/EXPERIMENTS.md). This file is
+# for one short run on the fixed sensor, to find out whether M3's negative result survives the
+# fix before any further remedy is spent on it. It is not a candidate configuration and no
+# milestone figure should be read from it.
+#
+# PPO trainer configuration for the M3 driving agent (feature 006).
+#
+# Committed because a hyperparameter that exists only in a shell history is not reproducible
+# (Constitution Principle VI, FR-014). This file is the one a run actually used; the run id, the
+# trainer seed and the device are command-line arguments, because they identify a run rather than
+# configure the trainer.
+#
+#   mlagents-learn config/ppo_car.yaml --run-id=ppo_car_vNN --seed=<n> --torch-device=cuda
+#
+# Run it from the repository root, so the trainer's results/ is the project's results/
+# (ENVIRONMENT.md). Full contract: specs/006-ppo-rl-driver/contracts/training-config.md
+behaviors:
+  # Must match BehaviorParameters.BehaviorName on the prefab exactly. A mismatch does not error:
+  # the trainer simply never sees the agent and the run sits at zero steps.
+  CarDriver:
+    trainer_type: ppo
+
+    hyperparameters:
+      # Starting values from DESIGN 5. These are what tuning may change, one per run, each with
+      # its own row in results/EXPERIMENTS.md (FR-007).
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 3.0e-4
+      learning_rate_schedule: linear
+      beta: 5.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+
+    network_settings:
+      # Pinned true. The observation vector mixes normalised ray distances in [0, 1] with signed
+      # speeds and heading dots, so the ranges differ and the network should not have to learn
+      # the scaling before it learns the driving.
+      normalize: true
+      hidden_units: 256
+      num_layers: 2
+
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+
+    # Set from the measured throughput (T030, T031), not from the design's old 2M to 5M range.
+    #
+    # ppo_car_smoke ran 500,000 steps in 814.9 s with twelve areas, which is 660 steps/s in steady
+    # state. ENVIRONMENT.md warned that 3DBall's 700 steps/s was an upper bound and that
+    # WheelCollider physics with 13 raycasts would be substantially slower; measured, it is not.
+    #
+    # At 660 steps/s the twelve-hour envelope in SC-006 is about 28M steps, so 5M is 2.1 hours and
+    # leaves room for several runs in a day rather than one overnight. The budget is deliberately
+    # not pushed to the envelope: a run nobody can repeat twice in a working day makes the
+    # one-change-per-run discipline in FR-007 unaffordable.
+    max_steps: 1000000
+
+    # An episode is at most 6000 agent steps, being 120 s at 50 Hz (DESIGN 4.6), so the horizon is
+    # well inside one episode and the value function bootstraps rather than waiting for a terminal.
+    time_horizon: 128
+
+    # Pinned. It fixes the resolution of every committed curve, so two runs' CSV exports line up
+    # row for row (contracts/curve-export.md).
+    summary_freq: 10000
+
+    keep_checkpoints: 5
+    checkpoint_interval: 100000
