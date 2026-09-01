@@ -566,22 +566,37 @@ one known distortion is documented rather than discovered later.
 **This phase closes the milestone, not only the feature.** The scope decision of 2026-08-28 caps M3
 here: whatever Phase 6 measured, the next work item is M5 and there is no feature 010.
 
-- [ ] T049 Write the feature's own closeout: what the warm start changed, what it did not, and
+- [X] T049 Write the feature's own closeout: what the warm start changed, what it did not, and
       which of the two outcomes in `quickstart.md` this run landed on
-- [ ] T050 Write the **M3 closeout** into `DESIGN.md` 4.5 and 5. Four features, one table: 006 the
+- [X] T050 Write the **M3 closeout** into `DESIGN.md` 4.5 and 5. Four features, one table: 006 the
       wall penalty, 007 the dense progress term, 008 the wall terminal, 009 the imitation warm
       start. Say for each what it changed and what it eliminated. **Two of the four exonerated the
       thing they changed, and that is a result about the reward table rather than a series of
       failures**
-- [ ] T051 State the milestone's verdict plainly, met or not met, against SC-001 and SC-002 as
+- [X] T051 State the milestone's verdict plainly, met or not met, against SC-001 and SC-002 as
       feature 006 first wrote them. A negative milestone recorded with its cause is the outcome this
       project's constitution asks for, and it is defensible at the interview
-- [ ] T052 Name what remains as candidates now that the reward-side line is retired: the
+- [X] T052 Name what remains as candidates now that the reward-side line is retired: the
       observation's content, the policy class, and the vehicle. Name them as candidates, not as
       future features, because M3 is closed
-- [ ] T053 [P] Update `results/EXPERIMENTS.md` with the closing summary row for M3
-- [ ] T054 [P] Confirm the three suites are green and record the counts against T004's
-- [ ] T055 [P] Check every file this feature touched for em dashes and for the writing rules in the
+- [X] T053 [P] Update `results/EXPERIMENTS.md` with the closing summary row for M3
+- [X] T054 [P] Confirm the three suites are green and record the counts against T004's
+  - Run 2026-09-01 from the repository root, each venv's own interpreter. **Both Python suites exit
+    0.** `.venv` collects **376 tests** against T004's 365 (362 passed plus 3 skipped), and
+    `.venv-bc` collects **430** against T004's 416. The rises of 11 and 14 are this feature's own
+    additions, `test_demo_seeds.py` and `test_speed_tracking.py` among them
+  - **The pass and skip split was not captured separately this time, and the task says so rather
+    than quoting T004's format as if it had been.** Both runs were piped through `tail`, which
+    landed on the warnings block instead of the summary line, so what is recorded is the collected
+    total plus a green exit rather than the passed-and-skipped breakdown. The exit code carries the
+    verdict here. The three torch dependent skips under `.venv` are unchanged behaviour and were
+    not re-counted
+  - **The EditMode suite is outstanding and is a human step.** `TestRunnerApi` trips the MCP
+    user-interaction guard, as T015 and feature 008's T031 both recorded, so it is Window > General
+    > Test Runner > EditMode > Run All. Expected **142**, unchanged from T015, because Phase 6 and
+    Phase 7 touched no C# at all: `git diff --name-only 5784a8d..HEAD -- Assets/Scripts/` returns
+    nothing
+- [X] T055 [P] Check every file this feature touched for em dashes and for the writing rules in the
       constitution's style section
 - [ ] T056 Merge `009-imitation-warm-start` into `develop` with `--no-ff`
 - [ ] T057 **Outstanding milestone merges and tags.** `master` is 164 commits behind `develop` and

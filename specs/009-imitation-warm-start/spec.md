@@ -241,3 +241,41 @@ separately.
   the reward decomposition, not of the behavioural counts this feature rests on.
 - **The reward table's weights.** Untouched, and the point of leaving them alone is that this
   feature's result is about exposure to expert behaviour rather than about pay.
+
+## The closeout, with the number that decides each criterion
+
+Written 2026-09-01, after the candidate run, the held-out evaluation and the three-seed spread.
+
+**Which of `quickstart.md`'s two outcomes this landed on.** That file named both in advance: a
+held-out lap means the limit was exploration and not the reward table, which retroactively explains
+three reward-side features that moved nothing; no held-out lap means the limit is neither, and the
+reward-side line is retired anyway. **This landed on the first**, and more completely than the
+sentence anticipated: not one lap on one seed but ten of ten on three seeds.
+
+| criterion | number | outcome |
+|---|---|---|
+| SC-005, markers per episode against 1.4987, gate 0.035 | 2.6321, a rise of 1.1334 | met, gate cleared about thirtyfold |
+| SC-006, end-reason mix read whole | wall 57.10 from 59.07, stall 24.90 from 27.41 | met, both shares fell |
+| SC-007, at least one held-out lap in either mode | 59 of 60 evaluation runs completed three laps | met |
+| SC-008, the 80 per cent bar with its number | 100 per cent deterministic on each of three seeds | met |
+| SC-009, throughput against 903 and 927 | 687 steps per second | met, reported with its two causes split |
+| SC-010, every run has a row naming its one change | six rows in `EXPERIMENTS.md` | met |
+| SC-011, reward table shown unchanged | `git diff be2f9c4..HEAD` over `Assets/Scripts/` holds no reward-bearing line | met |
+
+**What the warm start changed.** It moved the milestone without touching a weight. Markers per
+episode 1.4987 to 2.6321, cumulative reward negative to positive for the first time in the project,
+held-out laps 0 of 10 to 10 of 10, and a learning curve that is monotone where the previous three
+were not. The policy also ends up **faster than the expert it imitated**, 20.808 s per lap against
+26.266 s, which is the behaviour an auxiliary-loss BC allows and a pure imitation would not.
+
+**What it did not change.** It did not touch the reward table, by design, which is what keeps the
+comparison to 007 and 008 valid. It did not fit the demonstration closely: `Losses/Pretraining Loss`
+drifted about eleven per cent over its 500,000 steps rather than descending, so the gain is not from
+a tight fit to the expert. It did not establish generalisation beyond the ten held-out tracks of one
+generator. And it did not, on its own, separate the sensing fix from the warm start: the 1M sighted
+probe argues the fix alone does not explain the result, but the 5M version that would settle it was
+not run.
+
+**One thing the spread produced that the feature did not set out to find.** Whole-run training
+aggregates ranked the three seeds backwards against their held-out result, while end-of-run measures
+ranked them correctly. Recorded with n=3 stated, in `EXPERIMENTS.md` and in `DESIGN.md` 5.2.

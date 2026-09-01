@@ -1034,3 +1034,36 @@ from the loop and is the standing fix, not yet done.
 **What the spread still does not establish.** The same ten evaluation tracks in every run, one
 generator, one track distribution, three seeds. It answers whether seed 42 was lucky. It does not
 answer whether these ten tracks are representative, which belongs to M5.
+
+## M3 closing summary
+
+Written 2026-09-01, when the milestone closed. The full entries for each run are above; this is the
+one table the milestone is read from.
+
+| feature | run | one change | markers/ep | held-out laps, deterministic |
+|---|---|---|---|---|
+| 006 | `ppo_car_spread_a` | baseline reward table | 0.0000 | 0/10 |
+| 006 | `ppo_car_wall_lo` | wall penalty -5.0 to -1.0 | worse by 0.3185 | not evaluated |
+| 007 | `ppo_car_007_progress` | dense progress term added | 1.4987 | 0/10 |
+| 008 | `ppo_car_008_budget` | wall terminal lifted, budget 3 | 0.5297 | not evaluated |
+| 009 | `ppo_car_009_sighted_probe` | sensing fix, no warm start, 1M only | 0.2649 | not evaluated |
+| **009** | **`ppo_car_009_bc`** | **`behavioral_cloning` block** | **2.6321** | **10/10** |
+| **009** | **`ppo_car_009_bc_s7`** | **seed 7** | **2.4851** | **10/10** |
+| **009** | **`ppo_car_009_bc_s13`** | **seed 13** | **2.3210** | **10/10** |
+
+**M3 is MET.** SC-001 at **30/30 = 100.0 per cent** deterministic (bar 95) and 29/30 = 96.7 per cent
+sampling. SC-002 at **30/30 = 100.0 per cent** deterministic (bar 80) and 29/30 = 96.7 per cent
+sampling. Thirty runs is ten held-out seeds times three training seeds. `lapsToComplete` is 3, so
+SC-002 was measured three times stricter than it asks.
+
+**The reward table was never the binding constraint.** Feature 006 exonerated the wall penalty's
+weight, feature 008 exonerated its terminal, feature 007 showed a dense signal works without moving
+the milestone, and feature 009 moved the milestone without touching a single weight. Two of four
+features exonerated the thing they changed, which is a finding about the reward table rather than a
+run of bad luck. The constraint was exploration, and a demonstration removed it.
+
+**Carried forward as unfinished, not as failure.** The 5M sighted probe that would fully separate
+reward from exploration from sensing was not run, so that separation is partial. Generalisation
+beyond these ten tracks from one generator is unshown. And whole-run training aggregates ranked the
+three seeds backwards against held-out result, so future readings should say which numbers are
+whole-run and which are end-of-run.
