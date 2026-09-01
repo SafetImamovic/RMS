@@ -1,0 +1,11 @@
+seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,checkpoints_awarded,checkpoints_total,checkpoints_skipped,wall_contacts,end_reason,steer_p95_dsteer,steer_sign_changes_per_s,time_scale,duration_s
+1001,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,63.241,72,24,0,0,LapsCompleted,0.1124,0.1898,4.00,63.241
+1002,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.941,72,24,0,0,LapsCompleted,0.2136,0.6357,4.00,62.941
+1003,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.921,72,24,0,0,LapsCompleted,0.1762,0.2862,4.00,62.921
+1004,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.681,72,24,0,0,LapsCompleted,0.1703,0.4149,4.00,62.681
+1005,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.481,72,24,0,0,LapsCompleted,0.1560,0.2562,4.00,62.481
+1006,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.861,72,24,0,0,LapsCompleted,0.1407,0.3023,4.00,62.861
+1007,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.441,72,24,0,0,LapsCompleted,0.2085,0.4486,4.00,62.441
+1008,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.681,72,24,0,0,LapsCompleted,0.1668,0.5586,4.00,62.681
+1009,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.181,72,24,0,0,LapsCompleted,0.1818,0.4022,4.00,62.181
+1010,ppo_car_009_bc_s7_deterministic,13,180.00,20.00,true,62.401,72,24,0,0,LapsCompleted,0.1828,0.4969,4.00,62.401

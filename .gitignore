@@ -46,6 +46,58 @@ dataset/
 results/tensorboard/
 results/*/events.out.tfevents.*
 results/*/checkpoint*.pt
+# Napomena: pravilo iznad je jedan nivo duboko i pisano za RL raspored
+# (results/<run>/checkpoint.pt). BC pise dva nivoa duboko, results/bc/run_<id>/,
+# pa ga ovo pravilo NE hvata. To je namjerno ostavljeno: checkpoint dva
+# prijavljena BC runa se committa preko LFS (992 KB) da bi se M4 gate mogao
+# pokazati bez ponovnog treninga.
+# Izuzetak su reprodukcijski runovi iz T040: oni nisu kandidat-modeli, dokaz
+# koji nose je u run_record.json, a ne u tezinama. Fajlovi ostaju lokalno.
+results/bc/run_bc_repro_*/checkpoint.pt
+
+# ── Drive logovi (M2) ──
+# Svaki pritisak na Play pravi novi CSV, pa bi ih commitovanje sve redom zatrpalo.
+# Vožnje koje se CITIRAJU u DESIGN.md (T022-T026) dodaju se namjerno:
+#     git add -f results/drive_logs/<ime>.csv
+# stability_log.csv se PRATI: to je dokaz za odluku iz research C5 (fizika vs kinematika),
+# a odluka bez dokaza na disku nije provjerljiva.
+results/drive_logs/*.csv
+!results/drive_logs/stability_log.csv
+
+# ── Heuristički vozač (M2, feature 005) ──
+# Jedan sweep piše po jedan red za svaku kombinaciju seeda, regulatora i konfiguracije
+# senzora, pa sirovi CSV-ovi rastu brzo i nema razloga da ijedan uđe u historiju.
+# Izvještaji SE PRATE: oni nose brojeve koji se citiraju u research.md i u DESIGN §4.7,
+# a broj koji se citira mora biti provjerljiv iz repozitorija.
+results/heuristic/runs_*.csv
+results/heuristic/trace_*.csv
+# US4 skuplja tragove u podfoldere (results/heuristic/us4/), pa obrazac mora vrijediti i
+# tamo: bez ovoga 68 sirovih tragova ulazi u historiju kroz podfolder.
+results/heuristic/**/runs_*.csv
+results/heuristic/**/trace_*.csv
+!results/heuristic/*.md
+
+# ── RL trening (M3, feature 006) ──
+# mlagents-learn piše results/<run-id>/ relativno na radni direktorij, a pokreće se iz korijena
+# repozitorija (ENVIRONMENT.md), pa cijeli izlaz trenera pada u naš results/. Run-id-ovi su
+# ppo_car_vNN i ppo_car_spread_*, pa se ti direktoriji ignorišu u cijelosti: nose event fajlove,
+# checkpointe i međuizvoze .onnx-a, a sve to je binarno i raste sa runom.
+#
+# Uži obrazac (results/**/checkpoint*.pt) se NAMJERNO ne koristi: uhvatio bi i
+# results/bc/run_<id>/checkpoint.pt, koji se svjesno committa preko LFS-a da bi se M4 gate mogao
+# pokazati bez ponovnog treninga.
+results/ppo_car*/
+#
+# Trener piše i unutar projekta: Assets/ML-Agents/Timers/<Scena>_timers.json nastaje pri svakom
+# pokretanju scene sa agentom. To je profiling izlaz jedne sesije, nije dio projekta, i Unity mu
+# generiše .meta koji bi ušao u historiju uz njega.
+unity/SelfDrivingSim/Assets/ML-Agents/
+unity/SelfDrivingSim/Assets/ML-Agents.meta
+#
+# Ono što se PRATI je destilovani CSV po runu (results/rl/curves/) i izvještaji (results/rl/*.md).
+# To je jedini oblik u kojem brojevi iz M3 prežive čist clone, jer sirove krive ovdje ne ulaze
+# (006 contracts/curve-export.md). Model koji se brani ide u
+# unity/SelfDrivingSim/Assets/Models/ preko LFS-a, sa run-id-om u imenu.
 
 # ── OS ──
 Thumbs.db
@@ -53,3 +105,6 @@ Desktop.ini
 .DS_Store
 
 .notes
+
+# Timestamped sweep output. The named eval_*.csv copies are what gets committed.
+results/rl/runs_*.csv

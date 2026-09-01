@@ -1,0 +1,11 @@
+seed,controller,ray_count,ray_fov_deg,ray_length_m,completed_lap,lap_time_s,checkpoints_awarded,checkpoints_total,checkpoints_skipped,wall_contacts,end_reason,steer_p95_dsteer,steer_sign_changes_per_s,time_scale,duration_s
+1001,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,64.181,72,24,0,0,LapsCompleted,0.7801,4.0835,4.00,64.181
+1002,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,64.141,72,24,0,0,LapsCompleted,0.7216,3.5246,4.00,64.141
+1003,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.721,72,24,0,0,LapsCompleted,0.7896,3.7990,4.00,63.721
+1004,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.621,72,24,0,0,LapsCompleted,0.7576,3.4905,4.00,63.621
+1005,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,62.981,72,24,0,0,LapsCompleted,0.7661,4.3519,4.00,62.981
+1006,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.921,72,24,0,0,LapsCompleted,0.7792,3.5054,4.00,63.921
+1007,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.101,72,24,0,0,LapsCompleted,0.7661,3.6778,4.00,63.101
+1008,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.861,72,24,0,0,LapsCompleted,0.8052,3.6967,4.00,63.861
+1009,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.161,72,24,0,0,LapsCompleted,0.7925,4.1811,4.00,63.161
+1010,ppo_car_009_bc_s7_sampling,13,180.00,20.00,true,63.261,72,24,0,0,LapsCompleted,0.7437,3.8582,4.00,63.261
