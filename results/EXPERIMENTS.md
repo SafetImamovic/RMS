@@ -957,3 +957,80 @@ secondary. The held-out percentage is what this spread exists to test.
 same ten in every run, and no run uses a different generator. It answers whether seed 42 was lucky.
 It does not answer whether the ten held-out tracks are representative, which is a separate question
 and belongs to M5.
+
+### The spread's answer: seed 42 was not lucky, and it was the weakest of the three
+
+The runs pre-registered above, read against the criterion fixed before they were launched.
+`ppo_car_009_bc_s7` and `ppo_car_009_bc_s13`, 5,000,000 steps each, `config/ppo_car.yaml` as at
+commit `5784a8d`, `--seed` the only difference.
+
+**Held-out, ten seeds, `lapsToComplete: 3`. The milestone is read off deterministic.**
+
+| | seed 42 | seed 7 | seed 13 |
+|---|---|---|---|
+| laps, deterministic | **10/10** | **10/10** | **10/10** |
+| laps, sampling | 9/10 | **10/10** | **10/10** |
+| markers, deterministic, capped at 24 | 24.00 | 24.00 | 24.00 |
+| markers, sampling, capped at 24 | 22.30 | 24.00 | 24.00 |
+| wall contacts, deterministic | 0 | 0 | 0 |
+| wall contacts, sampling | 1 | 0 | 0 |
+| three-lap time, deterministic | 62.425 s | 62.683 s | 62.551 s |
+| \|dsteer\| P95, deterministic | 0.2870 | 0.1709 | 0.3306 |
+
+**The agreement condition is met, three of three.** The pre-registration said three of three runs
+clearing 80 per cent deterministic says M3's pass is a property of the method rather than of seed
+42. All three clear it at **100 per cent**, with **zero wall contacts in thirty deterministic
+runs**. The disagreement wording written in advance does not apply and is not used.
+
+**Sampling, reported separately as US4 requires and never averaged with the above**: 9/10, 10/10,
+10/10. Seed 42's single failure on seed 1009 is the only lap lost anywhere in the spread, sixty
+evaluation runs in total. Both later seeds complete that track under noise.
+
+**Seed 42 was the weakest of the three, which is the opposite of the worry that motivated this.**
+It is the only one to drop a sampling seed and it has the lowest cumulative reward of the three.
+The spread was run because a single-seed milestone claim is thin; it turns out the single seed
+understated the method.
+
+**The training-side numbers do not rank the seeds the way the held-out numbers do, and that is the
+most useful thing this spread produced.**
+
+| whole run | seed 42 | seed 7 | seed 13 |
+|---|---|---|---|
+| markers per episode | 2.6321 | 2.4851 | **2.3210** |
+| markers per episode, last 10 | 3.5421 | 3.8649 | **4.5105** |
+| cumulative reward, last 10 | 0.0887 | 1.0062 | **1.1906** |
+| episodes ending in three laps | **77** | 47 | 34 |
+| wall share | 57.10 % | 58.63 % | 56.97 % |
+| stall share | 24.90 % | 23.73 % | 25.16 % |
+
+**Training lap count runs backwards against held-out result here.** Seed 42 finished 77 three-lap
+episodes in training and is the weakest on held-out track; seed 13 finished 34 and is among the
+strongest. Markers per episode over the whole run tells the same inverted story, while markers over
+the **last ten summaries** and cumulative reward over the last ten both rank the seeds in the order
+the held-out column does. The reading offered, and it is a reading: a whole-run aggregate averages
+in the early policy, so a run that spends longer learning and ends better scores worse on it than a
+run that plateaus early. **Three seeds is not enough to call this a law**, and it is recorded as an
+observation with its n stated.
+
+**Why it matters beyond this feature.** Features 006, 007 and 008 were argued largely on whole-run
+training aggregates, because no policy of theirs ever finished a lap to be measured any other way.
+This spread shows those aggregates ranking three policies in the wrong order on the one criterion
+the milestone cares about. It does not overturn their conclusions, which were about failures so
+large no ranking was needed. It does mean the M3 closeout should say which of its numbers are
+whole-run aggregates and which are end-of-run, and should not lean on the former.
+
+**One process note, recorded because it cost a run.** Seed 7's first attempt died at 1,270,000 of
+5,000,000 when the Unity editor terminated and took the detached trainer's socket with it
+(`BrokenPipeError`, then `EOFError`). `run_logs/training_status.json` had not been written, so
+`--resume` would have restored the weights but restarted the step counter and the behavioural
+cloning anneal, which is a different schedule from the one seed 42 got. It was restarted clean
+instead rather than silently breaking the "`--seed` is the only difference" condition this spread
+depends on. The partial log is kept as `ppo_car_009_bc_s7.killed_at_1270k.log`, and its orphaned
+checkpoints are quarantined in that run's `stale_killed_at_1270k/` so nothing can select them by
+step number later. This is the second run the project has lost to the editor, after feature 007's
+at 1,440,000. A headless player build driven by `mlagents-learn --env=` would remove the editor
+from the loop and is the standing fix, not yet done.
+
+**What the spread still does not establish.** The same ten evaluation tracks in every run, one
+generator, one track distribution, three seeds. It answers whether seed 42 was lucky. It does not
+answer whether these ten tracks are representative, which belongs to M5.
