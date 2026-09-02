@@ -123,7 +123,7 @@ $s \in [-1, 1]$, a razlikuju se u jednoj stvari: kako od $d_i$ dolaze do ugla.
 $$
 i^\star = \arg\max_i d_i,
 \qquad
-s = \operatorname{clamp}\!\left(\frac{\alpha_{i^\star}}{\delta_{\max}},\, -1,\, 1\right).
+s = \mathrm{clamp}\!\left(\frac{\alpha_{i^\star}}{\delta_{\max}},\, -1,\, 1\right).
 $$
 
 Kod izjednačenja pobjeđuje zraka bliža pravo naprijed, $\min |\alpha_i|$, a ne prva po redoslijedu
@@ -139,9 +139,9 @@ nego što je ijednom pokrenuto (research R2), i izmjereno: **0 od 102** kruga.
 **WeightedAverage**, usvojeni: svaka zraka glasa za svoj ugao, težina joj je koliko daleko vidi.
 
 $$
-w_i = \operatorname{clamp}_{[0,1]}(d_i),
+w_i = \mathrm{clamp}_{[0,1]}(d_i),
 \qquad
-s = \operatorname{clamp}\!\left(\frac{1}{\delta_{\max}} \cdot
+s = \mathrm{clamp}\!\left(\frac{1}{\delta_{\max}} \cdot
 \frac{\sum_i w_i\, \alpha_i}{\sum_i w_i},\, -1,\, 1\right),
 $$
 
@@ -469,6 +469,52 @@ SupplyCascade je discrete-event: vrijeme skače od događaja do događaja, stanj
 fiksnim korakom od 0.02 s, stanje mu je kontinualno (19 realnih brojeva iz senzora), a mjeri se
 izvršenje jednog agenta. Oba su agentska i oba stohastička, i tu sličnost prestaje.
 
-## Licenca
+## Dataset
 
-[MIT](LICENSE)
+**[Self-Driving Car Simulator](https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator)**,
+Kaggle, korisnik `zaynena`. Snimak ljudske vožnje u
+[Udacity simulatoru](https://github.com/udacity/self-driving-car-sim): slike tri kamere plus
+`driving_log.csv` bez headera, sedam kolona.
+
+| Folder (raspakovano) | Redova | Sadržaj |
+|---|---|---|
+| `track1data/` | 10.615 | Staza 1, ravna i lakša petlja |
+| `track2data/` | 21.828 | Staza 2, planinska sa oštrim krivinama |
+| `dataset/` | **32.443** | Obje spojene, i to je referenca koja se koristi |
+
+Koristi se **spojeni** `dataset/`, jer `python/bc/config.py` postavlja `DATASET_NAME = "combined"`
+i svaka objavljena brojka u projektu je čitana protiv njega. Razlika nije kozmetička: udio vožnje
+pravo je 58.6 posto na spojenom naspram 79.3 posto na track1, a poređenje varijanse sa RL politikom
+se **obrne** ako se uzme samo jedna staza. Zabilježeno u `specs/010-m5-evaluation/research.md`, R5.
+
+### Zašto ovaj, a ne onaj iz postavke
+
+Dataset naveden u postavci zadatka (`kaggle.com/datasets/chethuhn/selfdriving-car`) je **uklonjen
+sa Kagglea**, provjereno 2026-07-12, URL vraća 404. **Profesor je odobrio zamjenu 2026-07-23** za
+`zaynena/selfdriving-car-simulator`, dataset istog domena i u istom Udacity formatu. Puni zapis je
+u [DESIGN.md](DESIGN.md), u napomeni na vrhu.
+
+### Šta je u repozitoriju, a šta nije
+
+**Dataset se ne redistribuira ovdje.** `dataset/` je git-ignorisan i preuzima se sa Kagglea
+komandom iz sekcije Postavljanje. Ono što jeste commitovano su **izvedeni ulazi za poređenje**
+pod `results/comparison/`: kolone volana i brzine po vozaču, bez ijedne slike, ukupno oko 2 MB
+naspram 6.2 MB samog `driving_log.csv` i znatno više za `IMG/`.
+
+To nije samo ušteda prostora. Zbog toga cijelo M5 poređenje i sve tri figure **reprodukuju se iz
+čistog klona bez dataseta i bez sirovih tragova**, što je provjereno pokretanjem, ne čitanjem.
+
+## Licence
+
+| Šta | Licenca |
+|---|---|
+| Ovaj repozitorij, kod i dokumentacija | [MIT](LICENSE) |
+| Udacity simulator koji je proizveo snimke | MIT, [udacity/self-driving-car-sim](https://github.com/udacity/self-driving-car-sim) |
+| Sam dataset na Kagglu | uslovi stoje na [stranici dataseta](https://www.kaggle.com/datasets/zaynena/selfdriving-car-simulator); dataset se ovdje ne redistribuira |
+| Unity ML-Agents (`com.unity.ml-agents` 4.0.3) | Apache 2.0, Unity Technologies |
+| Unity Inference Engine (`com.unity.ai.inference` 2.6.1) | Unity Terms of Service, [unity.com/legal](https://unity.com/legal) |
+| PyTorch, NumPy, pandas, SciPy, matplotlib | BSD ili slično permisivno, vidi `requirements*.txt` |
+
+Dataset se koristi u akademske svrhe, kao ulaz za analizu i trening, i nije uključen u ovaj
+repozitorij.
+
