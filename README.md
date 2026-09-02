@@ -216,7 +216,7 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ profil vozila ──▶ genera
 | `unity/SelfDrivingSim/` | Unity projekat: scena sa stazom, vozilo, `CarAgent` |
 | `config/ppo_car.yaml` | Hiperparametri PPO treninga |
 | `python/track/` | Profil vozila, generator staza, provjere geometrije, izvoz |
-| `python/notebooks/` | Analiza dataseta (M1) |
+| `python/notebooks/` | 01: analiza dataseta (M1). 02: modeli i metode, formule i grafovi |
 | `python/eda/` | Učitavanje dataseta i statistika (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch, M4) |
 | `python/tests/` | Testovi za `eda`, `track` i `bc` |
@@ -281,7 +281,8 @@ Svaka grupa komandi traži svoje okruženje; aktiviranje ide prije pokretanja.
 # ---- M1: analiza dataseta (.venv) ----
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
-jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
+jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # M1: dataset, korak po korak
+jupyter notebook python/notebooks/02_modeli_i_metode.ipynb    # generator, regulatori, PPO, testovi
 pytest python/tests                  # 425 prolaza, 4 preskočena (bc moduli traže torch)
 #   U ČISTOM KLONU: 321 prolaz, 92 preskočena, nula padova. Razlika je dataset i
 #   sirovi tragovi: oba su git-ignorisana, pa testovi koji ih čitaju preskaču.
