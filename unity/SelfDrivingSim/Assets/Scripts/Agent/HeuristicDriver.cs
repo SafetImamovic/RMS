@@ -787,6 +787,28 @@ namespace SelfDrivingSim.Agent
         {
             CloseTrace();
 
+            // Hand the car back to the keyboard. FR-003 says human control must behave exactly as
+            // before this feature when the driver is off, and without this line it does not:
+            // ScriptedMove is a nullable that holds whatever was last written to it, and
+            // CarController.ReadMove returns that value in preference to the keyboard whenever it
+            // has one. Disabling the component mid-run stops the writes but leaves the last
+            // command latched, so the car keeps the scripted steering and ignores every key.
+            //
+            // RestartRun and Finish both clear it already. This is the third exit and it was the
+            // one nobody took, because a sweep always ends through Finish and a person unticking
+            // the component in the Inspector is the only path that comes here.
+            //
+            // **One other caller disables this component**: DrivingAgent.ResolveScriptedExpert,
+            // which takes the wheel off the expert so feature 005's FR-004 holds with exactly one
+            // writer. That runs inside Agent.Initialize, before any action is produced, so the
+            // value cleared here is one nothing has written yet. Checked rather than assumed,
+            // because clearing a command the agent had just written would be the same latching
+            // bug pointing the other way.
+            if (car != null)
+            {
+                car.ScriptedMove = null;
+            }
+
             // The run record's handle is static and statics do not survive a domain reload, so
             // without this it would be dropped rather than closed. Every row is flushed as it is
             // written, so nothing is lost either way; this is so the next Play session opens a
