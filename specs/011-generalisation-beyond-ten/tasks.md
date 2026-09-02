@@ -21,17 +21,38 @@ Restated from `plan.md` because a task list is what gets read during work.
 
 ## Phase 1: make the label trustworthy (US2)
 
-- [ ] T001 [US2] Derive the run label in `DrivingAgent` from `BehaviorParameters`: the model asset
+- [X] T001 [US2] Derive the run label in `DrivingAgent` from `BehaviorParameters`: the model asset
       actually loaded and the inference mode actually in effect. This is what goes in the run
       record's controller column
-- [ ] T002 [US2] Demote the serialised `runId` to a cross-check. When it is set and disagrees with
+  - `DerivedRunLabel()` returns `{model.name}_{deterministic|sampling}`, both read at runtime from
+    `BehaviorParameters`. `RunRecord.Controller` now takes that and nothing else
+  - Returns an explicit `(no model)` rather than a blank when the behaviour carries none, because an
+    empty controller column reads as a missing field rather than as a run that had no policy. That
+    case is real: it is what a heuristic-mode run looks like
+- [X] T002 [US2] Demote the serialised `runId` to a cross-check. When it is set and disagrees with
       the derived label, log an error naming both. Do not silently prefer either
-- [ ] T003 [P] [US2] Update the tooltip, which currently tells the reader to check by eye. The whole
+  - `AssertRunLabelAgrees()`, called from `Initialize` beside the observation-size assertion. An
+    empty `runId` is not a disagreement, it is unused
+  - **The derived label wins and the error says so**, because a row has one controller column and a
+    reader must not have to know which half to trust. The message states that the rows will be
+    correct and the scene is what is wrong
+- [X] T003 [P] [US2] Update the tooltip, which currently tells the reader to check by eye. The whole
       point of T001 is that nobody has to
-- [ ] T004 [US2] Verify the compile from the assemblies and the console, not from the absence of a
+  - The old text ended "nothing checks the two agree, so they are worth checking by eye". It now
+    says the field is a cross-check the agent will contradict in the console
+- [X] T004 [US2] Verify the compile from the assemblies and the console, not from the absence of a
       complaint. A missing project dll means the compile failed (this repository has been caught by
       that before)
-
+  - **The first attempt did not compile, and only the assembly timestamp said so.** The MCP refresh
+    call returned success, the console reported nothing, and `SelfDrivingSim.dll` kept its old
+    timestamp. `Logs/Editor.log` held the reason: `error CS0012: The type 'ModelAsset' is defined in
+    an assembly that is not referenced`
+  - `BehaviorParameters.Model` is a `ModelAsset` from `Unity.InferenceEngine`, and
+    `SelfDrivingSim.asmdef` referenced only `Unity.InputSystem` and `Unity.ML-Agents`. The package
+    was already a project dependency, listed in `DESIGN.md` 8 as `com.unity.ai.inference` 2.6.1; it
+    was simply not referenced by this assembly. Added
+  - After the fix: `SelfDrivingSim.dll` rebuilt at 18:42, grew from 157,696 to 158,720 bytes,
+    console holds zero errors and zero warnings. **The timestamp is the check, not the console**
 **Checkpoint**: a run record row can prove which policy produced it.
 
 ## Phase 2: the third seed set (US1)
