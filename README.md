@@ -305,7 +305,8 @@ Detaljan razvojni proces (Play mode, heuristička vožnja, testiranje): [WORKFLO
 
 ## Status
 
-Projekat u izradi - plan po fazama (M1–M5) u [DESIGN.md](DESIGN.md) §9.
+**Svih pet milestone-a je zatvoreno** (M1 do M5, plan u [DESIGN.md](DESIGN.md) §9). Ostaje pisanje
+rada i odbrana, ne kod. Verdikt po milestone-u je u DESIGN.md: M3 u §5.2, M5 u §7.2.
 
 - [x] M1 - analiza dataseta, kalibracija parametara (`results/eda/m1_report.md`)
 - [x] M2 - Unity okruženje (staza, vozilo, agent, heuristička vožnja)
@@ -313,6 +314,11 @@ Projekat u izradi - plan po fazama (M1–M5) u [DESIGN.md](DESIGN.md) §9.
       30/30 izdvojenih runova, tri kruga bez dodira zida (DESIGN §5.2)
 - [x] M4 - BC trening, dva runa koja se razlikuju u jednoj stvari (`results/bc/comparison.md`)
 - [x] M5 - evaluacija i poređenje (`results/comparison/m5_comparison.md`)
+
+**Zapisano kao nedovršeno, ne kao neuspjeh.** Sonda od 5M koraka koja bi potpuno razdvojila
+nagradu od istraživanja od senzorike nije vožena, pa je to razdvajanje djelimično. I generalizacija
+van ovih deset staza iz jednog generatora nije pokazana. Oboje stoji u
+[results/EXPERIMENTS.md](results/EXPERIMENTS.md).
 
 ## Licenca
 
