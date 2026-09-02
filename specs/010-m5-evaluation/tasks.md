@@ -222,7 +222,7 @@
     a column: three seeds of one configuration are one driver, and four columns of it would claim
     the project compared four learned drivers against a human
 
-  | seed run | variance | mean abs delta | laps | lap time |
+  | seed run | variance | mean abs delta | runs | run time, three laps |
   |---|---|---|---|---|
   | seed 42, the named column | 0.03208 | 0.0413 | **10 of 10** | 62.425 s |
   | seed 7 | 0.02736 | 0.0334 | **10 of 10** | 62.683 s |
@@ -344,17 +344,29 @@
 - [X] T027 [US2] Assemble the `DESIGN.md` 7 four-column table with every cell measured or caused.
       SC-001
 
-  | driver | laps | lap time | wall contacts | speed |
-  |---|---|---|---|---|
-  | RL 009 deterministic | **10 of 10** | 62.425 s | 0.00 | present |
-  | RL 009 sampling | 9 of 10 | 63.334 s | 0.10 | present |
-  | heuristic | **34 of 34** | 23.655 s | 0.00 | present |
-  | BC | absent | absent | absent | absent |
-  | human | absent | absent | absent | present |
+  | driver | runs completed | laps per run | run time | seconds per lap | contacts | speed |
+  |---|---|---|---|---|---|---|
+  | RL 009 deterministic | **10 of 10** | 3 | 62.425 s | **20.808 s** | 0.00 | present |
+  | RL 009 sampling | 9 of 10 | 3 | 63.334 s | 21.111 s | 0.10 | present |
+  | heuristic | **34 of 34** | 1 | 23.655 s | 23.655 s | 0.00 | present |
+  | BC | absent | absent | absent | absent | absent | absent |
+  | human | absent | absent | absent | absent | absent | present |
 
-  - **Nine absent cells, each printed with its cause underneath rather than left blank.** BC never
+  - **Eleven absent cells, each printed with its cause underneath rather than left blank.** BC never
     drives this track and the human recording is of a different simulator. Filling either with a
     proxy would have invented the comparison the milestone is supposed to make
+  - **The lap columns were wrong on the first pass and the error was mine, in the writeup as well
+    as in the table.** `lap_time_s` in the run record is the whole run, and the RL sweeps run three
+    laps per attempt while the scripted sweep runs one. Printing 62.425 against 23.655 in one
+    column, and then writing "the scripted driver is 2.6 times faster per lap" under it, compared a
+    three-lap run against a single lap. Per lap the learned policy is **faster**, 20.808 s against
+    23.655 s, so the claim was not merely imprecise, it was reversed
+  - Fixed by carrying `laps_per_run` on the column, which the builder had accepted and discarded
+    since it was written, and reporting `seconds_per_lap` as the comparable figure. Pinned by a
+    test that asserts the raw figures reverse the per-lap ordering, so the mistake cannot return
+  - **The per-lap margin is reported with its own bound.** The two sweeps ran at different
+    `timeScale` values over different seed sets, and lap time was a success criterion for neither.
+    It is a column in the table, not a finding about driving quality
 ## Phase 5: figures and the recipe (US3, US4)
 
 - [X] T028 [US3] Overlaid `|delta steering|` distributions, all four drivers, one figure

@@ -223,6 +223,25 @@ def build(root: Path) -> dict:
     }
 
 
+def orderings(result: dict) -> dict:
+    """The three rankings the result is read off, computed rather than typed.
+
+    **Computed because a hand-written conclusion goes stale silently.** If a rerun changed which
+    driver leads, a sentence naming the old winner would still read as a finding. These come from
+    the same objects the tables are built from, so the prose and the numbers cannot disagree.
+    """
+    primary = sorted(result["primary"], key=lambda c: c.quantised.statistic)
+    raw = sorted(result["primary"], key=lambda c: c.raw.statistic)
+    secondary = sorted(result["secondary"], key=lambda row: row["kl_from_human"])
+    conditional = sorted(result["conditional"], key=lambda row: row["kl_from_human"])
+    return {
+        "primary": [(c.driver, c.quantised.statistic) for c in primary],
+        "primary_raw": [(c.driver, c.raw.statistic) for c in raw],
+        "secondary": [(row["driver"], row["kl_from_human"]) for row in secondary],
+        "conditional": [(row["driver"], row["kl_from_human"]) for row in conditional],
+    }
+
+
 def to_markdown(result: dict) -> str:
     """The comparison as `DESIGN.md` 7 asks for it, with every artefact beside its statistic."""
     human = result["human"]
@@ -306,15 +325,26 @@ def to_markdown(result: dict) -> str:
 
     add("## The comparison table (DESIGN 7)")
     add("")
-    add("| driver | laps | lap time | wall contacts | speed |")
-    add("|---|---|---|---|---|")
+    add("**The run length differs between drivers and the table says so in its own columns.** The")
+    add("RL sweeps run three laps per attempt and the scripted sweep runs one, so the run record's")
+    add("`lap_time_s` is not one quantity. Reading those two numbers side by side would say the")
+    add("scripted driver is 2.6 times faster when it is in fact slower per lap. Seconds per lap is")
+    add("the comparable figure and it is the one to read.")
+    add("")
+    add("| driver | runs completed | laps per run | run time | **seconds per lap** | wall contacts"
+        " | speed |")
+    add("|---|---|---|---|---|---|---|")
     for column in result["drivers"] + [human]:
         laps = ("absent" if column.laps_completed is None
                 else f"{column.laps_completed} of {column.laps_possible}")
+        per_run = "absent" if column.laps_completed is None else str(column.laps_per_run)
         lap_time = "absent" if column.lap_time_s is None else f"{column.lap_time_s:.3f} s"
+        per_lap = ("absent" if column.seconds_per_lap is None
+                   else f"**{column.seconds_per_lap:.3f} s**")
         contacts = "absent" if column.wall_contacts is None else f"{column.wall_contacts:.2f}"
         speed = "absent" if column.speed is None else "present"
-        add(f"| `{column.name}` | {laps} | {lap_time} | {contacts} | {speed} |")
+        add(f"| `{column.name}` | {laps} | {per_run} | {lap_time} | {per_lap} | {contacts} | "
+            f"{speed} |")
     add("")
     for column in result["drivers"] + [human]:
         if column.absent_reason:
@@ -436,6 +466,84 @@ def to_markdown(result: dict) -> str:
     add("| **non-anticipatory** | the observation contains only the present ray cast and the "
         "present kinematics. No future checkpoint, no lookahead, no replay of what is about to "
         "happen |")
+    add("")
+
+    order = orderings(result)
+    lead, lead_d = order["primary"][0]
+    second, second_d = order["primary"][1]
+    cond_lead, cond_kl = order["conditional"][0]
+
+    add("## The result")
+    add("")
+    add(f"**On the primary axis the closest driver to the human is `{lead}`**, at KS "
+        f"D = {lead_d:.4f} against the next driver's {second_d:.4f}, a margin of "
+        f"{second_d - lead_d:.4f}. Full ordering, closest first:")
+    add("")
+    add("| rank | driver | D on lattice | D raw |")
+    add("|---|---|---|---|")
+    raw_by_driver = {name: value for name, value in order["primary_raw"]}
+    for rank, (name, value) in enumerate(order["primary"], start=1):
+        add(f"| {rank} | `{name}` | {value:.4f} | {raw_by_driver[name]:.4f} |")
+    add("")
+    add("**The ordering does not survive the secondary axis, and that is the finding rather than a "
+        "defect.** On steering level given nonzero steering the ordering is:")
+    add("")
+    add("| rank | driver | KL, turning only |")
+    add("|---|---|---|")
+    for rank, (name, value) in enumerate(order["conditional"], start=1):
+        add(f"| {rank} | `{name}` | {value:.4f} |")
+    add("")
+    if cond_lead != lead:
+        add(f"So `{lead}` leads on smoothness and `{cond_lead}` leads on steering distribution "
+            f"(KL {cond_kl:.4f}). The two are the same policy under two inference modes. **Noise "
+            "makes a policy's distribution more human and its motion less so**: the sampling mode "
+            "draws from the action distribution instead of taking its mean, which spreads the "
+            "steering levels toward the human's spread while raising the mean step change from "
+            "0.0413 to 0.1552, past the human's own 0.1112. A single answer to \"which driver is "
+            "most human-like\" would have to suppress one of these two measurements.")
+    else:
+        add(f"`{lead}` leads on both axes.")
+    add("")
+    rl = result["drivers"][0]
+    scripted = result["drivers"][2]
+    add("**Execution, which `DESIGN.md` 7 puts first.** The learned policy completes "
+        f"{rl.laps_completed} of {rl.laps_possible} held-out runs at {rl.laps_per_run} laps each "
+        "with zero wall contacts, and two further training seeds do the same. The scripted driver "
+        f"completes {scripted.laps_completed} of {scripted.laps_possible} single-lap runs, also "
+        "with zero contacts.")
+    add("")
+    add(f"On seconds per lap the learned policy is **faster**: {rl.seconds_per_lap:.3f} s against "
+        f"the scripted driver's {scripted.seconds_per_lap:.3f} s, a margin of "
+        f"{scripted.seconds_per_lap - rl.seconds_per_lap:.3f} s. **That margin is not a claim that "
+        "the learned policy drives better.** The two sweeps ran at different `timeScale` values "
+        "and over different seed sets, and lap time was never a success criterion for either. It "
+        "is reported because the table has the column, and it is bounded by that caveat because "
+        "the comparison behind it was not designed. The BC model does not drive at all.")
+    add("")
+
+    add("## What this comparison cannot say")
+    add("")
+    add("Four limits, each of them a property of the inputs rather than of the method. Every one "
+        "was measured before the comparison was built, not discovered while writing it up.")
+    add("")
+    add("- **Nothing about BC's driving.** The model was trained on camera images from a different "
+        "simulator and predicts steering for frames a human already drove. It has no lap, no lap "
+        "time, no wall contact and no speed, and its steering series is an open-loop prediction "
+        "rather than a trajectory. Its column answers \"does it predict the human's next steering "
+        "value\", which is a different question from the one the other three columns answer.")
+    add("- **Little about steering level that is not track geometry.** The generated loop always "
+        "turns and is driven one way, so the drivers steer left on 76 to 88 per cent of steps "
+        "against the human's 23.5, and hold near-zero steering on 1 to 3 per cent against the "
+        "human's 58.6. The chi-square figures above 20,000 are mostly that. The conditional "
+        "comparison exists to see past it and it shrinks every divergence, which is the "
+        "measurement of how much of the marginal was topology.")
+    add("- **Nothing about speed across drivers.** The Unity columns are this simulator's rigidbody "
+        "speed and the human column is another simulator's recorded speed in its own units. Their "
+        "variances differ by a factor of eight and that is a unit mismatch, not a driving style. "
+        "No cross-driver speed statistic is computed anywhere in this feature.")
+    add("- **Nothing from the p-values.** Every test here rejects, on samples of 5,576 to 32,443, "
+        "where a KS test rejects almost any null. The effect sizes carry the whole result and the "
+        "p-values are reported because `DESIGN.md` 7.1 asks for them.")
     add("")
 
     return "\n".join(lines) + "\n"

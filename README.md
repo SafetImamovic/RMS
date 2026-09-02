@@ -289,8 +289,10 @@ python -m python.rl.comparison_inputs
 python -m python.bc.export_predictions --run-id bc_balanced_v01
 ```
 
-Očekivane vrijednosti za gornji recept: RL 009 deterministički **10 od 10** krugova uz
-**62.425 s** i nula dodira zida, heuristika **34 od 34** uz **23.655 s**, a na primarnoj osi
+Očekivane vrijednosti za gornji recept: RL 009 deterministički **10 od 10** runova (po tri
+kruga) uz **20.808 s po krugu** i nula dodira zida, heuristika **34 od 34** jednokružna runa uz
+**23.655 s po krugu**. Runovi nisu iste dužine, pa je uporediva veličina sekunda po krugu, a ne
+vrijeme runa. Na primarnoj osi
 posle kvantizacije na ljudsku rešetku RL deterministički je najbliži čovjeku sa **D = 0.2682**.
 Puni izvještaj: [results/comparison/m5_comparison.md](results/comparison/m5_comparison.md).
 

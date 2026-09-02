@@ -73,13 +73,19 @@ from, is `results/comparison/steering_histogram.csv`.
 
 ## The comparison table (DESIGN 7)
 
-| driver | laps | lap time | wall contacts | speed |
-|---|---|---|---|---|
-| `ppo_car_009_bc_deterministic` | 10 of 10 | 62.425 s | 0.00 | present |
-| `ppo_car_009_bc_sampling` | 9 of 10 | 63.334 s | 0.10 | present |
-| `heuristic_weighted_average` | 34 of 34 | 23.655 s | 0.00 | present |
-| `bc_bc_balanced_v01` | absent | absent | absent | absent |
-| `human_combined` | absent | absent | absent | present |
+**The run length differs between drivers and the table says so in its own columns.** The
+RL sweeps run three laps per attempt and the scripted sweep runs one, so the run record's
+`lap_time_s` is not one quantity. Reading those two numbers side by side would say the
+scripted driver is 2.6 times faster when it is in fact slower per lap. Seconds per lap is
+the comparable figure and it is the one to read.
+
+| driver | runs completed | laps per run | run time | **seconds per lap** | wall contacts | speed |
+|---|---|---|---|---|---|---|
+| `ppo_car_009_bc_deterministic` | 10 of 10 | 3 | 62.425 s | **20.808 s** | 0.00 | present |
+| `ppo_car_009_bc_sampling` | 9 of 10 | 3 | 63.334 s | **21.111 s** | 0.10 | present |
+| `heuristic_weighted_average` | 34 of 34 | 1 | 23.655 s | **23.655 s** | 0.00 | present |
+| `bc_bc_balanced_v01` | absent | absent | absent | absent | absent | absent |
+| `human_combined` | absent | absent | absent | absent | absent | present |
 
 **`bc_bc_balanced_v01` absences**: trained on camera images from another simulator, so it never drives this track: no lap completion, no lap time, no wall contacts, no speed.
 
@@ -162,4 +168,39 @@ classification. **Two of the six needed qualifying once the model was actually b
 | **agent-based** | one agent holds its own observation, reward and episode, and the scene's behaviour is the consequence of that agent acting rather than of a system-level equation |
 | **time invariant** | the dynamics, the reward function and the policy do not depend on wall-clock or on step index. **Qualified:** the episode has a 6,000-step cap, so *termination* is a function of elapsed steps even though nothing else is. The cap is a harness, not a dynamic |
 | **non-anticipatory** | the observation contains only the present ray cast and the present kinematics. No future checkpoint, no lookahead, no replay of what is about to happen |
+
+## The result
+
+**On the primary axis the closest driver to the human is `ppo_car_009_bc_deterministic`**, at KS D = 0.2682 against the next driver's 0.3780, a margin of 0.1098. Full ordering, closest first:
+
+| rank | driver | D on lattice | D raw |
+|---|---|---|---|
+| 1 | `ppo_car_009_bc_deterministic` | 0.2682 | 0.4603 |
+| 2 | `heuristic_weighted_average` | 0.3780 | 0.5008 |
+| 3 | `bc_bc_balanced_v01` | 0.3810 | 0.5525 |
+| 4 | `ppo_car_009_bc_sampling` | 0.4564 | 0.5306 |
+
+**The ordering does not survive the secondary axis, and that is the finding rather than a defect.** On steering level given nonzero steering the ordering is:
+
+| rank | driver | KL, turning only |
+|---|---|---|
+| 1 | `ppo_car_009_bc_sampling` | 0.9465 |
+| 2 | `bc_bc_balanced_v01` | 0.9787 |
+| 3 | `heuristic_weighted_average` | 1.0527 |
+| 4 | `ppo_car_009_bc_deterministic` | 1.1291 |
+
+So `ppo_car_009_bc_deterministic` leads on smoothness and `ppo_car_009_bc_sampling` leads on steering distribution (KL 0.9465). The two are the same policy under two inference modes. **Noise makes a policy's distribution more human and its motion less so**: the sampling mode draws from the action distribution instead of taking its mean, which spreads the steering levels toward the human's spread while raising the mean step change from 0.0413 to 0.1552, past the human's own 0.1112. A single answer to "which driver is most human-like" would have to suppress one of these two measurements.
+
+**Execution, which `DESIGN.md` 7 puts first.** The learned policy completes 10 of 10 held-out runs at 3 laps each with zero wall contacts, and two further training seeds do the same. The scripted driver completes 34 of 34 single-lap runs, also with zero contacts.
+
+On seconds per lap the learned policy is **faster**: 20.808 s against the scripted driver's 23.655 s, a margin of 2.847 s. **That margin is not a claim that the learned policy drives better.** The two sweeps ran at different `timeScale` values and over different seed sets, and lap time was never a success criterion for either. It is reported because the table has the column, and it is bounded by that caveat because the comparison behind it was not designed. The BC model does not drive at all.
+
+## What this comparison cannot say
+
+Four limits, each of them a property of the inputs rather than of the method. Every one was measured before the comparison was built, not discovered while writing it up.
+
+- **Nothing about BC's driving.** The model was trained on camera images from a different simulator and predicts steering for frames a human already drove. It has no lap, no lap time, no wall contact and no speed, and its steering series is an open-loop prediction rather than a trajectory. Its column answers "does it predict the human's next steering value", which is a different question from the one the other three columns answer.
+- **Little about steering level that is not track geometry.** The generated loop always turns and is driven one way, so the drivers steer left on 76 to 88 per cent of steps against the human's 23.5, and hold near-zero steering on 1 to 3 per cent against the human's 58.6. The chi-square figures above 20,000 are mostly that. The conditional comparison exists to see past it and it shrinks every divergence, which is the measurement of how much of the marginal was topology.
+- **Nothing about speed across drivers.** The Unity columns are this simulator's rigidbody speed and the human column is another simulator's recorded speed in its own units. Their variances differ by a factor of eight and that is a unit mismatch, not a driving style. No cross-driver speed statistic is computed anywhere in this feature.
+- **Nothing from the p-values.** Every test here rejects, on samples of 5,576 to 32,443, where a KS test rejects almost any null. The effect sizes carry the whole result and the p-values are reported because `DESIGN.md` 7.1 asks for them.
 

@@ -102,3 +102,20 @@ def test_the_human_delta_is_a_discrete_input_signature() -> None:
     on_grid = np.abs(nonzero / 0.05 - np.round(nonzero / 0.05)) < 1e-6
     assert np.mean(on_grid) > 0.6, "most human steering changes sit exactly on the 0.05 lattice"
     assert np.median(deltas) == 0.0, "the median human steering change is no change at all"
+
+def test_lap_time_is_reported_per_lap_because_the_runs_are_not_the_same_length() -> None:
+    """The run record's `lap_time_s` is the whole run, and the sweeps are not the same shape.
+
+    The RL sweeps run three laps per attempt and the scripted sweep runs one. Printing the two raw
+    figures in one column said the scripted driver was 2.6 times faster when it is slower per lap.
+    Same class of error as comparing the two speed columns in different units.
+    """
+    rl = m5.rl_column(REPO_ROOT, "ppo_car_009_bc", "deterministic")
+    scripted = m5.heuristic_column(REPO_ROOT)
+
+    assert rl.laps_per_run == 3
+    assert scripted.laps_per_run == 1
+    assert rl.lap_time_s == pytest.approx(62.425, abs=5e-3)
+    assert rl.seconds_per_lap == pytest.approx(62.425 / 3, abs=5e-3)
+    assert scripted.seconds_per_lap == scripted.lap_time_s
+    assert rl.seconds_per_lap < scripted.seconds_per_lap, "the raw figures reverse this"

@@ -60,6 +60,19 @@ class DriverColumn:
     wall_contacts: float | None
     absent_reason: str | None
 
+    #: Laps one run is required to complete. **Not decoration.** `lap_time_s` in the run record is
+    #: the whole run, so the RL sweeps report three laps and the scripted sweep reports one, and
+    #: printing the two in one column compares a three-lap run against a single lap. That is the
+    #: same class of error as comparing the two speed columns, and it is disclosed the same way.
+    laps_per_run: int = 1
+
+    @property
+    def seconds_per_lap(self) -> float | None:
+        """The only lap figure that is comparable between drivers."""
+        if self.lap_time_s is None or self.laps_per_run < 1:
+            return None
+        return self.lap_time_s / self.laps_per_run
+
     @property
     def steering_stats(self) -> DistributionSummary:
         return describe(self.steering, f"{self.name}_steering")
@@ -133,10 +146,11 @@ def _driving_column(
         runs=int(frame["run"].nunique()),
         run_sizes=run_sizes_of(frame),
         laps_completed=laps,
-        laps_possible=int(frame["run"].nunique()) if laps is not None else None,
+        laps_possible=int(frame["run"].nunique()) if laps is not None else None,  # runs, not laps
         lap_time_s=lap_time,
         wall_contacts=contacts,
         absent_reason=None,
+        laps_per_run=laps_per_run,
     )
 
 
