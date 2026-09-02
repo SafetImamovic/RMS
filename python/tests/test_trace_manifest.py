@@ -14,6 +14,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+# The raw per-step traces are gitignored: 36 MB of sweep output that M5 reads through committed
+# resampled inputs instead. These two tests verify the manifest against the traces themselves, so
+# they need the traces; the other four verify the manifest's own structure and do not.
+needs_traces = pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[2] / "results" / "drive_logs").exists(),
+    reason="results/drive_logs/ is gitignored and not present in this checkout",
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = REPO_ROOT / "results" / "rl" / "trace_manifest.json"
 
@@ -27,6 +35,7 @@ def manifest() -> dict:
     return json.loads(MANIFEST.read_text(encoding="utf-8"))
 
 
+@needs_traces
 def test_every_sweep_names_ten_existing_traces(manifest: dict) -> None:
     """Ten runs per sweep, ten files, all present on disk."""
     drive_logs = REPO_ROOT / manifest["trace_dir"]
@@ -63,6 +72,7 @@ def test_seeds_are_the_ten_held_out_seeds_in_order(manifest: dict) -> None:
         assert sweep["seeds"] == expected, f"{sweep['run_id']} {sweep['inference']}"
 
 
+@needs_traces
 def test_each_trace_duration_matches_its_evaluation_row(manifest: dict) -> None:
     """The property the manifest was built on, re-checked against the files themselves.
 

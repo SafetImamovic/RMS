@@ -11,9 +11,19 @@ import functools
 import inspect
 
 import numpy as np
+from pathlib import Path
 import pytest
 
 from python.track import config, generator, matching, vehicle
+
+# The human recording is gitignored and downloaded from Kaggle, so a clean clone does not have it.
+# The tests below read it; every other test in this file does not. Skipping exactly those is what
+# lets `pytest python/tests` be green in a clean clone, which is what the README promises and what
+# running the recipe rather than reading it disproved (feature 010, T033).
+needs_dataset = pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[2] / "dataset").exists(),
+    reason="dataset/ is gitignored and not present in this checkout",
+)
 
 PROFILE = vehicle.build_profile()
 
@@ -54,10 +64,12 @@ def pooled_demand(seeds: tuple[int, ...] | None = None) -> np.ndarray:
 # -----------------------------------------------------------------------------------------
 
 
+@needs_dataset
 def test_the_reference_scores_zero_against_itself(reference):
     assert matching._wasserstein1(reference, reference) == pytest.approx(0.0, abs=1e-12)
 
 
+@needs_dataset
 def test_the_two_halves_of_the_reference_score_the_recorded_self_consistency(reference):
     half = len(reference) // 2
     distance = matching._wasserstein1(reference[:half], reference[half:])
@@ -66,6 +78,7 @@ def test_the_two_halves_of_the_reference_score_the_recorded_self_consistency(ref
     assert distance < config.MATCH_DISTANCE_THRESHOLD
 
 
+@needs_dataset
 def test_the_two_recordings_score_the_recorded_human_to_human_distance(reference):
     other = matching.reference_distribution("track2")
     distance = matching._wasserstein1(reference, other)
@@ -73,6 +86,7 @@ def test_the_two_recordings_score_the_recorded_human_to_human_distance(reference
     assert distance == pytest.approx(config.W1_HUMAN_TO_HUMAN, abs=0.0005)
 
 
+@needs_dataset
 def test_a_structureless_uniform_scores_the_recorded_ceiling(reference):
     """A distribution with no structure at all must land on the ceiling scale.
 
@@ -95,6 +109,7 @@ def test_the_threshold_sits_strictly_between_the_floor_and_the_ceiling():
     assert config.MATCH_DISTANCE_THRESHOLD < config.W1_STRUCTURELESS
 
 
+@needs_dataset
 def test_the_distance_is_symmetric(reference):
     other = matching.reference_distribution("track2")
 
@@ -135,6 +150,7 @@ def test_no_function_in_the_module_returns_a_p_value():
         assert banned not in source, f"matching.py references {banned}"
 
 
+@needs_dataset
 def test_the_note_states_both_known_limitations():
     demand = matching.required_steering(generator.generate(1), PROFILE)
     report = matching.match_distance(demand, profile=PROFILE)
@@ -146,6 +162,7 @@ def test_the_note_states_both_known_limitations():
     assert "no p-value" in note
 
 
+@needs_dataset
 def test_the_report_carries_the_three_scales_so_a_distance_is_readable():
     demand = matching.required_steering(generator.generate(1), PROFILE)
     report = matching.match_distance(demand)
@@ -157,6 +174,7 @@ def test_the_report_carries_the_three_scales_so_a_distance_is_readable():
     assert report.accepted == (report.distance <= report.threshold)
 
 
+@needs_dataset
 def test_the_report_names_the_conditional_reference():
     """Which distribution was used is part of the result, not an implementation detail."""
     report = matching.match_distance(
@@ -261,6 +279,7 @@ def test_describe_matches_numpy_on_a_known_array():
 # -----------------------------------------------------------------------------------------
 
 
+@needs_dataset
 def test_a_pooled_report_records_how_many_seeds_went_into_it():
     """SC-010 may not be quoted from a report with fewer than 20 seeds pooled."""
     pooled = np.concatenate([
@@ -274,6 +293,7 @@ def test_a_pooled_report_records_how_many_seeds_went_into_it():
     assert report.n_track_samples == 20 * config.SAMPLES_PER_TRACK
 
 
+@needs_dataset
 def test_a_single_seed_report_says_so():
     report = matching.match_distance(
         matching.required_steering(generator.generate(9), PROFILE))
@@ -287,6 +307,7 @@ def test_a_single_seed_report_says_so():
 # -----------------------------------------------------------------------------------------
 
 
+@needs_dataset
 def test_a_pooled_batch_is_bounded_above_by_the_human_recording(reference):
     """SC-010 as revised: the track never demands more than a human was recorded supplying."""
     seeds = accepted_seeds()
@@ -300,6 +321,7 @@ def test_a_pooled_batch_is_bounded_above_by_the_human_recording(reference):
     assert bound.n_seeds_pooled >= 20
 
 
+@needs_dataset
 def test_every_percentile_gap_is_negative_for_a_generated_batch(reference):
     """The gap must not merely be non-positive on average, but at every reported percentile."""
     bound = matching.demand_bound(pooled_demand(), reference)
@@ -308,6 +330,7 @@ def test_every_percentile_gap_is_negative_for_a_generated_batch(reference):
         assert gap <= 0.0, f"track demands {gap:+.3f} more than the human at P{p:g}"
 
 
+@needs_dataset
 def test_a_demand_above_the_human_maximum_fails_the_bound(reference):
     """The direction that must fail, or the check would approve anything."""
     too_much = np.full(1000, float(np.max(reference)) + 0.05)
@@ -319,6 +342,7 @@ def test_a_demand_above_the_human_maximum_fails_the_bound(reference):
     assert bound.worst_percentile is not None
 
 
+@needs_dataset
 def test_a_single_impossible_corner_fails_even_when_the_shape_is_fine(reference):
     """A distribution can sit under the human curve everywhere and still be unusable.
 
@@ -332,6 +356,7 @@ def test_a_single_impossible_corner_fails_even_when_the_shape_is_fine(reference)
     assert matching.demand_bound(spiked, reference).within_bound is False
 
 
+@needs_dataset
 def test_the_bound_checks_only_the_upper_percentiles(reference):
     """A loop with no straights sits ABOVE a human at the bottom, by construction.
 
@@ -359,6 +384,7 @@ def test_the_bound_checks_only_the_upper_percentiles(reference):
             f"seed {seed} was failed for turning everywhere, which is by design")
 
 
+@needs_dataset
 def test_the_bound_note_explains_why_it_is_not_a_distribution_match():
     bound = matching.demand_bound(
         matching.required_steering(generator.generate(1), PROFILE))
@@ -376,6 +402,7 @@ def test_the_bound_type_has_no_p_value_field():
         assert banned not in fields
 
 
+@needs_dataset
 def test_the_distance_is_still_reported_as_a_diagnostic(reference):
     """match_distance stays, and stays honest: it is no longer the SC-010 gate.
 
@@ -392,6 +419,7 @@ def test_the_distance_is_still_reported_as_a_diagnostic(reference):
     assert report.distance < config.W1_STRUCTURELESS
 
 
+@needs_dataset
 def test_the_reference_is_read_only(reference):
     """This module must never write to the dataset or to results."""
     source = inspect.getsource(matching)
