@@ -29,18 +29,54 @@ pregledati u `git diff` kao i svaki drugi izvorni fajl.
 
 Oblik krive je polarna harmonijska petlja:
 
-```
-r(theta) = R0 * (1 + suma_k a_k sin(k theta + phi_k)),    a_k = A / k^2
-```
+$$
+r(\theta) = R_0 \left(1 + \sum_k a_k \sin(k\theta + \phi_k)\right),
+\qquad
+a_k = \frac{A}{k^2}.
+$$
+
+$R_0 = 30$ m, $k \in \{2, 3, 4, 5\}$, $A \in [0.70, 0.90]$, a faze $\phi_k$ dolaze iz seed-a.
+Pad amplitude po $1/k^2$ je ono što sprječava da visoki harmonici preuzmu oblik.
 
 Dvije osobine ovog oblika rade stvarni posao. **Zatvara se po konstrukciji**, jer je svaki
-harmonik cijeli umnožak od theta, pa se krajevi nikad ne "šiju" naknadno; šav bi bio prekid
-u zakrivljenosti koji vozilo osjeti. I **zakrivljenost mu je poznata u zatvorenoj formi**,
-pa se odluka o prihvatanju staze donosi analitički, a ne numeričkom derivacijom tamo gdje je
+harmonik cijeli umnožak od $\theta$, pa se krajevi nikad ne "šiju" naknadno; šav bi bio prekid
+u zakrivljenosti koji vozilo osjeti. I **zakrivljenost mu je poznata u zatvorenoj formi**, jer su
+$r$, $r'$ i $r''$ opet sume sinusa:
+
+$$
+\kappa(\theta) = \frac{r^2 + 2r'^2 - r\,r''}{\left(r^2 + r'^2\right)^{3/2}},
+\qquad
+R(\theta) = \frac{1}{|\kappa(\theta)|}.
+$$
+
+Odluka o prihvatanju staze se zato donosi analitički, a ne numeričkom derivacijom tamo gdje je
 ona najmanje tačna.
 
 **Veza s datasetom nije dekorativna.** Svaka staza se provjerava protiv profila vozila koji
-je izveden iz M1 mjerenja, i nosi taj profil sa sobom:
+je izveden iz M1 mjerenja, i nosi taj profil sa sobom. Prag najoštrije krivine nije odabran nego
+izveden iz bicikl-modela, pri malim brzinama i punom zaokretu:
+
+$$
+R_{\min} = \frac{L}{\tan \delta_{\max}} = \frac{2.5}{\tan 25^\circ} = 5.36\ \text{m},
+\qquad
+r_{\text{floor}} = m \cdot R_{\min} = 1.3 \cdot 5.36 = 6.97\ \text{m}.
+$$
+
+Isti model, obrnut, daje koliko volana staza **traži** u svakoj tački, normalizovano na $[0, 1]$:
+
+$$
+s_{\text{req}}(\theta) = \frac{\arctan\!\big(L / R(\theta)\big)}{\delta_{\max}}.
+$$
+
+Na samom pragu to ispada
+
+$$
+s_{\text{req}}^{\max} = \frac{\arctan\!\big(\tan \delta_{\max} / m\big)}{\delta_{\max}} = 0.7893,
+$$
+
+**nezavisno od $L$**: međuosovinsko rastojanje se skrati između arkustangensa i poluprečnika, pa
+je margina $m$ jedini parametar koji pomjera ovaj broj. Zato je margina poštena ručka, a ne jedna
+od dvije koje se međusobno miješaju.
 
 | Provjera | Šta znači |
 |---|---|
@@ -76,6 +112,90 @@ Unity čita gotov fajl i postavlja objekte. **U Unityju nema nijedne statistike*
 trebalo dokazati dokazano je u Pythonu i zapisano u `seed_<n>.json`, a učitavač odbija fajl
 koji ne razumije umjesto da pročita polja koja slučajno prepoznaje.
 
+## Skriptirani vozač: dva regulatora, jedna razlika
+
+Skriptirani vozač gleda **samo** normalizovane udaljenosti zraka $d_i \in [0, 1]$ i njihove uglove
+$\alpha_i$. Ne vidi stazu, ni markere, ni centralnu liniju. Oba regulatora vraćaju komandu volana
+$s \in [-1, 1]$, a razlikuju se u jednoj stvari: kako od $d_i$ dolaze do ugla.
+
+**MostOpen**, naivni: skreni prema jednoj najotvorenijoj zraci.
+
+$$
+i^\star = \arg\max_i d_i,
+\qquad
+s = \operatorname{clamp}\!\left(\frac{\alpha_{i^\star}}{\delta_{\max}},\, -1,\, 1\right).
+$$
+
+Kod izjednačenja pobjeđuje zraka bliža pravo naprijed, $\min |\alpha_i|$, a ne prva po redoslijedu
+u nizu. To nije sitnica: otvorena ravnica vraća $d_i = 1$ za svaku zraku, i uzimanje prvog indeksa
+bi svaki put skrenulo tvrdo lijevo.
+
+**Zašto ovaj regulator mora da tresne.** Komanda može biti samo ugao na koji neka zraka već
+pokazuje. Pri 13 zraka preko 180 stepeni to su umnošci od 15 stepeni naspram granice volana od
+25 stepeni, pa su dostižne komande $0$, $\pm 0.6$ i $\pm 1.0$ nakon odsjecanja. Tri magnitude,
+ništa između, dakle sredina krivine se ne može držati nego se mora alternirati. Predviđeno prije
+nego što je ijednom pokrenuto (research R2), i izmjereno: **0 od 102** kruga.
+
+**WeightedAverage**, usvojeni: svaka zraka glasa za svoj ugao, težina joj je koliko daleko vidi.
+
+$$
+w_i = \operatorname{clamp}_{[0,1]}(d_i),
+\qquad
+s = \operatorname{clamp}\!\left(\frac{1}{\delta_{\max}} \cdot
+\frac{\sum_i w_i\, \alpha_i}{\sum_i w_i},\, -1,\, 1\right),
+$$
+
+uz $s = 0$ kada je $\sum_i w_i \le 10^{-6}$, jer tada nema otvorenog smjera za usrednjavanje i
+bolje je držati kurs nego izmisliti skretanje iz dijeljenja nulom.
+
+Ništa se ne lijepi za zraku, pa je skup dostižnih komandi neprekidan i kvantizacija koja tjera
+`MostOpen` da tresne nestaje **po konstrukciji**, a ne naknadnim izglađivanjem. Simetrično očitanje
+vraća tačno $0$ bez posebnog slučaja, jer se težine ogledaju a uglovi ponište.
+
+Brzina se ne bira nego izvodi, iz dvije relacije koje nisu podešene:
+
+$$
+v_{\text{prianjanje}} = \sqrt{a\,R},
+\qquad
+v_{\text{kočenje}} = \sqrt{2\,a\,d_{\text{clearance}}}.
+$$
+
+Prva je granica bočnog ubrzanja u krivini poluprečnika $R$, druga standardna relacija zaustavnog
+puta. Pri $a \approx 5.85$ m/s$^2$ prelomna tačka je **17.1 m**: ispod tog poluprečnika puni gas
+traži više bočnog ubrzanja nego što gume mogu dati.
+
+## Evaluacija: čime se poređenje mjeri
+
+Poređenje se izvodi statistički, ne "na oko" (DESIGN §7.1). Primarna osa je glatkoća, mjerena
+dvouzoračnim Kolmogorov-Smirnov testom, gdje je statistika $D$ **ujedno i veličina efekta**:
+
+$$
+D = \sup_x \left| F_{\text{model}}(x) - F_{\text{čovjek}}(x) \right|.
+$$
+
+Sekundarna osa je nivo volana na rešetci od 41 tačke, korakom 0.05, preko KL divergencije i
+$\chi^2$ testa homogenosti:
+
+$$
+D_{\mathrm{KL}}(P \,\|\, Q) = \sum_{\ell} P(\ell) \log \frac{P(\ell)}{Q(\ell)},
+\qquad
+\chi^2 = \sum_{\ell} \frac{(O_\ell - E_\ell)^2}{E_\ell}.
+$$
+
+Svakoj kanti se dodaje $\varepsilon = 10^{-9}$ prije normalizacije, jer je KL beskonačan tamo gdje
+referenca ima nultu masu, a takvih nivoa ima.
+
+Stope završenih krugova se **nikad ne navode bez intervala**. Normalna aproksimacija na $\hat p = 1$
+daje interval širine nula, pa se koristi Wilsonov:
+
+$$
+\frac{\hat p + \dfrac{z^2}{2n} \;\pm\; z \sqrt{\dfrac{\hat p(1-\hat p)}{n} + \dfrac{z^2}{4n^2}}}
+{1 + \dfrac{z^2}{n}}.
+$$
+
+Zato 10 od 10 čita $[0.72, 1.00]$, a 33 od 33 čita $[0.90, 1.00]$: oba su 100 posto, i nisu isti
+rezultat.
+
 ## Kako radi
 
 ```
@@ -96,7 +216,7 @@ Kaggle dataset ──▶ EDA (notebook) ──▶ profil vozila ──▶ genera
 | `unity/SelfDrivingSim/` | Unity projekat: scena sa stazom, vozilo, `CarAgent` |
 | `config/ppo_car.yaml` | Hiperparametri PPO treninga |
 | `python/track/` | Profil vozila, generator staza, provjere geometrije, izvoz |
-| `python/notebooks/` | Analiza dataseta (M1) |
+| `python/notebooks/` | 01: analiza dataseta (M1). 02: modeli i metode, formule i grafovi |
 | `python/eda/` | Učitavanje dataseta i statistika (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch, M4) |
 | `python/tests/` | Testovi za `eda`, `track` i `bc` |
@@ -125,22 +245,22 @@ Tačne, provjerene verzije i zamke: `ENVIRONMENT.md`.
 ## Postavljanje
 
 ```powershell
-# 1. Kloniraj repo
-git clone <remote-url> RMS; cd RMS
+# 1. Kloniranje repo-a
+git clone https://github.com/SafetImamovic/RMS.git; cd RMS
 git lfs install
 
-# 2. Python okruženja - tri, namjerno odvojena (detalji: ENVIRONMENT.md)
+# 2. Kreiranje Python okruženja - tri, namjerno odvojena (detalji: ENVIRONMENT.md)
 #    .venv za M1 EDA, .venv-mlagents za RL, .venv-bc za BC trening.
 #    Razlog: mlagents pinuje numpy==1.23.5, a BC traži noviji numpy uz torch 2.6.
 py -3.10 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r python/requirements.txt
 
-# 3. Dataset → dataset/ (git-ignorisan; koristimo spojeni dataset/dataset/)
+# 3. Preuzimanje dataseta → dataset/ (git-ignorisan; koristi se spojeni dataset/dataset/)
 kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
-#   (ili ručno sa Kaggle stranice, raspakovati u dataset/)
+#   (ili ručno sa Kaggle stranice, uz raspakivanje u dataset/)
 
-# 4. BC okruženje (M4) - odvojeno od .venv i .venv-mlagents
+# 4. Kreiranje BC okruženja (M4) - odvojeno od .venv i .venv-mlagents
 py -3.10 -m venv .venv-bc
 .venv-bc\Scripts\Activate.ps1
 pip install -r requirements-bc.txt
@@ -148,20 +268,21 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 #   Mora ispisati True i ime GPU-a. Trening odbija da krene bez GPU-a
 #   osim uz izričit --allow-cpu, jer je CPU epoha višesatna.
 
-# 5. Unity projekat
-#    Unity Hub → Add → odaberi unity/SelfDrivingSim → otvori
+# 5. Otvaranje Unity projekta
+#    Unity Hub → Add → odabir unity/SelfDrivingSim → otvaranje
 #    (prvi import traje nekoliko minuta - Unity gradi Library/ keš)
 ```
 
 ## Upotreba
 
-Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
+Svaka grupa komandi traži svoje okruženje; aktiviranje ide prije pokretanja.
 
 ```powershell
 # ---- M1: analiza dataseta (.venv) ----
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
-jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
+jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # M1: dataset, korak po korak
+jupyter notebook python/notebooks/02_modeli_i_metode.ipynb    # generator, regulatori, PPO, testovi
 pytest python/tests                  # 425 prolaza, 4 preskočena (bc moduli traže torch)
 #   U ČISTOM KLONU: 321 prolaz, 92 preskočena, nula padova. Razlika je dataset i
 #   sirovi tragovi: oba su git-ignorisana, pa testovi koji ih čitaju preskaču.
@@ -232,10 +353,10 @@ python -m python.bc.playback --run bc_unbalanced_v01 bc_balanced_v01 --track tra
 #    po koraku u trace_<vrijeme>.csv. Oba su git-ignorisana; u repozitorij ulaze
 #    samo izvještaji (results\heuristic\*.md).
 
-# 2. Sweep preko svih 34 trening seeda, bez izlaska iz Play modea. U sceni dodaj
-#    SweepRunner, poveži TrackBuilder / HeuristicDriver / StartPlacer / CarController
-#    / CarAgent, pa u Inspectoru: seedSet = Train, timeScale = 2, runOnStart = true,
-#    fans = arrangements koje se porede. Play.
+# 2. Sweep preko svih 34 trening seeda, bez izlaska iz Play modea. U sceni: dodavanje
+#    SweepRunner-a, povezivanje TrackBuilder / HeuristicDriver / StartPlacer /
+#    CarController / CarAgent, pa u Inspectoru: seedSet = Train, timeScale = 2,
+#    runOnStart = true, fans = arrangements koje se porede. Play.
 #    timeScale 2 je najbrže na čemu se mjerenja reprodukuju; na 4 se mjeri frame
 #    clock, a ne vožnja (research R4a). Jedna konfiguracija traje 6.3-7.6 minuta,
 #    što NE staje u SC-004 budžet od pet minuta - zapisano kao promašaj, ne zaobiđeno.
