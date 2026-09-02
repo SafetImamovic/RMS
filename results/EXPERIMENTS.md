@@ -1170,3 +1170,70 @@ The clean clone also caught a wrong fix: the first trace guard asked whether `re
 exists, and that directory is tracked and holds committed July traces, so it exists in every clone
 while feature 009's 60 gitignored files do not. Suite in a clean clone is now **321 passed, 92
 skipped, zero failures**.
+
+---
+
+## Generalisation (feature 011)
+
+### Pre-registered: does the policy drive tracks nobody looked at?
+
+**Written 2026-09-02, before the sweep ran.** Committed before the seed set was swept so the
+reading cannot be chosen after the numbers exist. This is the fourth pre-registration in this file
+and the pattern is the same one features 009 and 010 used.
+
+**The question, stated precisely.** M3's closing summary recorded a limit: "generalisation beyond
+these ten tracks from one generator is unshown." Seeds 1001 to 1010 were held out from the policy
+and research R5's rule kept them out of every configuration choice, so the policy never saw them.
+But they were read to report a result **four times**, across features 006, 007, 008 and 009, and
+each reading informed which experiment came next. That is selection pressure at the level of the
+researcher, invisible in any one feature's numbers. A set of tracks looked at once is the only thing
+that removes it.
+
+**The setup, fixed now.**
+
+| | |
+|---|---|
+| policy | `ppo_car_009_bc`, seed 42, checkpoint 5000101, unchanged. No retraining and no checkpoint selection against these tracks |
+| inference | deterministic, matching the column M3 was closed on |
+| seeds | 2001 to 2040 requested, **33 accepted** at the same acceptance bound, disjoint from both existing splits |
+| laps | 3 per run, matching M3 |
+| runs | one per accepted seed, no repeats |
+
+**The new tracks are not harder, and that is recorded now rather than discovered later.** Pooled
+peak steering demand is **0.695** against training's 0.789 and held-out's 0.738, all within the
+human bound of 1.000. So a good result here cannot be claimed as "it generalises to harder tracks",
+and a bad result cannot be excused as "these were harder". They are slightly easier on the one axis
+the acceptance bound measures.
+
+**Every interval is Wilson, decided before the numbers.** The normal approximation reports
+`[1.00, 1.00]` on a perfect run, claiming certainty from a finite sample. On 10 of 10 the Wilson
+interval is `[0.72, 1.00]`; on 33 of 33 it is about `[0.90, 1.00]`.
+
+**The four readings, and which one applies is decided by the numbers rather than by preference.**
+
+1. **All 33 complete.** The policy drives this distribution of tracks, not only the ten it was
+   reported on. M3's recorded limit closes.
+2. **Some fail, and the intervals overlap.** No difference detected at this sample size. Reported
+   in those words, never as "generalisation confirmed" and never as "generalisation failed".
+3. **Clearly worse, intervals disjoint.** A real generalisation gap. The honest reading is that the
+   held-out ten were easier or luckier than the generator's typical output. **M3's verdict is not
+   edited**: M3 was closed on the evidence it named, and this becomes a limit recorded beside it,
+   exactly as M3's own closeout recorded this one.
+4. **Any failure at all.** The end reasons are read, not only the rate. A wall contact, a time limit
+   and a no-progress stall are three different findings and averaging them into "did not finish"
+   would discard the one that matters.
+
+**What this cannot answer either way.** The new seeds come from the same generator under the same
+acceptance bound, so the claim is about a distribution of tracks rather than about track design in
+general. A different generator, a different topology or a real road is a larger question and is out
+of scope.
+
+**Two defects were found while setting this up, both before any sweep ran.**
+
+- **The run record's controller column was a hand-typed string**, and its own tooltip said "nothing
+  checks the two agree, so they are worth checking by eye". It is now derived from the model asset
+  actually loaded and the inference mode actually in effect. This is feature 010's `sourceLabel`
+  trap in a second place, and it would have made this sweep's rows unable to prove what drove them.
+- **The evaluation scene was holding seed 13's model with deterministic inference off**, left over
+  from the last sweep. Running without resetting it would have produced a complete, plausible, wrong
+  answer: seed 13's policy sampling its actions, reported as seed 42's driving deterministically.

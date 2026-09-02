@@ -221,3 +221,13 @@ W1_STRUCTURELESS: float = 0.1142
 
 TRAIN_SEEDS: range = range(1, 41)
 EVAL_SEEDS: range = range(1001, 1011)
+
+# A third set, added by feature 011 and looked at exactly once.
+#
+# **Not another held-out set, and the difference is the whole point.** EVAL_SEEDS were held out from
+# the policy and research R5's rule kept them out of every configuration choice. But they were read
+# to report a result four times, across features 006 through 009, and each reading informed which
+# experiment came next. That is selection pressure at the level of the researcher rather than the
+# model, and it is invisible in any one feature's numbers. Forty requested rather than ten, because
+# the sweep is cheap and a Wilson interval on ten perfect runs still reaches down to 0.72.
+GENERALISATION_SEEDS: range = range(2001, 2041)
