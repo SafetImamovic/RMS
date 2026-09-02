@@ -100,6 +100,30 @@ namespace SelfDrivingSim.Logging
             EndRun();
         }
 
+        /// <summary>
+        /// Close the current file and open a new one, stamping every row with <paramref name="label"/>.
+        ///
+        /// **Why the label is passed in rather than set in the scene.** <see cref="sourceLabel"/> is
+        /// a serialised field, so it holds whatever the scene was last saved with. Feature 009 ran
+        /// six evaluation sweeps through `Evaluation.unity` while that field still read
+        /// `ppo_car_spread_a_sampling` from feature 006, and all 60 traces claim to belong to a run
+        /// that did not produce them. The traces had to be recovered by matching each one's
+        /// duration against its run record instead (`python/rl/trace_manifest.py`).
+        ///
+        /// A caller that knows the run id passes it here and the file describes itself. An empty
+        /// or null label leaves the serialised value alone, so the scenes that never set one keep
+        /// working.
+        /// </summary>
+        public void BeginRun(string label)
+        {
+            if (!string.IsNullOrWhiteSpace(label))
+            {
+                sourceLabel = label;
+            }
+
+            BeginRun();
+        }
+
         /// <summary>Close the current file and open a new one. Bound to the telemetry reset key.</summary>
         public void BeginRun()
         {

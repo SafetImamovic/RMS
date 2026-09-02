@@ -1,0 +1,188 @@
+{
+  "generated_by": "python/rl/trace_manifest.py",
+  "trace_dir": "results/drive_logs",
+  "matched_on": "the trace's final t against the evaluation row's duration_s, within 0.06s, consumed in run order",
+  "source_column_is_wrong": "DriveLogger.sourceLabel is a SerializeField literal rather than the run id, and in Evaluation.unity it still read ppo_car_spread_a_sampling from feature 006. Every trace named here carries that string in its source column. Select traces through this manifest, never through the source column.",
+  "sweeps": [
+    {
+      "run_id": "ppo_car_009_bc",
+      "inference": "deterministic",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_deterministic.csv",
+      "sweep_stamp": "2026-08-31_18-56-04",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-08-31_18-55-48.csv",
+        "2026-08-31_18-56-04.csv",
+        "2026-08-31_18-56-19.csv",
+        "2026-08-31_18-56-35.csv",
+        "2026-08-31_18-56-51.csv",
+        "2026-08-31_18-57-06.csv",
+        "2026-08-31_18-57-22.csv",
+        "2026-08-31_18-57-37.csv",
+        "2026-08-31_18-57-53.csv",
+        "2026-08-31_18-58-08.csv"
+      ]
+    },
+    {
+      "run_id": "ppo_car_009_bc",
+      "inference": "sampling",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_sampling.csv",
+      "sweep_stamp": "2026-08-31_18-59-49",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-08-31_18-59-33.csv",
+        "2026-08-31_18-59-49.csv",
+        "2026-08-31_19-00-05.csv",
+        "2026-08-31_19-00-20.csv",
+        "2026-08-31_19-00-36.csv",
+        "2026-08-31_19-00-52.csv",
+        "2026-08-31_19-01-08.csv",
+        "2026-08-31_19-01-23.csv",
+        "2026-08-31_19-01-39.csv",
+        "2026-08-31_19-01-41.csv"
+      ]
+    },
+    {
+      "run_id": "ppo_car_009_bc_s7",
+      "inference": "deterministic",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_s7_deterministic.csv",
+      "sweep_stamp": "2026-09-01_12-48-31",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-09-01_12-48-15.csv",
+        "2026-09-01_12-48-31.csv",
+        "2026-09-01_12-48-46.csv",
+        "2026-09-01_12-49-02.csv",
+        "2026-09-01_12-49-18.csv",
+        "2026-09-01_12-49-33.csv",
+        "2026-09-01_12-49-49.csv",
+        "2026-09-01_12-50-05.csv",
+        "2026-09-01_12-50-20.csv",
+        "2026-09-01_12-50-36.csv"
+      ]
+    },
+    {
+      "run_id": "ppo_car_009_bc_s7",
+      "inference": "sampling",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_s7_sampling.csv",
+      "sweep_stamp": "2026-09-01_12-51-50",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-09-01_12-51-34.csv",
+        "2026-09-01_12-51-50.csv",
+        "2026-09-01_12-52-06.csv",
+        "2026-09-01_12-52-22.csv",
+        "2026-09-01_12-52-38.csv",
+        "2026-09-01_12-52-53.csv",
+        "2026-09-01_12-53-09.csv",
+        "2026-09-01_12-53-25.csv",
+        "2026-09-01_12-53-41.csv",
+        "2026-09-01_12-53-57.csv"
+      ]
+    },
+    {
+      "run_id": "ppo_car_009_bc_s13",
+      "inference": "deterministic",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_s13_deterministic.csv",
+      "sweep_stamp": "2026-09-01_14-38-14",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-09-01_14-37-58.csv",
+        "2026-09-01_14-38-14.csv",
+        "2026-09-01_14-38-29.csv",
+        "2026-09-01_14-38-45.csv",
+        "2026-09-01_14-39-01.csv",
+        "2026-09-01_14-39-16.csv",
+        "2026-09-01_14-39-32.csv",
+        "2026-09-01_14-39-47.csv",
+        "2026-09-01_14-40-03.csv",
+        "2026-09-01_14-40-19.csv"
+      ]
+    },
+    {
+      "run_id": "ppo_car_009_bc_s13",
+      "inference": "sampling",
+      "eval_csv": "C:/Users/User/Development/RMS/results/rl/eval_ppo_car_009_bc_s13_sampling.csv",
+      "sweep_stamp": "2026-09-01_14-41-28",
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010
+      ],
+      "traces": [
+        "2026-09-01_14-41-12.csv",
+        "2026-09-01_14-41-28.csv",
+        "2026-09-01_14-41-44.csv",
+        "2026-09-01_14-42-00.csv",
+        "2026-09-01_14-42-16.csv",
+        "2026-09-01_14-42-32.csv",
+        "2026-09-01_14-42-48.csv",
+        "2026-09-01_14-43-04.csv",
+        "2026-09-01_14-43-20.csv",
+        "2026-09-01_14-43-35.csv"
+      ]
+    }
+  ]
+}
