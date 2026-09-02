@@ -15,6 +15,17 @@ namespace SelfDrivingSim.Environment
 
         /// <summary>Free orbit in polar coordinates. The mouse owns yaw and pitch outright.</summary>
         FreeOrbit,
+
+        /// <summary>
+        /// Detached from the car entirely: fly it yourself, like a scene view.
+        ///
+        /// **The only view that does not follow anything.** Every other kind is anchored to the
+        /// car's transform, which is what makes them useless for looking at the track ahead of the
+        /// agent, at a corner it has not reached, or at the barrier it just clipped. This one keeps
+        /// its own position and the car may leave the frame, which is the point rather than a
+        /// defect.
+        /// </summary>
+        FreeFly,
     }
 
     /// <summary>One camera view: where it sits and how it behaves.</summary>
@@ -66,8 +77,13 @@ namespace SelfDrivingSim.Environment
     /// will expose in User Story 3, which come from raycasts and vehicle state, so this file
     /// can be retuned, replaced or deleted without moving a single number in the feature.
     ///
-    /// Controls: mouse orbits or looks, wheel zooms, C cycles views, 1 to 5 pick one
+    /// Controls: mouse orbits or looks, wheel zooms, C cycles views, 1 to 6 pick one
     /// directly, Escape releases the cursor.
+    ///
+    /// View 6 is a free fly camera: WASD moves it, Q and E drop and lift it, Shift is a boost,
+    /// and the mouse aims it. It is detached from the car, so the car can leave the frame.
+    /// **WASD also drives the car when a human is at the wheel**, so the free fly is meant for
+    /// watching a policy or the scripted driver, where the keyboard reaches nothing else.
     /// </summary>
     public class CameraRig : MonoBehaviour
     {
@@ -131,6 +147,17 @@ namespace SelfDrivingSim.Environment
                 distanceM = 8f,
                 pitchDeg = 14f,
             },
+            new CameraView
+            {
+                name = "Free fly",
+                kind = ViewKind.FreeFly,
+                // Starts where a chase camera would, so pressing 6 does not teleport the view
+                // somewhere unrecognisable. From there it is yours.
+                pivotOffset = new Vector3(0f, 1.0f, 0f),
+                distanceM = 10f,
+                pitchDeg = 16f,
+                fovDeg = 60f,
+            },
         };
 
         [SerializeField] private int startViewIndex = 2;
@@ -153,6 +180,21 @@ namespace SelfDrivingSim.Environment
                  "first-person views have no distance to change.")]
         [SerializeField]
         private float zoomMetresPerNotch = 1.2f;
+
+        [Header("Free fly (view 6)")]
+        [Tooltip("Metres per second the free fly camera moves on WASD, before the boost.")]
+        [SerializeField]
+        private float flySpeedMs = 12f;
+
+        [Tooltip("Multiplier while Shift is held. A track is roughly 200 m round, so crossing it " +
+                 "at walking pace is not useful.")]
+        [SerializeField]
+        private float flyBoostFactor = 4f;
+
+        [Tooltip("Seconds for the fly velocity to catch up to the keys. Zero is instant and " +
+                 "reads as twitchy on a wide shot.")]
+        [SerializeField]
+        private float flySmoothTime = 0.10f;
 
         [Header("Recentre")]
         [Tooltip("Seconds of mouse stillness before a free orbit eases back behind the car, " +
@@ -192,6 +234,12 @@ namespace SelfDrivingSim.Environment
         private float _mouseIdleForS;
         private Vector3 _followVelocity;
 
+        // Free fly keeps its own position, because it is the one view not derived from the car's
+        // transform. Held here rather than read back off transform.position so a view switch away
+        // and back does not inherit wherever the chase camera happened to leave the object.
+        private Vector3 _flyPosition;
+        private Vector3 _flyVelocity;
+
         /// <summary>The view currently active.</summary>
         public CameraView CurrentView =>
             (views != null && views.Length > 0) ? views[Mathf.Clamp(_viewIndex, 0, views.Length - 1)] : null;
@@ -199,8 +247,55 @@ namespace SelfDrivingSim.Environment
         /// <summary>Name of the active view, for a HUD or a log line.</summary>
         public string CurrentViewName => CurrentView != null ? CurrentView.name : "(none)";
 
+        /// <summary>
+        /// Append the free fly view to any scene that was saved before it existed.
+        ///
+        /// **This is here because a serialised array beats a field initialiser, always.** The
+        /// `views` default in this file lists six entries, but every scene in this project was
+        /// saved carrying five, and Unity restores what the scene holds rather than what the code
+        /// declares. Without this, adding a view to the code would appear to work, compile clean,
+        /// and then do nothing in all five scenes, with the digit key silently ignored because the
+        /// shortcut loop is bounded by `views.Length`.
+        ///
+        /// Fixing it here rather than by hand editing five `.unity` files: the YAML edit would have
+        /// to be repeated for every scene, would show up as a diff in scenes this feature has no
+        /// business touching, and would still not help a scene someone creates tomorrow.
+        ///
+        /// Idempotent by construction, since it looks for the kind rather than counting.
+        /// </summary>
+        private void EnsureFreeFlyView()
+        {
+            if (views == null)
+            {
+                views = System.Array.Empty<CameraView>();
+            }
+
+            foreach (CameraView existing in views)
+            {
+                if (existing != null && existing.kind == ViewKind.FreeFly)
+                {
+                    return;
+                }
+            }
+
+            var grown = new CameraView[views.Length + 1];
+            System.Array.Copy(views, grown, views.Length);
+            grown[views.Length] = new CameraView
+            {
+                name = "Free fly",
+                kind = ViewKind.FreeFly,
+                pivotOffset = new Vector3(0f, 1.0f, 0f),
+                distanceM = 10f,
+                pitchDeg = 16f,
+                fovDeg = 60f,
+            };
+            views = grown;
+        }
+
         private void Awake()
         {
+            EnsureFreeFlyView();
+
             _camera = GetComponent<Camera>();
             if (target != null)
             {
@@ -248,7 +343,10 @@ namespace SelfDrivingSim.Environment
 
             // Number keys pick a view outright, which is quicker than cycling when you are
             // checking one specific thing.
-            Key[] digits = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5 };
+            Key[] digits =
+            {
+                Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6,
+            };
             for (int i = 0; i < digits.Length && i < views.Length; i++)
             {
                 if (keyboard[digits[i]].wasPressedThisFrame)
@@ -347,6 +445,12 @@ namespace SelfDrivingSim.Environment
                             _targetYawDeg, target.eulerAngles.y, recentreDegPerSecond * Time.deltaTime);
                     }
                     break;
+
+                case ViewKind.FreeFly:
+                    // Deliberately nothing. Recentring would swing the camera back behind a car
+                    // the operator has just flown away from, which is the one thing this view
+                    // exists to avoid.
+                    break;
             }
 
             float rate = view.kind == ViewKind.ChaseLocked ? view.yawFollowPerSecond : angleLerpPerSecond;
@@ -381,6 +485,12 @@ namespace SelfDrivingSim.Environment
                 return;
             }
 
+            if (view.kind == ViewKind.FreeFly)
+            {
+                PlaceFreeFly(deltaTime);
+                return;
+            }
+
             // Spherical to Cartesian: the rotation carries the polar angles, and the camera
             // sits one radius back along its own forward axis.
             Quaternion orbit = Quaternion.Euler(_pitchDeg, _yawDeg, 0f);
@@ -397,6 +507,56 @@ namespace SelfDrivingSim.Environment
                 : wanted;
 
             transform.rotation = Quaternion.LookRotation(anchor - transform.position, Vector3.up);
+        }
+
+        /// <summary>
+        /// Fly the camera under keyboard control, in the direction it is currently facing.
+        ///
+        /// **Movement is relative to the camera, not to the world**, so W goes where you are
+        /// looking rather than along a fixed axis. That is what makes a free fly usable for
+        /// following a corner: aim, then push forward.
+        ///
+        /// **There is no ground clamp here**, unlike the chase and orbit views. Those clamp
+        /// because a chase camera dipping under the plane is always a bug; here going below the
+        /// track is a legitimate thing to want, to look at the barrier geometry from underneath.
+        /// </summary>
+        private void PlaceFreeFly(float deltaTime)
+        {
+            Vector3 wish = Vector3.zero;
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null)
+            {
+                if (keyboard.wKey.isPressed) wish += transform.forward;
+                if (keyboard.sKey.isPressed) wish -= transform.forward;
+                if (keyboard.dKey.isPressed) wish += transform.right;
+                if (keyboard.aKey.isPressed) wish -= transform.right;
+
+                // Q and E rather than the pitch of the camera, so height can be changed without
+                // also changing where the shot is aimed.
+                if (keyboard.eKey.isPressed) wish += Vector3.up;
+                if (keyboard.qKey.isPressed) wish -= Vector3.up;
+
+                if (wish.sqrMagnitude > 1e-6f)
+                {
+                    wish = wish.normalized * flySpeedMs;
+                    if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)
+                    {
+                        wish *= flyBoostFactor;
+                    }
+                }
+            }
+
+            // Smoothed rather than applied raw, so releasing a key coasts to a stop instead of
+            // cutting. On a wide shot the cut reads as a dropped frame.
+            _flyVelocity = flySmoothTime > 0f && deltaTime > 0f
+                ? Vector3.Lerp(_flyVelocity, wish, 1f - Mathf.Exp(-deltaTime / flySmoothTime))
+                : wish;
+
+            _flyPosition += _flyVelocity * deltaTime;
+
+            transform.position = _flyPosition;
+            transform.rotation = Quaternion.Euler(_pitchDeg, _yawDeg, 0f);
         }
 
         /// <summary>Switch to a view by index. Wraps, so it is safe to call with index + 1.</summary>
@@ -430,6 +590,17 @@ namespace SelfDrivingSim.Environment
             _pitchDeg = _targetPitchDeg;
             _mouseIdleForS = 0f;
             _followVelocity = Vector3.zero;
+
+            if (view.kind == ViewKind.FreeFly)
+            {
+                // Enter where a chase camera would have been, so pressing 6 reframes rather than
+                // teleports. Computed rather than read off transform.position, which may still be
+                // mid-smoothing from the view being left.
+                Vector3 anchor = target != null ? target.TransformPoint(view.pivotOffset) : Vector3.zero;
+                Quaternion orbit = Quaternion.Euler(_pitchDeg, _yawDeg, 0f);
+                _flyPosition = anchor - (orbit * Vector3.forward * _distanceM);
+                _flyVelocity = Vector3.zero;
+            }
 
             if (_camera == null)
             {

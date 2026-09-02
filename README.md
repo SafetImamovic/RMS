@@ -198,16 +198,58 @@ rezultat.
 
 ## Kako radi
 
+```mermaid
+flowchart TD
+    dataset[("Kaggle dataset<br/>32.443 reda ljudske vožnje")]
+
+    subgraph py1[".venv - analiza i generisanje"]
+        eda["EDA notebook<br/>M1"]
+        profil["profil vozila<br/>L, delta_max, margina"]
+        gen["generator staza<br/>iz seed-a"]
+        params["parametri i reward<br/>DESIGN 4.4 i 4.5"]
+        trackfile["seed_n.json"]
+    end
+
+    subgraph py2[".venv-bc - imitacija"]
+        bc["BC trening<br/>PilotNet, PyTorch"]
+    end
+
+    subgraph u["Unity + .venv-mlagents"]
+        unity["Unity simulacija<br/>vozilo, zrake, checkpointi"]
+        ppo["PPO trening<br/>mlagents"]
+        heur["skriptirani vozač<br/>osnovica"]
+    end
+
+    evalu["Evaluacija M5<br/>steering distribucije, metrike, testovi"]
+
+    dataset --> eda
+    dataset --> bc
+    eda --> profil
+    eda --> params
+    profil --> gen
+    gen --> trackfile
+    params --> unity
+    trackfile --> unity
+    unity <--> ppo
+    unity --> heur
+    heur --> evalu
+    unity --> evalu
+    bc --> evalu
+    dataset -. "ljudska referenca" .-> evalu
+
+    classDef data fill:#eef3f8,stroke:#2f6f9f,stroke-width:1px
+    classDef out fill:#f3f0e8,stroke:#b0842e,stroke-width:1px
+    class dataset,trackfile data
+    class evalu out
 ```
-Kaggle dataset ──▶ EDA (notebook) ──▶ profil vozila ──▶ generator staza (seed)
-      │                                    │                      │
-      │                                    ▼                      ▼
-      └──▶ BC trening (PyTorch) ──┐   parametri i reward    seed_<n>.json
-                                  │                              │
-                                  ▼                              ▼
-                              Evaluacija ◀──── Unity simulacija ◀──▶ PPO (mlagents)
-                                        (steering distribucije, metrike)
-```
+
+Dataset ulazi na **dva mjesta i to nije slučajno**: iz njega se izvode parametri simulacije, a
+istovremeno je ljudska referenca protiv koje se na kraju sve poredi. Zato isprekidana strelica ide
+pravo do evaluacije.
+
+Četiri vozača stižu do evaluacije: **PPO politika**, **BC model**, **skriptirani vozač** i
+**čovjek iz dataseta**. Tri od njih voze ovu stazu; BC predviđa volan za kadrove koje je čovjek već
+provozao, i ta razlika je u M5 izvještaju označena, a ne zamagljena.
 
 ## Struktura repozitorija
 
