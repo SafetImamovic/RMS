@@ -205,7 +205,10 @@ def build(root: Path) -> dict:
     drivers = [
         m5.rl_column(root, "ppo_car_009_bc", "deterministic"),
         m5.rl_column(root, "ppo_car_009_bc", "sampling"),
-        m5.heuristic_column(root, root / "results" / "heuristic" / "runs_2026-08-16_15-27-50.csv"),
+        # No explicit runs path. Passing the gitignored `results/heuristic/runs_*.csv` here
+        # overrode the committed export and blanked three cells in a clean clone, which is what
+        # running the recipe rather than reading it found (T033).
+        m5.heuristic_column(root),
         m5.bc_column(root),
     ]
 
