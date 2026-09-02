@@ -357,19 +357,78 @@
     proxy would have invented the comparison the milestone is supposed to make
 ## Phase 5: figures and the recipe (US3, US4)
 
-- [ ] T028 [US3] Overlaid `|delta steering|` distributions, all four drivers, one figure
-- [ ] T029 [P] [US3] Overlaid lattice histograms of steering, all four drivers
-- [ ] T030 [P] [US3] A per-driver summary figure for the defence
-- [ ] T031 [US3] Every figure produced by a committed script, so a changed input changes the figure.
+- [X] T028 [US3] Overlaid `|delta steering|` distributions, all four drivers, one figure
+  - `results/plots/m5_delta_steering.png`, two panels. Left the distributions, right the
+    **cumulative** curves after every driver is snapped to the human lattice
+  - **The right panel is cumulative rather than a second histogram, and that was a correction.**
+    The report leads with the KS statistic, and `D` is a property of the cumulative curves: the
+    largest vertical gap from the human's. Drawing the histogram twice would have shown a picture
+    and then asked the reader to trust a number computed off something else. `D` is now printed in
+    the legend beside each driver and is readable off the drawing
+  - The bins are centred on the 0.05 lattice. The first attempt used `linspace(0, 0.6, 49)`, whose
+    width does not divide 0.05, so the human's mass aliased into a comb that was a property of the
+    binning. That would have been a second artefact laid on top of the one the figure is about
+- [X] T029 [P] [US3] Overlaid lattice histograms of steering, all four drivers
+  - `results/plots/m5_steering_lattice.png`. The human's 58.6 per cent spike at zero dominates the
+    panel, which is the honest drawing of the comparison
+  - **The near-zero and left-turn shares are a second panel in the same figure**, not a caption.
+    Ordering 3 applied to the drawing rather than only to the table
+- [X] T030 [P] [US3] A per-driver summary figure for the defence
+  - `results/plots/m5_summary.png`. Four panels: completion, mean `|delta steering|` with the human
+    as a dashed reference, KS `D` on the lattice, conditional KL
+  - **Execution first, resemblance second**, which is `DESIGN.md` 7's ordering. BC's completion bar
+    is labelled "never drives" rather than drawn as zero, because zero is a measurement and this is
+    an absence
+  - The two resemblance panels visibly disagree, which is the result rather than a defect
+- [X] T031 [US3] Every figure produced by a committed script, so a changed input changes the figure.
       SC-005. No figure saved by hand
-- [ ] T032 [P] [US4] The model taxonomy paragraph from `DESIGN.md` 7.1, in the lecture's
+  - `python/m5/plots.py`, one command. Verified by regenerating all three in a clean clone: the
+    files came back **byte for byte identical** to the committed ones
+- [X] T032 [P] [US4] The model taxonomy paragraph from `DESIGN.md` 7.1, in the lecture's
       terminology: stochastic, continuous state, discrete time, agent-based, time invariant,
       non-anticipatory
-- [ ] T033 [US4] Run the README recipe from a **clean clone**, start to finish
-- [ ] T034 [US4] Fix what breaks rather than documenting it as a caveat. SC-006. Anything that only
+  - In `results/comparison/m5_comparison.md` as a table, each term beside the thing in this project
+    that makes it true. A taxonomy recited without its evidence is not a classification
+  - **Two of the six needed qualifying, and one number in it was wrong before it was checked.**
+    *Stochastic*: the evaluated column is `deterministic` inference, so it is stochastic through its
+    environment only, and the two inference modes differ by 0.11 in mean `|delta steering|` because
+    of exactly that. *Time invariant*: the 6,000-step episode cap makes **termination** a function
+    of elapsed steps, though nothing else is. The cap is a harness, not a dynamic
+  - The first draft wrote "21 observations, nine rays". `CarAgent.ObservationCount` is
+    `rayCount + SelfStateCount` and the scene runs **13 rays plus six**, so it is **19**. Corrected
+    against the code rather than against memory
+- [X] T033 [US4] Run the README recipe from a **clean clone**, start to finish
+  - Done as a real clone into a scratch directory, a fresh `py -3.10 -m venv .venv`, and
+    `pip install -r python/requirements.txt`, then the recipe. Not read, run
+- [X] T034 [US4] Fix what breaks rather than documenting it as a caveat. SC-006. Anything that only
       works because of state on this machine is found here
-- [ ] T035 [P] [US4] Record what the clean-clone run actually needed that the recipe did not say
+  - **Four defects, all of them invisible from this machine.** Every one is fixed rather than
+    written down as a caveat
 
+  | what broke | cause | fix |
+  |---|---|---|
+  | the human column could not be built at all | `dataset/` is gitignored and downloaded from Kaggle | `export_human` writes `steering_human_combined.csv`, 1.2 MB against the dataset's 6.2, and the column reads that |
+  | three cells of the `DESIGN.md` 7 table read `absent` | `results/heuristic/runs_*.csv` is gitignored | `export_heuristic_runs` writes the four columns the table needs |
+  | those three cells stayed `absent` even after the export existed | `build()` passed the gitignored path explicitly, overriding the committed default | the explicit path removed |
+  | **45 tests failed**, where the README promises a green suite | tests that read the dataset failed rather than skipped | `needs_dataset` on exactly those 45, and `needs_traces` on 2 more |
+
+  - **The trace guard was wrong on its first attempt and the clean clone caught it.** It asked
+    whether `results/drive_logs/` exists. That directory is tracked and holds a few committed July
+    traces, so it exists in every clone while feature 009's 60 gitignored files do not. The guard
+    now asks whether the traces the manifest names are on disk. A guard that asks the wrong question
+    passes locally and fails in the one place it was written for
+- [X] T035 [P] [US4] Record what the clean-clone run actually needed that the recipe did not say
+  - **The recipe did not exist.** The README said "M5 (poređenje RL / BC / čovjek) još nije
+    implementiran" and pointed at `python/evaluation/compare.py`, a module that was never written.
+    Replaced with the three-command recipe, its expected values, and the explicit statement of which
+    step needs the dataset and the traces and which two do not
+  - The status list claimed M2, M3 and M4 were incomplete. M3 closed **MET** on 2026-09-01 and M4's
+    two runs have been reported since 2026-08-05. Corrected
+  - `python -m python.bc.export_predictions` takes `--run-id`, not `--run`. Written wrong first,
+    caught by reading the parser rather than by running it under `.venv-bc`
+  - The suite counts in the README were stale: **409 passed and 4 skipped** under `.venv`, **464**
+    under `.venv-bc`, and **321 passed with 92 skipped and zero failures** in a clean clone. All
+    three are now in the file, the clean-clone number with its reason
 **Checkpoint**: the deliverable exists and reproduces.
 
 ## Phase 6: closeout

@@ -162,7 +162,10 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 357 prolaza, 3 preskočena (bc moduli traže torch)
+pytest python/tests                  # 409 prolaza, 4 preskočena (bc moduli traže torch)
+#   U ČISTOM KLONU: 321 prolaz, 92 preskočena, nula padova. Razlika je dataset i
+#   sirovi tragovi: oba su git-ignorisana, pa testovi koji ih čitaju preskaču.
+#   Preskakanje, ne pad - nedostajući opcioni ulaz nije pokvaren test (010/T034).
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
 #   Ne skraćivati izlaz sa | tail: -q ispisuje samo tačke dok ne dođe do sažetka,
 #   pa odsječen izlaz izgleda kao manji ukupan broj (izmjereno u 005/T046).
@@ -199,7 +202,7 @@ tensorboard --logdir results
 
 # ---- M4: BC trening (.venv-bc) ----
 .venv-bc\Scripts\Activate.ps1
-pytest python/tests                  # 401 prolaz (ništa se ne preskače, torch je tu)
+pytest python/tests                  # 464 prolaza (ništa se ne preskače, torch je tu)
 
 # 1. Podjela train/val: blokovski holdout sa 8 s zaštitnim pojasom.
 #    Piše results/bc/split.json. Deterministična - isti fajl bajt po bajt.
