@@ -123,6 +123,49 @@ def export_heuristic(
     return pd.concat(rows, ignore_index=True)
 
 
+HUMAN_COLUMNS = ["center", "left", "right", "steering", "throttle", "brake", "speed"]
+
+
+def export_human(dataset_csv: Path) -> pd.DataFrame:
+    """The human reference, as the two columns the comparison reads.
+
+    **Not resampled.** Every other driver is decimated to 14.08 Hz because 14.08 Hz is this
+    recorder's own median rate; resampling the recorder onto its own clock would be a round trip
+    that can only lose samples.
+
+    **Exported because the dataset is gitignored and 6.2 MB of it is image paths.** A clean clone
+    could not build the human column at all before this existed, which SC-006 forbids. What is
+    committed is the steering, the speed and the recording session, which is everything the
+    comparison touches, at a twelfth of the size.
+
+    The session is recovered from the centre-image path rather than from row order, because it is
+    the seam: the combined file is two recordings concatenated and no difference may cross the
+    junction between them.
+    """
+    frame = pd.read_csv(dataset_csv, header=None, names=HUMAN_COLUMNS)
+    run = frame["center"].astype(str).str.extract(r"(track\d)", expand=False).fillna("unknown")
+    return pd.DataFrame(
+        {
+            "run": run,
+            "steering": frame["steering"].to_numpy(dtype=float),
+            "speed": frame["speed"].to_numpy(dtype=float),
+        }
+    )
+
+
+def export_heuristic_runs(runs_csv: Path) -> pd.DataFrame:
+    """The scripted driver's per-run record: lap completion, lap time, wall contacts.
+
+    Gitignored at source by `results/heuristic/**/runs_*.csv`, a rule feature 005 added so that
+    raw sweep output stays out of the repository. The rule is right and the consequence was that
+    three cells of the `DESIGN.md` 7 table could not be filled from a clean clone. This exports the
+    three columns the table reads and nothing else.
+    """
+    frame = pd.read_csv(runs_csv)
+    keep = [c for c in ("seed", "completed_lap", "lap_time_s", "wall_contacts") if c in frame]
+    return frame[keep].copy()
+
+
 def write(frame: pd.DataFrame, out: Path, driver: str, hz: float, note: str) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     frame = frame.copy()
@@ -173,6 +216,24 @@ def main(argv: list[str] | None = None) -> int:
         note="34 training seeds, WeightedAverage controller, applied_steer after smoothing.",
     )
     wrote.append(f"steering_heuristic_weighted_average.csv: {len(heuristic)} rows")
+
+    human = export_human(args.root / "dataset" / "dataset" / "dataset" / "driving_log.csv")
+    write(
+        human,
+        out_dir / "steering_human_combined.csv",
+        driver="human_combined",
+        hz=args.hz,
+        note="Combined dataset, track1 plus track2. NOT resampled: this is the reference clock.",
+    )
+    wrote.append(f"steering_human_combined.csv: {len(human)} rows")
+
+    runs = export_heuristic_runs(
+        args.root / "results" / "heuristic" / "runs_2026-08-16_15-27-50.csv"
+    )
+    out_runs = out_dir / "runs_heuristic_weighted_average.csv"
+    out_runs.parent.mkdir(parents=True, exist_ok=True)
+    runs.to_csv(out_runs, index=False)
+    wrote.append(f"runs_heuristic_weighted_average.csv: {len(runs)} rows")
 
     for line in wrote:
         print(line)

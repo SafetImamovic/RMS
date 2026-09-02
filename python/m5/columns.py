@@ -150,10 +150,16 @@ def rl_column(root: Path, run_id: str, inference: str) -> DriverColumn:
 
 
 def heuristic_column(root: Path, runs_csv: Path | None = None) -> DriverColumn:
+    """The scripted driver.
+
+    The run record defaults to the committed export rather than to
+    `results/heuristic/runs_*.csv`, which is gitignored at source. Reading the ignored file by
+    default is what made three cells of the table unfillable from a clean clone.
+    """
     return _driving_column(
         name="heuristic_weighted_average",
         steering_csv=root / COMPARISON_DIR / "steering_heuristic_weighted_average.csv",
-        runs_csv=runs_csv,
+        runs_csv=runs_csv or root / COMPARISON_DIR / "runs_heuristic_weighted_average.csv",
         laps_per_run=1,
     )
 
@@ -189,13 +195,20 @@ def bc_column(root: Path, run_id: str = "bc_balanced_v01") -> DriverColumn:
 def human_column(root: Path, csv: Path | None = None) -> DriverColumn:
     """The human reference, from the combined dataset.
 
-    **The `run` column is the recording session, derived from the centre-image path.** The dataset
-    is two recordings concatenated, and differencing across their junction is exactly the seam
-    feature 002 documented.
+    **Read from the committed export, not from `dataset/`, and this is a reproducibility fix rather
+    than a convenience.** The dataset is gitignored and downloaded from Kaggle, so a clean clone had
+    no human column at all and the whole comparison was unbuildable. `python/rl/comparison_inputs.py`
+    regenerates the export from the dataset whenever it is present, and a test pins the export
+    against the dataset's published statistics so the two cannot silently diverge.
+
+    **The `run` column is the recording session**, carried through from the centre-image path by
+    that exporter. The dataset is two recordings concatenated, and differencing across their
+    junction is exactly the seam feature 002 documented.
     """
-    path = csv or (root / HUMAN_CSV)
-    frame = pd.read_csv(path, header=None, names=HUMAN_COLUMNS)
-    frame["run"] = frame["center"].astype(str).str.extract(r"(track\d)", expand=False).fillna("unknown")
+    path = csv or (root / COMPARISON_DIR / "steering_human_combined.csv")
+    frame = pd.read_csv(path, comment="#")
+    if "run" not in frame:
+        raise KeyError(f"{path} has no run column, so the seam cannot be honoured")
 
     return DriverColumn(
         name="human_combined",

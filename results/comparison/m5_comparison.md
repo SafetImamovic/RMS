@@ -137,3 +137,29 @@ What they establish is that the named column is not a lucky draw.
 | `ppo_car_009_bc_s7_deterministic` | 8824 | 0.02736 | 0.0334 | 0.0116 | 10 of 10 | 62.683 s | 0.00 |
 | `ppo_car_009_bc_s13_deterministic` | 8806 | 0.03270 | 0.0429 | 0.0108 | 10 of 10 | 62.551 s | 0.00 |
 
+## Figures
+
+All three are drawn by `python -m python.m5.plots` from these same committed inputs, so a
+changed input changes the figure and no figure can drift away from this table.
+
+| figure | what it shows |
+|---|---|
+| `results/plots/m5_delta_steering.png` | the primary axis. Left: the raw distributions. Right: the cumulative curves after every driver is snapped to the human lattice, where the KS statistic is the largest vertical gap from the human curve and is readable off the drawing |
+| `results/plots/m5_steering_lattice.png` | the secondary axis, with the near-zero and left-turn shares in their own panel rather than in a caption |
+| `results/plots/m5_summary.png` | the defence figure: completion first, then the two resemblance measures, which disagree |
+
+## Model taxonomy, in the lecture's terminology
+
+`DESIGN.md` 7.1 lists six terms for the defence. Each is stated here with the thing in
+this project that makes it true, because a taxonomy recited without its evidence is not a
+classification. **Two of the six needed qualifying once the model was actually built.**
+
+| term | what makes it true here |
+|---|---|
+| **stochastic** | the start pose is randomised per episode, and the track itself is generated from a seed. **Qualified:** the PPO policy is stochastic in training and during the sampling column, but the named column is `deterministic` inference, where the policy returns the distribution mean. That column is stochastic through its environment only, and the two columns differ by 0.11 in mean abs delta steering because of it |
+| **continuous state** | the observation is 19 continuous floats: 13 ray distances over a 180 degree fan, plus the six self-state values of `DESIGN.md` 4.3. Nothing is one-hot and nothing is bucketed |
+| **discrete time** | the Unity physics step is fixed at 0.02 s, and `DecisionPeriod = 4` means the agent acts every fourth step, so decisions land at 12.5 Hz. The comparison resamples to the human's 14.08 Hz, which is a different discrete clock again |
+| **agent-based** | one agent holds its own observation, reward and episode, and the scene's behaviour is the consequence of that agent acting rather than of a system-level equation |
+| **time invariant** | the dynamics, the reward function and the policy do not depend on wall-clock or on step index. **Qualified:** the episode has a 6,000-step cap, so *termination* is a function of elapsed steps even though nothing else is. The cap is a harness, not a dynamic |
+| **non-anticipatory** | the observation contains only the present ray cast and the present kinematics. No future checkpoint, no lookahead, no replay of what is about to happen |
+
