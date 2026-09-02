@@ -1171,6 +1171,13 @@ eliminisao. Sažeto: tabela rewarda nije bila kriva, nego istraživanje prostora
    politiku a ne prolaznu, to su tri ručke koje niko nije dirao.
 2. **Generalizacija izvan ovih deset staza nije pokazana.** Isti generator, ista raspodjela, deset
    staza dužine 198.5 do 201.6 m. Rezultat kaže da politika vozi ovu raspodjelu, ne bilo koju.
+   **Zatvoreno 2026-09-02, feature 011.** Ista politika, bez ikakvog dotreniravanja, na **33 nove
+   prihvaćene staze** koje niko nije gledao: **33 od 33**, tri kruga po runu, nula dodira zida,
+   Wilsonov interval **[89.6, 100.0]** naspram **[72.2, 100.0]** na deset izdvojenih. Ono što je
+   kupljeno je uža granica, ne veći broj: oba skupa čitaju 100 posto. Tvrdnja i dalje govori o ovoj
+   raspodjeli staza, jer je isti generator i isti prag prihvatanja, a nove staze su po vršnom
+   zahtjevu za volanom **lakše** (0.695 naspram 0.789 i 0.738). Detalji:
+   [results/rl/generalisation.md](results/rl/generalisation.md).
 3. **Razdvajanje senzora od istraživanja je djelimično.** Sonda iz §4.5 je vožena do 1.000.000
    koraka umjesto do 5.000.000. Run od 5M te sonde je jedina mjera koja bi to zatvorila.
 4. **Agregati po cijelom runu su rangirali tri seeda pogrešno** u odnosu na rezultat na izdvojenim

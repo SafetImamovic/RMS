@@ -162,7 +162,7 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 410 prolaza, 4 preskočena (bc moduli traže torch)
+pytest python/tests                  # 425 prolaza, 4 preskočena (bc moduli traže torch)
 #   U ČISTOM KLONU: 321 prolaz, 92 preskočena, nula padova. Razlika je dataset i
 #   sirovi tragovi: oba su git-ignorisana, pa testovi koji ih čitaju preskaču.
 #   Preskakanje, ne pad - nedostajući opcioni ulaz nije pokvaren test (010/T034).
@@ -202,7 +202,7 @@ tensorboard --logdir results
 
 # ---- M4: BC trening (.venv-bc) ----
 .venv-bc\Scripts\Activate.ps1
-pytest python/tests                  # 465 prolaza (ništa se ne preskače, torch je tu)
+pytest python/tests                  # 480 prolaza (ništa se ne preskače, torch je tu)
 
 # 1. Podjela train/val: blokovski holdout sa 8 s zaštitnim pojasom.
 #    Piše results/bc/split.json. Deterministična - isti fajl bajt po bajt.
@@ -315,9 +315,12 @@ rada i odbrana, ne kod. Verdikt po milestone-u je u DESIGN.md: M3 u §5.2, M5 u 
 - [x] M4 - BC trening, dva runa koja se razlikuju u jednoj stvari (`results/bc/comparison.md`)
 - [x] M5 - evaluacija i poređenje (`results/comparison/m5_comparison.md`)
 
+**Generalizacija je izmjerena 2026-09-02** (feature 011): ista politika, bez dotreniravanja, na
+**33 nove staze** koje niko nije gledao daje **33 od 33** kruga i nula dodira zida, uz Wilsonov
+interval [89.6, 100.0]. Detalji: [results/rl/generalisation.md](results/rl/generalisation.md).
+
 **Zapisano kao nedovršeno, ne kao neuspjeh.** Sonda od 5M koraka koja bi potpuno razdvojila
-nagradu od istraživanja od senzorike nije vožena, pa je to razdvajanje djelimično. I generalizacija
-van ovih deset staza iz jednog generatora nije pokazana. Oboje stoji u
+nagradu od istraživanja od senzorike nije vožena, pa je to razdvajanje djelimično. Stoji u
 [results/EXPERIMENTS.md](results/EXPERIMENTS.md).
 
 ## Licenca
