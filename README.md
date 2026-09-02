@@ -251,6 +251,44 @@ pravo do evaluacije.
 **čovjek iz dataseta**. Tri od njih voze ovu stazu; BC predviđa volan za kadrove koje je čovjek već
 provozao, i ta razlika je u M5 izvještaju označena, a ne zamagljena.
 
+## Notebooks
+
+Dva notebooka, oba u Bosanskom i oba **korak po korak**, sa objašnjenjem uz svaku ćeliju: *šta*
+radimo i *zašto*. Oba su izvršena i **izlazi su commitovani**, pa se mogu čitati na GitHubu bez
+pokretanja ijedne ćelije.
+
+### [`01_dataset_analysis.ipynb`](python/notebooks/01_dataset_analysis.ipynb) - analiza dataseta (M1)
+
+83 ćelije, 32 sa kodom, 8 grafova. Odgovara na pitanje **odakle brojevi kojima je kalibrisana
+simulacija**.
+
+| Sekcija | Sadržaj |
+|---|---|
+| 0 | Šta je ovaj dataset i odakle je |
+| 1 | Format i identitet kolona (`driving_log.csv` je bez headera, pa se dokazuje koja je koja) |
+| 2 | Deskriptivna statistika: sredina, disperzija, min/max, histogrami |
+| 3 | Prilagođavanje raspodjele i **χ² test saglasnosti** |
+| 4 | Kalibracija konkretnih brojeva za Unity (DESIGN §4.4 i §4.5) |
+| 5 | Autentičnost podataka: da li je dataset "friziran" |
+
+### [`02_modeli_i_metode.ipynb`](python/notebooks/02_modeli_i_metode.ipynb) - modeli i metode
+
+46 ćelija, 21 sa kodom, 10 grafova. Odgovara na pitanje **kako sve to radi**, sa formulama koje se
+tu i pokreću.
+
+| Sekcija | Sadržaj |
+|---|---|
+| 1 | Kako staza nastaje iz jednog cijelog broja, harmonik po harmonik |
+| 2 | Odakle prag od 6.97 m, i zašto ne zavisi od međuosovinskog rastojanja |
+| 3 | Dva regulatora skriptiranog vozača, i zašto naivni ne može proći krug |
+| 4 | Šta PPO uči, i šta se stvarno vidi na krivama treninga |
+| 5 | Kojim testovima se poredi: KS, KL, χ², Wilsonov interval |
+
+**Ovaj notebook ništa ne reimplementira.** Poziva `python/track`, `python/eda` i `python/m5`, iste
+module koje koristi i ostatak projekta, pa se grafovi ne mogu razići od koda koji stvarno generiše
+staze. Zato u njemu i nema treninga: PPO traži Unity i traje satima, a ovdje se čitaju krive koje
+su ti runovi već proizveli.
+
 ## Struktura repozitorija
 
 | Putanja | Sadržaj |
@@ -258,7 +296,7 @@ provozao, i ta razlika je u M5 izvještaju označena, a ne zamagljena.
 | `unity/SelfDrivingSim/` | Unity projekat: scena sa stazom, vozilo, `CarAgent` |
 | `config/ppo_car.yaml` | Hiperparametri PPO treninga |
 | `python/track/` | Profil vozila, generator staza, provjere geometrije, izvoz |
-| `python/notebooks/` | 01: analiza dataseta (M1). 02: modeli i metode, formule i grafovi |
+| `python/notebooks/` | [01](python/notebooks/01_dataset_analysis.ipynb): analiza dataseta (M1). [02](python/notebooks/02_modeli_i_metode.ipynb): modeli i metode |
 | `python/eda/` | Učitavanje dataseta i statistika (M1) |
 | `python/bc/` | Behavioral cloning pipeline (PyTorch, M4) |
 | `python/tests/` | Testovi za `eda`, `track` i `bc` |
