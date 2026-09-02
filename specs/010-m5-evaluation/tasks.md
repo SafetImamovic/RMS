@@ -494,12 +494,38 @@
     checking the files I remembered touching
   - Commit messages are subject-only, one `-m`, no body, no agent attribution, as the constitution
     requires
-- [ ] T041 Merge `010-m5-evaluation` into `develop` with `--no-ff`
-- [ ] T042 Merge and tag `v0.5-m5`, at the commit where the gate becomes demonstrable, matching the
+- [X] T041 Merge `010-m5-evaluation` into `develop` with `--no-ff`
+  - `29533ef`, 19 commits. No fast forward, so the feature stays legible as a unit
+- [X] T042 Merge and tag `v0.5-m5`, at the commit where the gate becomes demonstrable, matching the
       convention feature 009's T057 established
-- [ ] T043 State the milestone verdict against the spec's seven success criteria, met or not met,
+  - **The tag sits on the merge commit into `develop`**, `29533ef`, which is where `v0.3-m3` and
+    `v0.4-m4` both sit. Checked rather than assumed: `git log -1 v0.3-m3` is `merge(009)` and
+    `v0.4-m4` is the 004 merge, so a tag on a feature-branch commit would have broken the pattern
+  - `master` merged from `develop` at `83732ce`, `--no-ff`. Five tags, `master` and `develop` level
+- [X] T043 State the milestone verdict against the spec's seven success criteria, met or not met,
       each with the number that decides it
 
+  **M5 is MET, seven of seven.** Written into `DESIGN.md` 7.2 in Bosnian to match that document,
+  and into `results/EXPERIMENTS.md` in the log's own terms.
+
+  | criterion | the number that decides it | verdict |
+  |---|---|---|
+  | SC-001, every cell measured or caused | 11 absent cells, each with its cause printed under the table | **MET** |
+  | SC-002, quantised before divergence, unquantised beside it | `D` raw and on lattice in one table; the artefact moves the leader from 0.4603 to **0.2682** | **MET** |
+  | SC-003, KL and two-sample KS with p, three drivers against human | four columns, both statistics, p on every row | **MET** |
+  | SC-004, straight-line asymmetry addressed | conditional on nonzero steering, plus the shares in the same table as the statistic | **MET** |
+  | SC-005, every figure from a committed script | `python/m5/plots.py`; all three regenerate **byte for byte** in a clean clone | **MET** |
+  | SC-006, recipe run from a clean clone, deviations fixed | clone made, four defects found, four fixed, none written as a caveat | **MET** |
+  | SC-007, taxonomy in the lecture's terminology | six terms, each with its evidence; two qualified, one figure corrected against the code | **MET** |
+
+  - **The milestone's own result is that the two axes name different winners.** Deterministic
+    inference is closest on smoothness (D 0.2682), sampling is closest on steering distribution
+    (KL 0.9465), and they are the same policy. That is reported as the finding rather than resolved
+    into a single ranking, because resolving it would mean suppressing one of two measurements
+  - **Three of the seven were satisfied only after something was found wrong.** SC-006 by running
+    the recipe rather than reading it, SC-007 by checking the observation count against
+    `CarAgent.ObservationCount` rather than against memory, and SC-001 by noticing that
+    `lap_time_s` is three laps for one sweep and one lap for another
 **Checkpoint**: M5 is closed and the submission has its final story.
 
 ---
