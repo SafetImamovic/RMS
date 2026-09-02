@@ -323,6 +323,31 @@ interval [89.6, 100.0]. Detalji: [results/rl/generalisation.md](results/rl/gener
 nagradu od istraživanja od senzorike nije vožena, pa je to razdvajanje djelimično. Stoji u
 [results/EXPERIMENTS.md](results/EXPERIMENTS.md).
 
+## Srodni projekti
+
+Dva ranija projekta koja se dodiruju sa ovim, svaki sa jedne druge strane.
+
+### [MultiAgentRobot](https://github.com/SafetImamovic/MultiAgentRobot)
+
+Multi-agentski sistem autonomnih Roomba robota koji kooperativno čiste prostoriju, Python i Pygame,
+politika trenirana **istim algoritmom, PPO**, od 5.000 do 1.000.000 koraka.
+
+**Zajedničko je algoritam, razlika je broj agenata i to šta se nagrađuje.** Tamo više agenata dijeli
+prostoriju i mjeri se pokrivenost i broj koraka po agentu; ovdje jedan agent vozi stazu i mjeri se
+završen krug bez dodira zida. Ista klasa politike na dva zadatka koja se ne preklapaju.
+
+### [SupplyCascade](https://github.com/SafetImamovic/SupplyCascade)
+
+Kaskadni padovi u globalnom lancu snabdijevanja, projekat iz **istog predmeta**, rađen sa Ensarom
+Serdarevićem. Lanac je usmjereni graf (`NetworkX`), a propagacija kvarova se prati discrete-event
+simulacijom (`SimPy`) nad centralizovanom i decentralizovanom topologijom.
+
+**To je druga vrsta simulacije, i po taksonomiji iz §7.1 se razlikuje u skoro svakoj stavci.**
+SupplyCascade je discrete-event: vrijeme skače od događaja do događaja, stanje je diskretno
+(paketi, čvorovi, kvarovi), a mjeri se otpornost mreže. Ovaj projekat je vremenski diskretan sa
+fiksnim korakom od 0.02 s, stanje mu je kontinualno (19 realnih brojeva iz senzora), a mjeri se
+izvršenje jednog agenta. Oba su agentska i oba stohastička, i tu sličnost prestaje.
+
 ## Licenca
 
 [MIT](LICENSE)
