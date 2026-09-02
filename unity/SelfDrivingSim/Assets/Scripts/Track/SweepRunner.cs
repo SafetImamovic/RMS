@@ -38,6 +38,15 @@ namespace SelfDrivingSim.Track
 
             /// <summary>The 10 held-out seeds. For reporting a final result, never for choosing one.</summary>
             Eval,
+
+            /// <summary>
+            /// The 33 accepted seeds of the third set, added by feature 011 and looked at once.
+            ///
+            /// Same rule as <see cref="Eval"/> and for a stronger reason: this set exists to
+            /// measure generalisation, and a configuration chosen against it would be fitted to
+            /// the only tracks that could still answer that question.
+            /// </summary>
+            Generalisation,
         }
 
         /// <summary>
@@ -74,7 +83,7 @@ namespace SelfDrivingSim.Track
         [SerializeField] private CarAgent agent;
 
         [Header("Seeds")]
-        [Tooltip("Which half of results/tracks/seed_split.json to run.\n\n" +
+        [Tooltip("Which set in results/tracks/seed_split.json to run.\n\n" +
                  "Training seeds only for anything that CHOOSES a configuration (research R5). " +
                  "Picking a geometry against the evaluation seeds fits the environment to the " +
                  "tracks the learning agent is later judged on.")]
@@ -332,7 +341,12 @@ namespace SelfDrivingSim.Track
                 return false;
             }
 
-            SeedSplitHalf half = seedSet == SeedSet.Train ? file?.train : file?.eval;
+            SeedSplitHalf half = seedSet switch
+            {
+                SeedSet.Train => file?.train,
+                SeedSet.Eval => file?.eval,
+                _ => file?.generalisation,
+            };
             if (half == null || half.accepted_seeds == null || half.accepted_seeds.Length == 0)
             {
                 Debug.LogError(
@@ -374,6 +388,15 @@ namespace SelfDrivingSim.Track
                     "[SweepRunner] sweeping the EVALUATION seeds. Research R5 allows this only " +
                     "for reporting a result, never for choosing a configuration: a geometry " +
                     "picked here is fitted to the tracks the learning agent is judged on.", this);
+            }
+            else if (seedSet == SeedSet.Generalisation)
+            {
+                Debug.LogWarning(
+                    "[SweepRunner] sweeping the GENERALISATION seeds. Reporting only, and the " +
+                    "rule is stricter here than for the evaluation set: these tracks exist to be " +
+                    "looked at once. A configuration chosen against them, or a re-run after a " +
+                    "disappointing result, spends the only sample that can answer the question " +
+                    "(feature 011, ordering 2).", this);
             }
 
             return true;
@@ -656,6 +679,7 @@ namespace SelfDrivingSim.Track
         {
             public SeedSplitHalf train;
             public SeedSplitHalf eval;
+            public SeedSplitHalf generalisation;
         }
 
         [System.Serializable]

@@ -58,13 +58,12 @@ namespace SelfDrivingSim.Agent
                  "RunsDone still zero.")]
         [SerializeField] private bool evaluationMode;
 
-        [Tooltip("What goes in the run record's controller column. " +
-                 "The scripted driver writes its strategy there, because that is what varies " +
-                 "between its runs. A learned policy has no strategy; what varies between its runs " +
-                 "is which training run produced the weights, so the run id goes here and a row " +
-                 "stays self-describing (SC-006). Set it to the run id whose .onnx is on " +
-                 "BehaviorParameters, and nothing checks the two agree, so they are worth checking " +
-                 "by eye.")]
+        [Tooltip("A CROSS-CHECK, no longer the source. The run record's controller column is " +
+                 "derived from the model actually loaded on BehaviorParameters and the inference " +
+                 "mode actually in effect, so a row can prove which weights drove it. " +
+                 "Set this to the run id you believe is loaded and the agent will contradict you " +
+                 "in the console if it is not. Leave it empty and nothing is checked. Either way " +
+                 "the recorded label comes from the policy, not from this field (feature 011).")]
         [SerializeField] private string runId = "";
 
         [Tooltip("Per-step trace for the M5 steering comparison, one file per run. " +
@@ -243,6 +242,7 @@ namespace SelfDrivingSim.Agent
             ResolveScriptedExpert();
 
             AssertObservationSize();
+            AssertRunLabelAgrees();
         }
 
         /// <summary>
@@ -274,6 +274,64 @@ namespace SelfDrivingSim.Agent
                     "Fix the behaviour rather than the sensing: the ray count is frozen for this " +
                     "feature and every recorded baseline depends on it.", this);
             }
+        }
+
+        /// <summary>
+        /// What actually drove, derived from the policy that actually drove (feature 011, FR-005).
+        ///
+        /// **The run record used to carry a hand-typed string, and its own tooltip admitted the
+        /// problem**: "nothing checks the two agree, so they are worth checking by eye". A row
+        /// labelled by eye cannot prove which weights produced it, and feature 009 has the scar to
+        /// show for it, where a serialised literal stamped all 60 evaluation traces with the wrong
+        /// sweep and M5 had to rebuild the mapping by matching run durations.
+        ///
+        /// So the label is built here from two things nobody can type: the model asset that
+        /// <see cref="BehaviorParameters"/> actually loaded, and the inference mode actually in
+        /// effect. <see cref="runId"/> survives as a cross-check and no longer as the source.
+        ///
+        /// Returns an explicit "(no model)" rather than an empty string when the behaviour has no
+        /// model, because a blank controller column reads as a missing field rather than as a run
+        /// that had no policy. That case is real: it is what a heuristic-mode run looks like.
+        /// </summary>
+        private string DerivedRunLabel()
+        {
+            var parameters = GetComponent<BehaviorParameters>();
+            if (parameters == null)
+            {
+                return "(no behaviour)";
+            }
+
+            string model = parameters.Model != null ? parameters.Model.name : "(no model)";
+            string inference = parameters.DeterministicInference ? "deterministic" : "sampling";
+            return $"{model}_{inference}";
+        }
+
+        /// <summary>
+        /// Complain when the typed run id and the loaded policy disagree (feature 011, T002).
+        ///
+        /// **Neither is silently preferred.** The derived label is what gets recorded, because a
+        /// row has one controller column and a reader must not have to know which half to trust.
+        /// The typed field is now here to be contradicted: a field nobody can contradict is not a
+        /// check. An empty <see cref="runId"/> is not a disagreement, it is simply unused.
+        /// </summary>
+        private void AssertRunLabelAgrees()
+        {
+            if (string.IsNullOrEmpty(runId))
+            {
+                return;
+            }
+
+            string derived = DerivedRunLabel();
+            if (derived.StartsWith(runId, System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Debug.LogError(
+                $"[DrivingAgent] runId is '{runId}' but the loaded policy is '{derived}'. " +
+                "The run record carries the derived label, so the rows will be correct and the " +
+                "scene is what is wrong. Fix the field or the model before reading this sweep.",
+                this);
         }
 
         /// <summary>
@@ -753,9 +811,11 @@ namespace SelfDrivingSim.Agent
             {
                 Seed = track.Current.seed,
 
-                // The run id, not a strategy. A learned policy has none, and what distinguishes
-                // one of its runs from another is which training run produced the weights.
-                Controller = string.IsNullOrEmpty(runId) ? "(unset)" : runId,
+                // Derived from the loaded model and the inference mode, never from the typed
+                // field. A learned policy has no strategy; what distinguishes one of its runs from
+                // another is which weights drove and whether the actions were sampled, and both of
+                // those are readable at runtime. See DerivedRunLabel (feature 011, FR-005).
+                Controller = DerivedRunLabel(),
 
                 RayCount = sensing != null ? sensing.RayCount : 0,
                 RayFovDeg = sensing != null ? sensing.RayFovDeg : 0f,

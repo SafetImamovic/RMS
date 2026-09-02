@@ -134,18 +134,18 @@ PrefabInstance:
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_Model
       value: 
-      objectReference: {fileID: 5022602860645237092, guid: 2ae226b1df5967844abd75851cadc7d5, type: 3}
+      objectReference: {fileID: 5022602860645237092, guid: ce1a9f8f77a89964da93395917d2f6c1, type: 3}
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_BehaviorType
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 360712191414933277, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: m_DeterministicInference
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: runId
-      value: ppo_car_009_bc_s13_sampling
+      value: ppo_car_009_bc-5000101
       objectReference: {fileID: 0}
     - target: {fileID: 6203205731512413824, guid: df875acaa12a9e944831beb1e9010dbd, type: 3}
       propertyPath: trace
@@ -301,7 +301,7 @@ MonoBehaviour:
   placer: {fileID: 682781364}
   car: {fileID: 682781363}
   agent: {fileID: 682781362}
-  seedSet: 1
+  seedSet: 2
   maxSeeds: 0
   repeatsPerSeed: 1
   controllers: 00000000
