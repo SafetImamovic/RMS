@@ -12,13 +12,64 @@ with modes at 0.15 and 0.20. Neither is a statement about driving skill.
 
 ## Descriptive statistics (DESIGN 7.1)
 
-| driver | n | mean | variance | straight | left | right |
-|---|---|---|---|---|---|---|
-| `ppo_car_009_bc_deterministic` | 8788 | -0.1859 | 0.03208 | 1.1% | 87.6% | 12.3% |
-| `ppo_car_009_bc_sampling` | 8125 | -0.1896 | 0.07772 | 3.1% | 76.0% | 23.9% |
-| `heuristic_weighted_average` | 12691 | -0.1977 | 0.04892 | 2.6% | 83.3% | 16.4% |
-| `bc_bc_balanced_v01` | 5576 | -0.0180 | 0.07182 | 2.1% | 55.3% | 44.7% |
-| `human_combined` | 32443 | -0.0209 | 0.15149 | 58.6% | 23.5% | 18.0% |
+Three variables, each with n, mean, variance, minimum and maximum, and a
+relative-frequency histogram below. Shares rather than counts throughout, because the
+columns differ by a factor of six in sample size.
+
+### Steering
+
+| driver | n | mean | variance | min | max | straight | left | right |
+|---|---|---|---|---|---|---|---|---|
+| `ppo_car_009_bc_deterministic` | 8788 | -0.1859 | 0.03208 | -0.670 | +0.645 | 1.1% | 87.6% | 12.3% |
+| `ppo_car_009_bc_sampling` | 8125 | -0.1896 | 0.07772 | -1.000 | +0.999 | 3.1% | 76.0% | 23.9% |
+| `heuristic_weighted_average` | 12691 | -0.1977 | 0.04892 | -0.871 | +0.544 | 2.6% | 83.3% | 16.4% |
+| `bc_bc_balanced_v01` | 5576 | -0.0180 | 0.07182 | -0.636 | +0.655 | 2.1% | 55.3% | 44.7% |
+| `human_combined` | 32443 | -0.0209 | 0.15149 | -1.000 | +1.000 | 58.6% | 23.5% | 18.0% |
+
+### Speed
+
+**The units are not shared and the columns are not comparable to each other.** The Unity
+drivers report the simulator's own rigidbody speed; the human column is the recorded
+speed of a different simulator in its own units. Each is reported so its spread within
+its own driver can be read, and no cross-driver speed statistic is computed anywhere in
+this feature.
+
+| driver | n | mean | variance | min | max |
+|---|---|---|---|---|---|
+| `ppo_car_009_bc_deterministic` | 8788 | 9.4099 | 1.22671 | 0.000 | 9.934 |
+| `ppo_car_009_bc_sampling` | 8125 | 9.2811 | 1.40826 | 0.000 | 9.901 |
+| `heuristic_weighted_average` | 12691 | 7.5601 | 2.06387 | 0.000 | 9.816 |
+| `bc_bc_balanced_v01` | absent | absent | absent | absent | absent |
+| `human_combined` | 32443 | 10.2114 | 10.68547 | 0.000 | 21.949 |
+
+### |delta steering| at 14.08 Hz
+
+| driver | n | mean | variance | min | max |
+|---|---|---|---|---|---|
+| `ppo_car_009_bc_deterministic` | 8778 | 0.0413 | 0.00422 | 0.000 | 0.435 |
+| `ppo_car_009_bc_sampling` | 8115 | 0.1552 | 0.00847 | 0.000 | 0.689 |
+| `heuristic_weighted_average` | 12657 | 0.0174 | 0.00132 | 0.000 | 0.498 |
+| `bc_bc_balanced_v01` | 5574 | 0.0248 | 0.00058 | 0.000 | 0.250 |
+| `human_combined` | 32441 | 0.1112 | 0.03852 | 0.000 | 1.000 |
+
+### Relative-frequency histogram of steering
+
+Coarse bins for reading. The full 0.05-resolution version, which the figures are drawn
+from, is `results/comparison/steering_histogram.csv`.
+
+| bin | `ppo_car_009_bc_deterministic` | `ppo_car_009_bc_sampling` | `heuristic_weighted_average` | `bc_bc_balanced_v01` | `human_combined` |
+|---|---|---|---|---|---|
+| -1 to -0.5 | 4.6% | 13.5% | 4.1% | 3.6% | 10.6% |
+| -0.5 to -0.3 | 12.7% | 20.1% | 29.1% | 12.2% | 3.7% |
+| -0.3 to -0.15 | 45.3% | 22.3% | 35.4% | 19.4% | 4.5% |
+| -0.15 to -0.05 | 21.4% | 14.0% | 9.6% | 14.7% | 3.2% |
+| -0.05 to -0.0125 | 3.1% | 4.4% | 3.9% | 4.3% | 1.5% |
+| -0.0125 to +0.0125 | 1.1% | 3.1% | 2.6% | 2.1% | 58.6% |
+| +0.0125 to +0.05 | 2.2% | 4.3% | 2.3% | 2.6% | 0.0% |
+| +0.05 to +0.15 | 6.4% | 8.2% | 4.4% | 7.9% | 2.1% |
+| +0.15 to +0.3 | 2.1% | 6.0% | 4.9% | 19.3% | 3.1% |
+| +0.3 to +0.5 | 0.6% | 3.0% | 3.6% | 12.7% | 3.6% |
+| +0.5 to +1 | 0.4% | 1.1% | 0.3% | 1.2% | 9.2% |
 
 ## The comparison table (DESIGN 7)
 
@@ -72,4 +123,17 @@ samples from both sides is what removes the largest track-driven difference.
 | `ppo_car_009_bc_sampling` | 7877 | 0.9465 | 4256.5 | True |
 | `heuristic_weighted_average` | 12361 | 1.0527 | 8313.9 | True |
 | `bc_bc_balanced_v01` | 5458 | 0.9787 | 3996.2 | True |
+
+## Agreement across training seeds
+
+**Not columns.** Seeds 7 and 13 are the same training configuration as the named column,
+differing only in `--seed`. Three seeds of one configuration are one driver, and giving
+each a column would claim the project compared three learned drivers against a human.
+What they establish is that the named column is not a lucky draw.
+
+| seed run | n | variance | mean abs delta | median abs delta | laps | lap time | contacts |
+|---|---|---|---|---|---|---|---|
+| `ppo_car_009_bc_deterministic` (named) | 8788 | 0.03208 | 0.0413 | 0.0127 | 10 of 10 | 62.425 s | 0.00 |
+| `ppo_car_009_bc_s7_deterministic` | 8824 | 0.02736 | 0.0334 | 0.0116 | 10 of 10 | 62.683 s | 0.00 |
+| `ppo_car_009_bc_s13_deterministic` | 8806 | 0.03270 | 0.0429 | 0.0108 | 10 of 10 | 62.551 s | 0.00 |
 

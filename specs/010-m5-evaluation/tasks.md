@@ -207,44 +207,154 @@
     quantise clips and never returns negative zero, KL of a distribution from itself is zero, and
     **KL stays finite on a level the reference never used** while the unsmoothed form does not.
     That last one is not hypothetical, because track1 never produces 0.95
-- [ ] T015 [US2] Build the **RL column** from the manifest: seed 42 deterministic as the named
+- [X] T015 [US2] Build the **RL column** from the manifest: seed 42 deterministic as the named
       column. **One RL column, not three.** Three would imply three drivers
-- [ ] T016 [P] [US2] Record seeds 7 and 13 as an agreement line with their numbers, not as columns
-- [ ] T017 [P] [US2] Build the **heuristic column** from `results/heuristic/`
-- [ ] T018 [P] [US2] Build the **BC column** from `results/bc/run_bc_balanced_v01/`, with its three
+  - `python/m5/columns.py`, `rl_column`. n = **8,788** over 10 held-out runs, steering mean
+    **-0.1859**, variance **0.03208**, straight **1.1 %**, left **87.6 %**
+  - Cross-checked against `python/rl/report.py`, which reads the raw traces by a different path and
+    reports the same n and the same variance. Two independent readings agreeing is the check that
+    the resampled committed input is faithful
+  - **The sampling column is reported beside it and is a second inference mode of the same policy,
+    not a second driver.** It earns a row because the two modes disagree about which driver is most
+    human-like, which is a result rather than a duplicate
+- [X] T016 [P] [US2] Record seeds 7 and 13 as an agreement line with their numbers, not as columns
+  - `agreement()` in `python/m5/compare.py`, printed under its own heading that states why it is not
+    a column: three seeds of one configuration are one driver, and four columns of it would claim
+    the project compared four learned drivers against a human
+
+  | seed run | variance | mean abs delta | laps | lap time |
+  |---|---|---|---|---|
+  | seed 42, the named column | 0.03208 | 0.0413 | **10 of 10** | 62.425 s |
+  | seed 7 | 0.02736 | 0.0334 | **10 of 10** | 62.683 s |
+  | seed 13 | 0.03270 | 0.0429 | **10 of 10** | 62.551 s |
+
+  - All three complete every held-out run, and lap times agree within **0.26 s** across a 62 s lap.
+    The named column is not a lucky draw
+- [X] T017 [P] [US2] Build the **heuristic column** from `results/heuristic/`
+  - n = **12,691** over 34 runs, variance **0.04892**, **34 of 34** laps, **0.00** wall contacts,
+    mean lap time **23.655 s**
+  - The variance reads **0.04892** here against the **0.04994** pinned in `python/rl/report.py`.
+    Not a discrepancy and not rounding: `report.py` reads the raw 50 Hz traces, this column reads
+    them resampled to 14.08 Hz, and decimating a signal changes which samples are averaged. Both are
+    correct at their own rate, which is why ordering 2 exists
+- [X] T018 [P] [US2] Build the **BC column** from `results/bc/run_bc_balanced_v01/`, with its three
       absent cells marked absent and caused
-- [ ] T019 [P] [US2] Build the **human column** from the **combined** dataset,
+  - n = **5,576** validation rows, variance **0.07182**, reproducing feature 004's published
+    `distributions.json` to five decimals through a completely different path
+  - **Four absent cells, not three.** The task counted lap completion, lap time and wall contacts
+    and missed **speed**: the model predicts steering alone. Every one prints its cause in the cell,
+    because a blank reads as missing data rather than as a property of the driver
+  - Reaching it at all needed `python/bc/export_predictions.py`, run under `.venv-bc`, because the
+    comparison runs under `.venv` where torch does not exist
+- [X] T019 [P] [US2] Build the **human column** from the **combined** dataset,
       `dataset/dataset/dataset/driving_log.csv`, which is track1 plus track2 and is what
       `DATASET_NAME = "combined"` already selects. **Not a single track**: research R5 records that
       picking track1 alone reverses the variance comparison and moves the straight-line share from
       58.6 to 79.3 per cent
-- [ ] T020 [US2] Descriptive statistics for every column on steering, speed and `|delta steering|`:
+  - n = **32,443**, variance **0.15149**, straight **58.6 %**, left **23.5 %**, matching T001's
+    quoted baseline exactly
+  - The `run` column is derived from the centre-image path, so the track1 to track2 junction is a
+    seam and no difference is ever taken across it. Feature 002 found that seam; this is the third
+    feature to honour it
+- [X] T020 [US2] Descriptive statistics for every column on steering, speed and `|delta steering|`:
       n, mean, variance, min, max, relative-frequency histogram, as `DESIGN.md` 7.1 lists them
-
+  - Three tables in `results/comparison/m5_comparison.md`, one per variable, plus a coarse-binned
+    relative-frequency histogram of steering and the full 0.05-resolution version written to
+    `results/comparison/steering_histogram.csv`, which is what the Phase 5 figures read
+  - **Speed is reported per driver and never compared across drivers, and the report says so in the
+    table's own header.** The Unity columns are the simulator's rigidbody speed; the human column is
+    a different simulator's recorded speed in its own units. Their variances are **1.23** and
+    **10.69**, a gap that would read as a finding and is a unit mismatch. This is the same class of
+    error as R5 and it is disclosed the same way
+  - Shares rather than counts everywhere, because the columns differ by a factor of six in n
 **Checkpoint**: four columns exist and every cell is a number or a caused absence.
 
 ## Phase 4: the comparison (US2)
 
-- [ ] T021 [US2] **The primary axis.** `|delta steering|` for each driver against human: KS with its
+- [X] T021 [US2] **The primary axis.** `|delta steering|` for each driver against human: KS with its
       p-value, computed only through `steering_series` at `COMPARE_HZ`
-- [ ] T022 [US2] State the rate in the table itself. A smoothness figure without its sampling rate
+  - `compare_axis` in `python/m5/compare.py`. Every driver reads a committed input that is already
+    at 14.08 Hz, so there is no path in this module that can difference a raw trace
+
+  | driver | mean | median | p95 | D raw | **D on lattice** |
+  |---|---|---|---|---|---|
+  | RL 009 deterministic | 0.0413 | 0.0127 | 0.2103 | 0.4603 | **0.2682** |
+  | RL 009 sampling | 0.1552 | 0.1527 | 0.2999 | 0.5306 | 0.4564 |
+  | heuristic | 0.0174 | 0.0075 | 0.0621 | 0.5008 | 0.3780 |
+  | BC | 0.0248 | 0.0187 | 0.0693 | 0.5525 | 0.3810 |
+  | human combined | 0.1112 | **0.0000** | 0.5500 | reference | reference |
+
+  - **The median is reported beside the mean because the human's mean alone is misleading.** Its
+    median change is no change at all, and its mean of 0.1112 is produced by the jumps between
+    those holds. A mean-only comparison would describe a driver that does not exist
+- [X] T022 [US2] State the rate in the table itself. A smoothness figure without its sampling rate
       is not a measurement (research R7)
-- [ ] T023 [US2] **The secondary axis.** Steering level on the lattice against human: KL with the
+  - The heading is `Primary axis: |delta steering| at 14.08 Hz`, and every input CSV carries
+    `hz=14.08` in its header comment, so a figure separated from the report still names its rate
+- [X] T023 [US2] **The secondary axis.** Steering level on the lattice against human: KL with the
       smoothing constant stated, and chi-square homogeneity
-- [ ] T023a [US2] **The conditional comparison `DESIGN.md` 7 already asks for**, and which the first
+
+  | driver | KL from human | chi2 | dof |
+  |---|---|---|---|
+  | RL 009 deterministic | 1.6575 | 20154.5 | 40 |
+  | RL 009 sampling | 1.0556 | 12740.6 | 40 |
+  | heuristic | 1.3513 | 20639.0 | 40 |
+  | BC | 1.2466 | 11554.4 | 40 |
+
+  - **BC reads 1.2466 here against M4's published 1.2070, and both are correct.** M4 compared the
+    model against the 5,576 validation rows it was scored on; M5 compares it against the full 32,443
+    row combined dataset, because that is the one reference every other column is read against.
+    Changing the reference per column to make a number match would be the actual error
+  - `KL_SMOOTHING = 1e-9` is applied to every bin and named in the report, because a smoothed KL is
+    not the same quantity as an unsmoothed one and the two are not comparable across documents
+- [X] T023a [US2] **The conditional comparison `DESIGN.md` 7 already asks for**, and which the first
       draft of the plan missed: the steering distribution **given nonzero steering**, per driver
-      against human. The design's second M5 note names it directly, so it is an obligation rather
-      than an extra. It is the one comparison of steering level that the straight-line asymmetry
-      does not dominate
-- [ ] T024 [US2] **In the same table as T023**, the near-zero share and the left-turn share for
-      every driver. Ordering 3. Without them the divergence reads as a statement about style
-- [ ] T025 [P] [US2] Report the **unquantised** steering comparison once, beside the quantised one,
+      against human
+
+  | driver | n turning | KL from human | chi2 |
+  |---|---|---|---|
+  | RL 009 deterministic | 8691 | 1.1291 | 8221.9 |
+  | RL 009 sampling | 7877 | **0.9465** | 4256.5 |
+  | heuristic | 12361 | 1.0527 | 8313.9 |
+  | BC | 5458 | 0.9787 | 3996.2 |
+
+  - **Conditioning compresses every gap and halves the spread of the field.** The deterministic
+    policy's divergence falls from 1.6575 to 1.1291, the largest move of the four. Most of what the
+    marginal measured was the straight-line share, and the straight-line share is the track
+  - All four still reject at these sample sizes, which is why the divergence is what is read and the
+    p-value is a formality
+- [X] T024 [US2] **In the same table as T023**, the near-zero share and the left-turn share for
+      every driver. Ordering 3
+  - In the same table, as columns. A reader cannot see chi-square 20,154.5 without also seeing
+    **1.1 against 58.6 per cent** near zero and **87.6 against 23.5 per cent** left
+- [X] T025 [P] [US2] Report the **unquantised** steering comparison once, beside the quantised one,
       to show the size of the resolution artefact quantisation removes. SC-002
-- [ ] T026 [P] [US2] Report effect size beside every p-value. At 31,202 against 10,615 samples a KS
+  - Both are in the primary table as `D raw` and `D on lattice`. The artefact is **large**:
+    quantisation moves the deterministic policy from D = 0.4603 to **0.2682**, cutting the apparent
+    distance nearly in half, and it moves every driver by at least 0.07
+  - **It also changes the answer.** On raw D the deterministic policy leads the heuristic by 0.04;
+    on lattice D it leads by **0.11**. The conclusion is read off the quantised axis, with the raw
+    figure printed beside it so the size of the correction is visible rather than assumed
+- [X] T026 [P] [US2] Report effect size beside every p-value. At 31,202 against 10,615 samples a KS
       test rejects almost any null, so a p-value alone is close to a formality
-- [ ] T027 [US2] Assemble the `DESIGN.md` 7 four-column table with every cell measured or caused.
+  - Every KS row prints `D` and `p`. All four p-values round to zero at two significant figures,
+    which is exactly the point: **the p-values carry no information here and the D values carry all
+    of it.** `ks_two_sample` returns `effect_size` equal to `statistic` so the two can never
+    disagree, pinned by a test in `python/tests/test_ks_two_sample.py`
+- [X] T027 [US2] Assemble the `DESIGN.md` 7 four-column table with every cell measured or caused.
       SC-001
 
+  | driver | laps | lap time | wall contacts | speed |
+  |---|---|---|---|---|
+  | RL 009 deterministic | **10 of 10** | 62.425 s | 0.00 | present |
+  | RL 009 sampling | 9 of 10 | 63.334 s | 0.10 | present |
+  | heuristic | **34 of 34** | 23.655 s | 0.00 | present |
+  | BC | absent | absent | absent | absent |
+  | human | absent | absent | absent | present |
+
+  - **Nine absent cells, each printed with its cause underneath rather than left blank.** BC never
+    drives this track and the human recording is of a different simulator. Filling either with a
+    proxy would have invented the comparison the milestone is supposed to make
 ## Phase 5: figures and the recipe (US3, US4)
 
 - [ ] T028 [US3] Overlaid `|delta steering|` distributions, all four drivers, one figure

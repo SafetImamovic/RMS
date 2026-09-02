@@ -143,6 +143,63 @@ def on_grid_share(values: np.ndarray) -> float:
     return float(np.mean(np.abs(nonzero / 0.05 - np.round(nonzero / 0.05)) < 1e-6))
 
 
+def agreement(root: Path) -> list[dict]:
+    """Seeds 7 and 13, reported as an agreement line rather than as columns.
+
+    **Three seeds of one training configuration are one driver, not three.** Giving each its own
+    column in `DESIGN.md` 7's table would say the project compared three learned drivers against a
+    human, which it did not. What the extra seeds establish is that the named column is not a lucky
+    draw, so they belong beside it as a spread and nowhere else.
+    """
+    rows: list[dict] = []
+    for run_id in ("ppo_car_009_bc_s7", "ppo_car_009_bc_s13"):
+        column = m5.rl_column(root, run_id, "deterministic")
+        rows.append(
+            {
+                "driver": column.name,
+                "n": int(column.steering.size),
+                "variance": column.steering_stats.variance,
+                "delta_mean": float(column.abs_delta_steering.mean()),
+                "delta_median": float(np.median(column.abs_delta_steering)),
+                "laps_completed": column.laps_completed,
+                "laps_possible": column.laps_possible,
+                "lap_time_s": column.lap_time_s,
+                "wall_contacts": column.wall_contacts,
+            }
+        )
+    return rows
+
+
+# The coarse bins the relative-frequency histogram is reported on. Wider than the 0.05 lattice
+# because a 41-row table is a data file rather than a reading, and the full-resolution version is
+# written to `steering_histogram.csv` for the figures to consume.
+HISTOGRAM_EDGES = np.array([-1.0, -0.5, -0.3, -0.15, -0.05, -0.0125, 0.0125, 0.05, 0.15, 0.3, 0.5, 1.0])
+
+
+def relative_histogram(values: np.ndarray, edges: np.ndarray = HISTOGRAM_EDGES) -> np.ndarray:
+    """Relative frequencies, as `DESIGN.md` 7.1 asks. Shares, never counts: the columns differ by
+    a factor of six in sample size, so counts would compare dataset length rather than behaviour."""
+    counts, _ = np.histogram(values, bins=edges)
+    total = counts.sum()
+    return counts / total if total else counts.astype(float)
+
+
+def lattice_histogram_frame(result: dict):
+    """The full 0.05-resolution relative-frequency histogram, one column per driver.
+
+    Written out rather than printed, because it is the input the Phase 5 figures read: a figure
+    drawn from a committed table changes when the table changes, which is what SC-005 asks for.
+    """
+    import pandas as pd
+
+    support = lattice_support()
+    frame = pd.DataFrame({"steering": support})
+    for column in result["drivers"] + [result["human"]]:
+        counts = counts_on_lattice(column.steering, support)
+        frame[column.name] = counts / counts.sum()
+    return frame
+
+
 def build(root: Path) -> dict:
     human = m5.human_column(root)
     drivers = [
@@ -159,6 +216,7 @@ def build(root: Path) -> dict:
         "secondary": [steering_level_report(d, human) for d in drivers],
         "conditional": [conditional_on_nonzero(d, human) for d in drivers],
         "unquantised_vs_quantised": [compare_axis(d, human, "steering") for d in drivers],
+        "agreement": agreement(root),
     }
 
 
@@ -183,13 +241,64 @@ def to_markdown(result: dict) -> str:
 
     add("## Descriptive statistics (DESIGN 7.1)")
     add("")
-    add("| driver | n | mean | variance | straight | left | right |")
-    add("|---|---|---|---|---|---|---|")
+    add("Three variables, each with n, mean, variance, minimum and maximum, and a")
+    add("relative-frequency histogram below. Shares rather than counts throughout, because the")
+    add("columns differ by a factor of six in sample size.")
+    add("")
+    add("### Steering")
+    add("")
+    add("| driver | n | mean | variance | min | max | straight | left | right |")
+    add("|---|---|---|---|---|---|---|---|---|")
     for column in result["drivers"] + [human]:
-        s = column.steering_stats
-        add(f"| `{column.name}` | {s.n} | {s.mean:+.4f} | {s.variance:.5f} | "
+        d = column.steering_stats
+        add(f"| `{column.name}` | {d.n} | {d.mean:+.4f} | {d.variance:.5f} | "
+            f"{d.minimum:+.3f} | {d.maximum:+.3f} | "
             f"{100 * column.straight_share:.1f}% | {100 * column.left_share:.1f}% | "
             f"{100 * column.right_share:.1f}% |")
+    add("")
+
+    add("### Speed")
+    add("")
+    add("**The units are not shared and the columns are not comparable to each other.** The Unity")
+    add("drivers report the simulator's own rigidbody speed; the human column is the recorded")
+    add("speed of a different simulator in its own units. Each is reported so its spread within")
+    add("its own driver can be read, and no cross-driver speed statistic is computed anywhere in")
+    add("this feature.")
+    add("")
+    add("| driver | n | mean | variance | min | max |")
+    add("|---|---|---|---|---|---|")
+    for column in result["drivers"] + [human]:
+        d = column.speed_stats
+        if d is None:
+            add(f"| `{column.name}` | absent | absent | absent | absent | absent |")
+            continue
+        add(f"| `{column.name}` | {d.n} | {d.mean:.4f} | {d.variance:.5f} | "
+            f"{d.minimum:.3f} | {d.maximum:.3f} |")
+    add("")
+
+    add("### |delta steering| at 14.08 Hz")
+    add("")
+    add("| driver | n | mean | variance | min | max |")
+    add("|---|---|---|---|---|---|")
+    for column in result["drivers"] + [human]:
+        d = column.delta_stats
+        add(f"| `{column.name}` | {d.n} | {d.mean:.4f} | {d.variance:.5f} | "
+            f"{d.minimum:.3f} | {d.maximum:.3f} |")
+    add("")
+
+    add("### Relative-frequency histogram of steering")
+    add("")
+    add("Coarse bins for reading. The full 0.05-resolution version, which the figures are drawn")
+    add("from, is `results/comparison/steering_histogram.csv`.")
+    add("")
+    edges = HISTOGRAM_EDGES
+    labels = [f"{edges[i]:+.3g} to {edges[i + 1]:+.3g}" for i in range(len(edges) - 1)]
+    every = result["drivers"] + [human]
+    add("| bin | " + " | ".join(f"`{c.name}`" for c in every) + " |")
+    add("|---" * (len(every) + 1) + "|")
+    shares = [relative_histogram(c.steering) for c in every]
+    for i, label in enumerate(labels):
+        add(f"| {label} | " + " | ".join(f"{100 * sh[i]:.1f}%" for sh in shares) + " |")
     add("")
 
     add("## The comparison table (DESIGN 7)")
@@ -255,6 +364,29 @@ def to_markdown(result: dict) -> str:
             f"{row['chi2']:.1f} | {row['chi2_reject']} |")
     add("")
 
+    add("## Agreement across training seeds")
+    add("")
+    add("**Not columns.** Seeds 7 and 13 are the same training configuration as the named column,")
+    add("differing only in `--seed`. Three seeds of one configuration are one driver, and giving")
+    add("each a column would claim the project compared three learned drivers against a human.")
+    add("What they establish is that the named column is not a lucky draw.")
+    add("")
+    add("| seed run | n | variance | mean abs delta | median abs delta | laps | lap time | contacts |")
+    add("|---|---|---|---|---|---|---|---|")
+    named = result["drivers"][0]
+    add(f"| `{named.name}` (named) | {named.steering.size} | "
+        f"{named.steering_stats.variance:.5f} | {named.abs_delta_steering.mean():.4f} | "
+        f"{np.median(named.abs_delta_steering):.4f} | "
+        f"{named.laps_completed} of {named.laps_possible} | {named.lap_time_s:.3f} s | "
+        f"{named.wall_contacts:.2f} |")
+    for row in result["agreement"]:
+        lap_time = "absent" if row["lap_time_s"] is None else f"{row['lap_time_s']:.3f} s"
+        contacts = "absent" if row["wall_contacts"] is None else f"{row['wall_contacts']:.2f}"
+        add(f"| `{row['driver']}` | {row['n']} | {row['variance']:.5f} | "
+            f"{row['delta_mean']:.4f} | {row['delta_median']:.4f} | "
+            f"{row['laps_completed']} of {row['laps_possible']} | {lap_time} | {contacts} |")
+    add("")
+
     return "\n".join(lines) + "\n"
 
 
@@ -300,11 +432,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{row['driver']:<34}{row['n_turning']:>11}{row['kl_from_human']:>9.4f}"
               f"{row['chi2']:>12.1f}{str(row['chi2_reject']):>8}")
 
+    print()
+    print("=== agreement across training seeds, not columns ===")
+    print(f"{'seed run':<38}{'var':>10}{'mean|d|':>10}{'laps':>8}{'lap s':>10}")
+    for row in result["agreement"]:
+        lap_time = "-" if row["lap_time_s"] is None else f"{row['lap_time_s']:.3f}"
+        print(f"{row['driver']:<38}{row['variance']:>10.5f}{row['delta_mean']:>10.4f}"
+              f"{str(row['laps_completed']) + '/' + str(row['laps_possible']):>8}{lap_time:>10}")
+
     out = args.out or args.root / "results" / "comparison" / "m5_comparison.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(to_markdown(result), encoding="utf-8")
     print()
     print(f"wrote {out}")
+
+    histogram = out.parent / "steering_histogram.csv"
+    lattice_histogram_frame(result).to_csv(histogram, index=False, float_format="%.8f")
+    print(f"wrote {histogram}")
     return 0
 
 
