@@ -1068,6 +1068,12 @@ beyond these ten tracks from one generator is unshown. And whole-run training ag
 three seeds backwards against held-out result, so future readings should say which numbers are
 whole-run and which are end-of-run.
 
+**Second of those three closed on 2026-09-02.** The sentence above stays as written because it
+records what was true when M3 closed. Feature 011 ran the same policy over 33 further accepted
+seeds nobody had looked at: **33 of 33**, zero wall contacts, Wilson interval [89.6, 100.0]. See
+"Generalisation (feature 011)" below. The 5M sighted probe and the whole-run aggregate caveat are
+still open.
+
 ---
 
 ## M5: the comparison
@@ -1170,3 +1176,119 @@ The clean clone also caught a wrong fix: the first trace guard asked whether `re
 exists, and that directory is tracked and holds committed July traces, so it exists in every clone
 while feature 009's 60 gitignored files do not. Suite in a clean clone is now **321 passed, 92
 skipped, zero failures**.
+
+---
+
+## Generalisation (feature 011)
+
+### Pre-registered: does the policy drive tracks nobody looked at?
+
+**Written 2026-09-02, before the sweep ran.** Committed before the seed set was swept so the
+reading cannot be chosen after the numbers exist. This is the fourth pre-registration in this file
+and the pattern is the same one features 009 and 010 used.
+
+**The question, stated precisely.** M3's closing summary recorded a limit: "generalisation beyond
+these ten tracks from one generator is unshown." Seeds 1001 to 1010 were held out from the policy
+and research R5's rule kept them out of every configuration choice, so the policy never saw them.
+But they were read to report a result **four times**, across features 006, 007, 008 and 009, and
+each reading informed which experiment came next. That is selection pressure at the level of the
+researcher, invisible in any one feature's numbers. A set of tracks looked at once is the only thing
+that removes it.
+
+**The setup, fixed now.**
+
+| | |
+|---|---|
+| policy | `ppo_car_009_bc`, seed 42, checkpoint 5000101, unchanged. No retraining and no checkpoint selection against these tracks |
+| inference | deterministic, matching the column M3 was closed on |
+| seeds | 2001 to 2040 requested, **33 accepted** at the same acceptance bound, disjoint from both existing splits |
+| laps | 3 per run, matching M3 |
+| runs | one per accepted seed, no repeats |
+
+**The new tracks are not harder, and that is recorded now rather than discovered later.** Pooled
+peak steering demand is **0.695** against training's 0.789 and held-out's 0.738, all within the
+human bound of 1.000. So a good result here cannot be claimed as "it generalises to harder tracks",
+and a bad result cannot be excused as "these were harder". They are slightly easier on the one axis
+the acceptance bound measures.
+
+**Every interval is Wilson, decided before the numbers.** The normal approximation reports
+`[1.00, 1.00]` on a perfect run, claiming certainty from a finite sample. On 10 of 10 the Wilson
+interval is `[0.72, 1.00]`; on 33 of 33 it is about `[0.90, 1.00]`.
+
+**The four readings, and which one applies is decided by the numbers rather than by preference.**
+
+1. **All 33 complete.** The policy drives this distribution of tracks, not only the ten it was
+   reported on. M3's recorded limit closes.
+2. **Some fail, and the intervals overlap.** No difference detected at this sample size. Reported
+   in those words, never as "generalisation confirmed" and never as "generalisation failed".
+3. **Clearly worse, intervals disjoint.** A real generalisation gap. The honest reading is that the
+   held-out ten were easier or luckier than the generator's typical output. **M3's verdict is not
+   edited**: M3 was closed on the evidence it named, and this becomes a limit recorded beside it,
+   exactly as M3's own closeout recorded this one.
+4. **Any failure at all.** The end reasons are read, not only the rate. A wall contact, a time limit
+   and a no-progress stall are three different findings and averaging them into "did not finish"
+   would discard the one that matters.
+
+**What this cannot answer either way.** The new seeds come from the same generator under the same
+acceptance bound, so the claim is about a distribution of tracks rather than about track design in
+general. A different generator, a different topology or a real road is a larger question and is out
+of scope.
+
+**Two defects were found while setting this up, both before any sweep ran.**
+
+- **The run record's controller column was a hand-typed string**, and its own tooltip said "nothing
+  checks the two agree, so they are worth checking by eye". It is now derived from the model asset
+  actually loaded and the inference mode actually in effect. This is feature 010's `sourceLabel`
+  trap in a second place, and it would have made this sweep's rows unable to prove what drove them.
+- **The evaluation scene was holding seed 13's model with deterministic inference off**, left over
+  from the last sweep. Running without resetting it would have produced a complete, plausible, wrong
+  answer: seed 13's policy sampling its actions, reported as seed 42's driving deterministically.
+
+### The answer: 33 of 33, and the interval is what was actually bought
+
+Run 2026-09-02, one sweep, no repeats. `results/rl/eval_ppo_car_009_bc_generalisation_deterministic.csv`,
+report at [results/rl/generalisation.md](rl/generalisation.md).
+
+| | held out, seeds 1001-1010 | **generalisation, seeds 2001-2040** |
+|---|---|---|
+| runs | 10 | **33** |
+| laps per run | 3 | 3 |
+| completed | 10 | **33** |
+| rate | 100.0 % | **100.0 %** |
+| **Wilson 95 %** | [72.2, 100.0] | **[89.6, 100.0]** |
+| wall contacts | 0 | **0** |
+| markers | 72 of 72 | **72 of 72 on every run, none skipped** |
+| lap time, mean | 62.425 s | 63.046 s |
+| lap time, sd | 0.314 s | 0.617 s |
+| end reasons | all `LapsCompleted` | **all `LapsCompleted`** |
+
+**Research R7's case 1.** Every run completed, so the policy drives this distribution of tracks
+rather than only the ten it was reported on. M3's recorded limit closes.
+
+**The result is the interval, not the percentage, and the two sets are not the same result.** Both
+read 100 per cent and a bare rate would say so. Ten perfect runs are consistent with a policy that
+fails one track in four; thirty-three are not. What this sweep bought is a bound that moved from
+72.2 to **89.6 per cent**, not a higher number. That is also why the pre-registration fixed Wilson
+before the numbers existed: the normal approximation would have printed `[100.0, 100.0]` for both
+rows and made the comparison look like a tie between two certainties.
+
+**The lap-time spread doubled**, 0.314 s to 0.617 s across three times the runs. Consistent with a
+wider sample of track geometries rather than with anything about the policy, and it is reported
+because a table that showed only the mean would have hidden it.
+
+**What it does not say.** The new seeds come from the same generator under the same acceptance
+bound, so this is a claim about a distribution of tracks and not about track design in general. And
+the new tracks are **slightly easier** on the one axis the bound measures, pooled peak steering
+demand 0.695 against training's 0.789 and held-out's 0.738, which was recorded before the sweep ran
+precisely so it could not be quietly omitted now.
+
+**M3's verdict is unchanged and was never going to be edited.** M3 closed on the evidence it named.
+This is a measurement recorded beside it, and the pre-registration committed to recording it the
+same way had it come out badly.
+
+**The sweep also proved the label fix.** Every row's controller column reads
+`ppo_car_009_bc-5000101_deterministic`, derived at runtime from the loaded model and the inference
+mode. The scene had been holding `ppo_car_009_bc_s13-5000050` with deterministic inference **off**,
+and the typed `runId` still said `ppo_car_009_bc_s13_sampling`. Before this feature that string was
+the only record of what drove, so this sweep would have been unreportable and would not have looked
+it. The model is pinned by sha256 in the report, byte identical to the trainer's own output.

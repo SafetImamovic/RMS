@@ -2,6 +2,7 @@
     "name": "SelfDrivingSim",
     "rootNamespace": "SelfDrivingSim",
     "references": [
+        "Unity.InferenceEngine",
         "Unity.InputSystem",
         "Unity.ML-Agents"
     ],

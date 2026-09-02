@@ -394,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Generate track files from seeds.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--seed", type=int, help="Export one seed.")
-    group.add_argument("--batch", choices=("train", "eval", "all"),
+    group.add_argument("--batch", choices=("train", "eval", "generalisation", "all"),
                        help="Export a configured split. 'all' also writes the split file and "
                             "the batch report, which need both splits to be meaningful.")
     parser.add_argument("--out-dir", type=Path, default=None)
@@ -411,7 +411,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {path}")
         return 0
 
-    splits = {"train": config.TRAIN_SEEDS, "eval": config.EVAL_SEEDS}
+    splits = {
+        "train": config.TRAIN_SEEDS,
+        "eval": config.EVAL_SEEDS,
+        "generalisation": config.GENERALISATION_SEEDS,
+    }
     wanted = splits if args.batch == "all" else {args.batch: splits[args.batch]}
 
     reports: dict[str, BatchReport] = {}
