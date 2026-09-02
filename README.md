@@ -162,7 +162,10 @@ Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
 .venv\Scripts\Activate.ps1
 python -m python.eda.report          # sačuva results/plots + results/eda/m1_stats.json
 jupyter notebook python/notebooks/01_dataset_analysis.ipynb   # korak-po-korak notebook
-pytest python/tests                  # 357 prolaza, 3 preskočena (bc moduli traže torch)
+pytest python/tests                  # 410 prolaza, 4 preskočena (bc moduli traže torch)
+#   U ČISTOM KLONU: 321 prolaz, 92 preskočena, nula padova. Razlika je dataset i
+#   sirovi tragovi: oba su git-ignorisana, pa testovi koji ih čitaju preskaču.
+#   Preskakanje, ne pad - nedostajući opcioni ulaz nije pokvaren test (010/T034).
 #   NE dodavati -q: pytest.ini već ima addopts = -q, pa drugi -q ugasi i broj prolaza.
 #   Ne skraćivati izlaz sa | tail: -q ispisuje samo tačke dok ne dođe do sažetka,
 #   pa odsječen izlaz izgleda kao manji ukupan broj (izmjereno u 005/T046).
@@ -199,7 +202,7 @@ tensorboard --logdir results
 
 # ---- M4: BC trening (.venv-bc) ----
 .venv-bc\Scripts\Activate.ps1
-pytest python/tests                  # 401 prolaz (ništa se ne preskače, torch je tu)
+pytest python/tests                  # 465 prolaza (ništa se ne preskače, torch je tu)
 
 # 1. Podjela train/val: blokovski holdout sa 8 s zaštitnim pojasom.
 #    Piše results/bc/split.json. Deterministična - isti fajl bajt po bajt.
@@ -265,9 +268,38 @@ Ponovljivost istog seeda: **0.16 s** raspona po vremenu kruga i **0.0063** po `|
 pet runova. Izvještaj o raspodjeli volana i poređenje sa BC kolonom:
 [results/heuristic/us4_steering.md](results/heuristic/us4_steering.md).
 
-**M5 (poređenje RL / BC / čovjek) još nije implementiran.** Ranije je ovdje stajala komanda
-`python python/evaluation/compare.py`; taj modul ne postoji. Heuristička kolona za M5 je gotova
-i stoji u `results/heuristic/us4_steering.md`.
+Poređenje za M5 (RL / BC / heuristika / čovjek) radi iz čistog klona, bez dataseta i bez
+sirovih tragova. Ulazi su commitovani u `results/comparison/`, po jedan mali CSV po vozaču:
+
+```powershell
+.venv\Scripts\Activate.ps1
+
+# 1. Tabela i oba poređenja (primarna osa |Δsteering|, sekundarna nivo volana).
+#    Piše results\comparison\m5_comparison.md i steering_histogram.csv.
+python -m python.m5.compare
+
+# 2. Tri figure iz istih ulaza. Nijedna se ne snima rukom (SC-005).
+python -m python.m5.plots
+
+# 3. Regenerisanje samih ulaza. Ovo je JEDINI korak koji traži sirove tragove i
+#    dataset, i pokreće se samo kad se sweep ponovo odvozi.
+python -m python.rl.comparison_inputs
+#    BC kolona ide kroz .venv-bc, jer .venv nema torch:
+.venv-bc\Scripts\Activate.ps1
+python -m python.bc.export_predictions --run-id bc_balanced_v01
+```
+
+Očekivane vrijednosti za gornji recept: RL 009 deterministički **10 od 10** runova (po tri
+kruga) uz **20.808 s po krugu** i nula dodira zida, heuristika **34 od 34** jednokružna runa uz
+**23.655 s po krugu**. Runovi nisu iste dužine, pa je uporediva veličina sekunda po krugu, a ne
+vrijeme runa. Na primarnoj osi
+posle kvantizacije na ljudsku rešetku RL deterministički je najbliži čovjeku sa **D = 0.2682**.
+Puni izvještaj: [results/comparison/m5_comparison.md](results/comparison/m5_comparison.md).
+
+**Dvije stvari koje recept traži, a nisu u repozitoriju.** Dataset (`dataset/`) i sirovi
+tragovi (`results/drive_logs/`, `results/heuristic/**/trace_*.csv`) su git-ignorisani namjerno.
+Zato korak 3 postoji odvojeno od koraka 1 i 2: ko samo čita rezultate, ne treba mu ništa osim
+klona i `.venv`.
 
 Detaljan razvojni proces (Play mode, heuristička vožnja, testiranje): [WORKFLOW.md](WORKFLOW.md).
 
@@ -276,10 +308,11 @@ Detaljan razvojni proces (Play mode, heuristička vožnja, testiranje): [WORKFLO
 Projekat u izradi - plan po fazama (M1–M5) u [DESIGN.md](DESIGN.md) §9.
 
 - [x] M1 - analiza dataseta, kalibracija parametara (`results/eda/m1_report.md`)
-- [ ] M2 - Unity okruženje (staza, vozilo, agent, heuristička vožnja)
-- [ ] M3 - PPO trening
-- [ ] M4 - BC trening (dva runa gotova, `results/bc/comparison.md`; ostaje potvrda gate-a)
-- [ ] M5 - evaluacija i poređenje
+- [x] M2 - Unity okruženje (staza, vozilo, agent, heuristička vožnja)
+- [x] M3 - PPO trening. **ISPUNJEN 2026-09-01**, na četvrti pokušaj i preko tri seeda:
+      30/30 izdvojenih runova, tri kruga bez dodira zida (DESIGN §5.2)
+- [x] M4 - BC trening, dva runa koja se razlikuju u jednoj stvari (`results/bc/comparison.md`)
+- [x] M5 - evaluacija i poređenje (`results/comparison/m5_comparison.md`)
 
 ## Licenca
 

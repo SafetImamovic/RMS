@@ -346,7 +346,9 @@ namespace SelfDrivingSim.Agent
             // files for drives that never happened.
             if (evaluationMode && _runActive && trace != null)
             {
-                trace.BeginRun();
+                // The run id goes with the file. Leaving the logger's serialised label to describe
+                // the run is what made feature 009's 60 traces all claim to be a feature 006 run.
+                trace.BeginRun(runId);
             }
 
             _reward = default;

@@ -1575,6 +1575,54 @@ pobjeđuje i mjere koju druga strana nema.
 > zatvaranja petlje koji polarni oblik rješava besplatno. Odbačeno za sada; ostaje kao
 > proširenje ako se nedostatak pravaca pokaže kao stvarna smetnja u M3.
 
+**Izmjereno pred M5, upisano 2026-09-01 prije ijedne linije koda za poređenje.** Obje napomene gore
+su napisane kao predviđanja. Sada su provjerene na politici koja stvarno vozi krugove, pa se ovdje
+upisuju brojevi umjesto očekivanja, zajedno sa tri stvari koje predviđanja nisu obuhvatila.
+
+**Prvo, predviđanje o nedostatku pravaca je tačno, i veličina je sada poznata.**
+
+| | čovjek, spojeni dataset | RL 009, deterministički |
+|---|---|---|
+| n | 32.443 | 31.202 |
+| udio nultog steeringa (čovjek), odnosno unutar 0.025 od nule (agent) | **58.6 %** | **2.5 %** |
+| skreće lijevo | 23.5 % | **87.6 %** |
+| skreće desno | 18.0 % | 12.3 % |
+| varijansa steeringa | **0.15149** | 0.03208 |
+
+Agent skreće lijevo na skoro devet od deset koraka jer se generisana petlja vozi u jednom smjeru.
+Hi-kvadrat test homogenosti nad rešetkom daje **20.154,5** uz 40 stepeni slobode. **Taj broj nije
+nalaz o stilu vožnje**, nego topologija staze i rezolucija zapisa izražene kao test. Kvantizacija na
+rešetku, koju prva napomena propisuje, rješava polovinu koja se tiče rezolucije i ne dira polovinu
+koja se tiče staze.
+
+**Odluka ostaje ona koju druga napomena već propisuje**: primarna osa poređenja je **|Δsteering|**,
+a marginalni histogram steeringa ostaje kontekst. Uz njega se u istoj tabeli navode udio nultog
+steeringa i udio skretanja lijevo, da se divergencija ne bi čitala kao tvrdnja o stilu. Uslovna
+raspodjela uz nenulti steering, koju druga napomena traži, računa se i navodi.
+
+**Drugo, referenca je spojeni dataset, i to nije formalnost.** `python/bc/config.py` postavlja
+`DATASET_NAME = "combined"`, pa svaka postojeća brojka, uključujući KL iz M4, koristi track1 plus
+track2. Razlika između staza je dovoljno velika da mijenja zaključak: track1 ima **79.3 %** nula i
+varijansu 0.02393, track2 **48.4 %** i varijansu 0.21333. Mjereno prema track1 politika izgleda
+**varijabilnija** od čovjeka, a prema spojenom datasetu je čovjek **pet puta varijabilniji**.
+**Referenca se imenuje svaki put kad se brojka navede.**
+
+**Treće, brzina uzorkovanja je dio mjere, ne detalj.** Trag iz Unityja je na 50 Hz, a agent odlučuje
+svaki četvrti fizički korak, pa se komanda drži između odluka. Diferenciranjem sirovog traga na
+50 Hz **67.1 % razlika je strukturno nula** i srednji |Δsteering| ispadne **0.0110** umjesto
+**0.0417**, dakle vozač izgleda 3,8 puta glađi nego što jeste.
+
+Zato se poređenje radi na **14.08 Hz**, što je `COMPARE_HZ` u `python/track/config.py`, sa
+preuzorkovanjem po vožnji i diferenciranjem **nakon** preuzorkovanja. Ta vrijednost je provjerena
+nezavisno: ljudski `driving_log.csv` nema kolonu vremena, ali imena centralnih slika nose milisekunde,
+i medijan razmaka izvučen iz njih je **0.0710 s**, dakle 14.08 Hz. `|Δsteering|` se računa isključivo
+kroz `report.py.steering_series`, nikad iz sirovog traga, i brzina se navodi uz svaku brojku.
+
+**Četvrto, BC kolona nema tri reda iz tabele gore, i to je svojstvo a ne propust.** BC model
+predviđa steering iz slika kamere drugog simulatora, pa nema kompletiranje kruga, nema vrijeme kruga
+i nema stazu. Te ćelije se označavaju kao odsutne sa navedenim uzrokom i **nikad se ne popunjavaju
+zamjenskom mjerom**.
+
 ### 7.1 Statistička obrada (naglasak predmeta)
 
 Predmet insistira na statističkim metodama - poređenje se izvodi statistički, ne "na oko":
@@ -1593,6 +1641,48 @@ Predmet insistira na statističkim metodama - poređenje se izvodi statistički,
   randomizacije starta i stohastičke PPO politike), sa kontinualnim stanjima, diskretnim
   vremenom (fiksni Unity timestep), agentski (agent-based), vremenski invarijantan,
   neanticipatorski - terminologijom iz predavanja.
+
+### 7.2 Zatvaranje M5 (upisano 2026-09-02, nakon feature-a 010)
+
+**Verdikt: M5 je ISPUNJEN.** Svih sedam kriterija iz `specs/010-m5-evaluation/spec.md` je prošlo, a
+svaki se čita iz broja, ne iz tvrdnje. Puni izvještaj:
+[`results/comparison/m5_comparison.md`](results/comparison/m5_comparison.md).
+
+| kriterij | šta traži | izmjereno | ishod |
+|---|---|---|---|
+| SC-001 | svaka ćelija tabele iz §7 je broj ili razlog odsustva | 11 odsutnih ćelija, svaka sa uzrokom ispisanim ispod | **ISPUNJEN** |
+| SC-002 | kvantizacija na ljudsku rešetku prije divergencije, uz nekvantizovano poređenje | `D` sirovo i na rešetci u istoj tabeli; artefakt pomjera vodećeg vozača sa 0.4603 na **0.2682** | **ISPUNJEN** |
+| SC-003 | KL i dvouzoračni KS sa p-vrijednošću, za sva tri vozača | četiri kolone, oba testa, p uz svaku | **ISPUNJEN** |
+| SC-004 | asimetrija pravca riješena eksplicitno | uslovna raspodjela uz nenula volan, plus udjeli u istoj tabeli kao statistika | **ISPUNJEN** |
+| SC-005 | svaka figura iz commitovane skripte | `python/m5/plots.py`, tri figure, reprodukovane bajt po bajt iz čistog klona | **ISPUNJEN** |
+| SC-006 | recept izvršen iz čistog klona, odstupanja popravljena | klon pravljen, četiri defekta nađena i popravljena, nijedan zapisan kao caveat | **ISPUNJEN** |
+| SC-007 | taksonomija modela terminologijom sa predavanja | šest pojmova, svaki uz stvar koja ga čini tačnim; dva zahtijevala ogradu | **ISPUNJEN** |
+
+**Nalaz: dvije ose imenuju različitog pobjednika, i to je rezultat, ne defekt.** Na primarnoj osi
+(`|Δsteering|`, kvantizovano) najbliži čovjeku je **deterministička** politika, `D = 0.2682` naspram
+sljedećih 0.3780. Na raspodjeli nivoa volana uz nenula volan najbliža je **sampling** politika,
+`KL = 0.9465`, dok je deterministička posljednja sa 1.1291. To je ista politika u dva režima
+inferencije. Šum čini raspodjelu politike ljudskijom, a njeno kretanje manje ljudskim: sampling
+podiže srednji `|Δsteering|` sa 0.0413 na 0.1552, iznad ljudskih 0.1112. Jedan odgovor na pitanje
+"ko je najsličniji čovjeku" morao bi da prećuti jedno od dva mjerenja.
+
+**Uslovljavanje sabija cijelo polje.** Izbacivanje uzoraka pravca sa obje strane, kako druga M5
+napomena u §7 traži, pomjera determinističku politiku sa 1.6575 na 1.1291, najveći pomak od četiri,
+i sužava raspon između najboljeg i najgoreg sa 0.60 na 0.18. Ono što je marginalna raspodjela
+mjerila bila je uglavnom količina pravca, a količina pravca je staza.
+
+**Izvršenje, koje §7 stavlja prvo, nije blizu.** Naučena politika završava 10 od 10 izdvojenih
+runova po tri kruga bez ijednog dodira zida, i dva dodatna trening seeda rade isto. Heuristika
+završava 34 od 34 jednokružna runa, takođe bez dodira. Po sekundi po krugu naučena politika je brža,
+**20.808 s** naspram **23.655 s**, ali ta razlika nosi svoju ogradu: dva sweepa su vožena na
+različitom `timeScale` i nad različitim skupovima seedova, a vrijeme kruga nije bilo kriterij uspjeha
+ni za jednog. BC ne vozi uopšte.
+
+**Šta poređenje ne može reći.** Ništa o BC vožnji, jer BC predviđa volan za kadrove koje je čovjek
+već provozao u drugom simulatoru. Malo o nivou volana što nije geometrija staze: generisana petlja
+uvijek skreće i vozi se u jednom smjeru, pa vozači skreću lijevo na 76 do 88 posto koraka naspram
+ljudskih 23.5. Ništa o brzini između vozača, jer su jedinice različite. I ništa iz p-vrijednosti,
+jer na 5.576 do 32.443 uzoraka testovi odbacuju skoro svaku nultu hipotezu.
 
 ## 8. Verzije alata
 

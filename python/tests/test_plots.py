@@ -15,6 +15,15 @@ import pytest
 
 from python.track import generator, matching, plots
 
+# The human recording is gitignored and downloaded from Kaggle, so a clean clone does not have it.
+# The tests below read it; every other test in this file does not. Skipping exactly those is what
+# lets `pytest python/tests` be green in a clean clone, which is what the README promises and what
+# running the recipe rather than reading it disproved (feature 010, T033).
+needs_dataset = pytest.mark.skipif(
+    not (Path(__file__).resolve().parents[2] / "dataset").exists(),
+    reason="dataset/ is gitignored and not present in this checkout",
+)
+
 
 @pytest.fixture()
 def out_dir(tmp_path: Path) -> Path:
@@ -29,6 +38,7 @@ def test_a_track_figure_is_written(out_dir):
     assert path.stat().st_size > 10_000
 
 
+@needs_dataset
 def test_the_match_figure_is_written(out_dir):
     path = plots.plot_match(seeds=range(1, 6), out_dir=out_dir)
 
@@ -37,6 +47,7 @@ def test_the_match_figure_is_written(out_dir):
     assert path.stat().st_size > 10_000
 
 
+@needs_dataset
 def test_nothing_is_written_outside_the_output_directory(out_dir, tmp_path):
     before = {p for p in tmp_path.rglob("*") if p.is_file()}
     plots.plot_track(generator.generate(2), out_dir=out_dir)
@@ -52,6 +63,7 @@ def test_the_two_series_colours_are_distinct_and_fixed():
     assert plots.TRACK_COLOUR.startswith("#") and plots.HUMAN_COLOUR.startswith("#")
 
 
+@needs_dataset
 def test_the_histogram_bins_are_centred_on_the_human_lattice():
     """Regression: edge-aligned bins made the human series render as a comb.
 
