@@ -14,16 +14,34 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MANIFEST = REPO_ROOT / "results" / "rl" / "trace_manifest.json"
+
+
+def _traces_present() -> bool:
+    """Whether the traces this manifest names are actually on disk.
+
+    **Not whether `results/drive_logs/` exists**, which was the first guard and was wrong: the
+    directory is tracked and a handful of July traces are committed, so it exists in every clone
+    while feature 009's 60 files, which are gitignored, do not. A guard that asks the wrong
+    question passes locally and fails in exactly the clean clone it was written for.
+    """
+    if not MANIFEST.exists():
+        return False
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    directory = REPO_ROOT / manifest["trace_dir"]
+    return all(
+        (directory / name).exists() for sweep in manifest["sweeps"] for name in sweep["traces"]
+    )
+
+
 # The raw per-step traces are gitignored: 36 MB of sweep output that M5 reads through committed
 # resampled inputs instead. These two tests verify the manifest against the traces themselves, so
 # they need the traces; the other four verify the manifest's own structure and do not.
 needs_traces = pytest.mark.skipif(
-    not (Path(__file__).resolve().parents[2] / "results" / "drive_logs").exists(),
-    reason="results/drive_logs/ is gitignored and not present in this checkout",
+    not _traces_present(),
+    reason="feature 009's traces are gitignored and not present in this checkout",
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MANIFEST = REPO_ROOT / "results" / "rl" / "trace_manifest.json"
 
 pytestmark = pytest.mark.skipif(
     not MANIFEST.exists(), reason="trace manifest not generated in this checkout"
