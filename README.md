@@ -245,22 +245,22 @@ Tačne, provjerene verzije i zamke: `ENVIRONMENT.md`.
 ## Postavljanje
 
 ```powershell
-# 1. Kloniraj repo
-git clone <remote-url> RMS; cd RMS
+# 1. Kloniranje repo-a
+git clone https://github.com/SafetImamovic/RMS.git; cd RMS
 git lfs install
 
-# 2. Python okruženja - tri, namjerno odvojena (detalji: ENVIRONMENT.md)
+# 2. Kreiranje Python okruženja - tri, namjerno odvojena (detalji: ENVIRONMENT.md)
 #    .venv za M1 EDA, .venv-mlagents za RL, .venv-bc za BC trening.
 #    Razlog: mlagents pinuje numpy==1.23.5, a BC traži noviji numpy uz torch 2.6.
 py -3.10 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r python/requirements.txt
 
-# 3. Dataset → dataset/ (git-ignorisan; koristimo spojeni dataset/dataset/)
+# 3. Preuzimanje dataseta → dataset/ (git-ignorisan; koristi se spojeni dataset/dataset/)
 kaggle datasets download -d zaynena/selfdriving-car-simulator -p dataset --unzip
-#   (ili ručno sa Kaggle stranice, raspakovati u dataset/)
+#   (ili ručno sa Kaggle stranice, uz raspakivanje u dataset/)
 
-# 4. BC okruženje (M4) - odvojeno od .venv i .venv-mlagents
+# 4. Kreiranje BC okruženja (M4) - odvojeno od .venv i .venv-mlagents
 py -3.10 -m venv .venv-bc
 .venv-bc\Scripts\Activate.ps1
 pip install -r requirements-bc.txt
@@ -268,14 +268,14 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 #   Mora ispisati True i ime GPU-a. Trening odbija da krene bez GPU-a
 #   osim uz izričit --allow-cpu, jer je CPU epoha višesatna.
 
-# 5. Unity projekat
-#    Unity Hub → Add → odaberi unity/SelfDrivingSim → otvori
+# 5. Otvaranje Unity projekta
+#    Unity Hub → Add → odabir unity/SelfDrivingSim → otvaranje
 #    (prvi import traje nekoliko minuta - Unity gradi Library/ keš)
 ```
 
 ## Upotreba
 
-Svaka grupa komandi traži svoje okruženje; aktiviraj ga prije nego pokreneš.
+Svaka grupa komandi traži svoje okruženje; aktiviranje ide prije pokretanja.
 
 ```powershell
 # ---- M1: analiza dataseta (.venv) ----
@@ -352,10 +352,10 @@ python -m python.bc.playback --run bc_unbalanced_v01 bc_balanced_v01 --track tra
 #    po koraku u trace_<vrijeme>.csv. Oba su git-ignorisana; u repozitorij ulaze
 #    samo izvještaji (results\heuristic\*.md).
 
-# 2. Sweep preko svih 34 trening seeda, bez izlaska iz Play modea. U sceni dodaj
-#    SweepRunner, poveži TrackBuilder / HeuristicDriver / StartPlacer / CarController
-#    / CarAgent, pa u Inspectoru: seedSet = Train, timeScale = 2, runOnStart = true,
-#    fans = arrangements koje se porede. Play.
+# 2. Sweep preko svih 34 trening seeda, bez izlaska iz Play modea. U sceni: dodavanje
+#    SweepRunner-a, povezivanje TrackBuilder / HeuristicDriver / StartPlacer /
+#    CarController / CarAgent, pa u Inspectoru: seedSet = Train, timeScale = 2,
+#    runOnStart = true, fans = arrangements koje se porede. Play.
 #    timeScale 2 je najbrže na čemu se mjerenja reprodukuju; na 4 se mjeri frame
 #    clock, a ne vožnja (research R4a). Jedna konfiguracija traje 6.3-7.6 minuta,
 #    što NE staje u SC-004 budžet od pet minuta - zapisano kao promašaj, ne zaobiđeno.
