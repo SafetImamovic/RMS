@@ -1642,6 +1642,48 @@ Predmet insistira na statističkim metodama - poređenje se izvodi statistički,
   vremenom (fiksni Unity timestep), agentski (agent-based), vremenski invarijantan,
   neanticipatorski - terminologijom iz predavanja.
 
+### 7.2 Zatvaranje M5 (upisano 2026-09-02, nakon feature-a 010)
+
+**Verdikt: M5 je ISPUNJEN.** Svih sedam kriterija iz `specs/010-m5-evaluation/spec.md` je prošlo, a
+svaki se čita iz broja, ne iz tvrdnje. Puni izvještaj:
+[`results/comparison/m5_comparison.md`](results/comparison/m5_comparison.md).
+
+| kriterij | šta traži | izmjereno | ishod |
+|---|---|---|---|
+| SC-001 | svaka ćelija tabele iz §7 je broj ili razlog odsustva | 11 odsutnih ćelija, svaka sa uzrokom ispisanim ispod | **ISPUNJEN** |
+| SC-002 | kvantizacija na ljudsku rešetku prije divergencije, uz nekvantizovano poređenje | `D` sirovo i na rešetci u istoj tabeli; artefakt pomjera vodećeg vozača sa 0.4603 na **0.2682** | **ISPUNJEN** |
+| SC-003 | KL i dvouzoračni KS sa p-vrijednošću, za sva tri vozača | četiri kolone, oba testa, p uz svaku | **ISPUNJEN** |
+| SC-004 | asimetrija pravca riješena eksplicitno | uslovna raspodjela uz nenula volan, plus udjeli u istoj tabeli kao statistika | **ISPUNJEN** |
+| SC-005 | svaka figura iz commitovane skripte | `python/m5/plots.py`, tri figure, reprodukovane bajt po bajt iz čistog klona | **ISPUNJEN** |
+| SC-006 | recept izvršen iz čistog klona, odstupanja popravljena | klon pravljen, četiri defekta nađena i popravljena, nijedan zapisan kao caveat | **ISPUNJEN** |
+| SC-007 | taksonomija modela terminologijom sa predavanja | šest pojmova, svaki uz stvar koja ga čini tačnim; dva zahtijevala ogradu | **ISPUNJEN** |
+
+**Nalaz: dvije ose imenuju različitog pobjednika, i to je rezultat, ne defekt.** Na primarnoj osi
+(`|Δsteering|`, kvantizovano) najbliži čovjeku je **deterministička** politika, `D = 0.2682` naspram
+sljedećih 0.3780. Na raspodjeli nivoa volana uz nenula volan najbliža je **sampling** politika,
+`KL = 0.9465`, dok je deterministička posljednja sa 1.1291. To je ista politika u dva režima
+inferencije. Šum čini raspodjelu politike ljudskijom, a njeno kretanje manje ljudskim: sampling
+podiže srednji `|Δsteering|` sa 0.0413 na 0.1552, iznad ljudskih 0.1112. Jedan odgovor na pitanje
+"ko je najsličniji čovjeku" morao bi da prećuti jedno od dva mjerenja.
+
+**Uslovljavanje sabija cijelo polje.** Izbacivanje uzoraka pravca sa obje strane, kako druga M5
+napomena u §7 traži, pomjera determinističku politiku sa 1.6575 na 1.1291, najveći pomak od četiri,
+i sužava raspon između najboljeg i najgoreg sa 0.60 na 0.18. Ono što je marginalna raspodjela
+mjerila bila je uglavnom količina pravca, a količina pravca je staza.
+
+**Izvršenje, koje §7 stavlja prvo, nije blizu.** Naučena politika završava 10 od 10 izdvojenih
+runova po tri kruga bez ijednog dodira zida, i dva dodatna trening seeda rade isto. Heuristika
+završava 34 od 34 jednokružna runa, takođe bez dodira. Po sekundi po krugu naučena politika je brža,
+**20.808 s** naspram **23.655 s**, ali ta razlika nosi svoju ogradu: dva sweepa su vožena na
+različitom `timeScale` i nad različitim skupovima seedova, a vrijeme kruga nije bilo kriterij uspjeha
+ni za jednog. BC ne vozi uopšte.
+
+**Šta poređenje ne može reći.** Ništa o BC vožnji, jer BC predviđa volan za kadrove koje je čovjek
+već provozao u drugom simulatoru. Malo o nivou volana što nije geometrija staze: generisana petlja
+uvijek skreće i vozi se u jednom smjeru, pa vozači skreću lijevo na 76 do 88 posto koraka naspram
+ljudskih 23.5. Ništa o brzini između vozača, jer su jedinice različite. I ništa iz p-vrijednosti,
+jer na 5.576 do 32.443 uzoraka testovi odbacuju skoro svaku nultu hipotezu.
+
 ## 8. Verzije alata
 
 | Alat | Verzija | Status |

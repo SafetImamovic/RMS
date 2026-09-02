@@ -445,14 +445,55 @@
 
 ## Phase 6: closeout
 
-- [ ] T036 Write the comparison's own result: which driver is closest to the human on the primary
+- [X] T036 Write the comparison's own result: which driver is closest to the human on the primary
       axis, by how much, and whether that ordering survives the secondary axis
-- [ ] T037 State plainly what the comparison cannot say, given research R5 and R6: nothing about
+  - Written into `results/comparison/m5_comparison.md` as a **generated** section, not typed prose.
+    `orderings()` sorts the drivers off the same objects the tables are built from, so the sentence
+    naming the winner cannot survive a rerun that changes who wins
+  - **On the primary axis the closest driver is `ppo_car_009_bc` deterministic**, D = 0.2682 against
+    the next driver's 0.3780, a margin of 0.1098
+  - **The ordering does not survive.** On steering level given nonzero steering the closest is
+    `ppo_car_009_bc` **sampling** at KL 0.9465, and the deterministic policy is **last** at 1.1291
+  - Those are the same policy under two inference modes, which is what makes the disagreement a
+    finding rather than a tie. Sampling draws from the action distribution instead of taking its
+    mean: the steering levels spread toward the human's spread while the mean step change rises
+    from 0.0413 to 0.1552, past the human's own 0.1112. **Noise makes a policy's distribution more
+    human and its motion less so**
+  - Conditioning narrows the spread between best and worst from 0.60 to 0.18, which measures how
+    much of the marginal comparison was track topology
+- [X] T037 State plainly what the comparison cannot say, given research R5 and R6: nothing about
       BC's driving, and nothing about steering level that is not partly track geometry
-- [ ] T038 [P] Update `results/EXPERIMENTS.md` with M5's rows
-- [ ] T039 [P] Confirm the three suites are green and record the counts against T002's
-- [ ] T040 [P] Check every file this feature touched for em dashes and the constitution's style
+  - Four limits in the report, each a property of the inputs. The task named two; the other two are
+    **speed**, which is Unity rigidbody units against another simulator's recorded units with
+    variances of 1.23 and 10.69, and **the p-values**, which reject on every row at these sample
+    sizes and therefore carry nothing
+- [X] T038 [P] Update `results/EXPERIMENTS.md` with M5's rows
+  - A full `## M5: the comparison` section: the execution table, both axes, the result, the limits,
+    and the clean-clone verification with its four defects
+  - **It opens by stating that no training run and no sweep was performed for this milestone.**
+    Every number is read off runs already recorded above. A reader scanning the file for what was
+    run would otherwise assume a sweep produced these
+- [X] T039 [P] Confirm the three suites are green and record the counts against T002's
+
+  | suite | tests | passed | skipped | failures | against T002 |
+  |---|---|---|---|---|---|
+  | `.venv` | **414** | **410** | 4 | 0 | +34 passed, +1 skipped |
+  | `.venv-bc` | **465** | **465** | 0 | 0 | +35 passed |
+  | `.venv`, clean clone | 414 | **322** | 92 | 0 | new measurement |
+
+  - Counts from `--junit-xml`, never from the terminal summary. That is the third feature in a row
+    where reading the summary through a pipe lost the split
+  - **The clean-clone row is new and is the one that matters for SC-006.** 92 skips against 4 is the
+    dataset and the traces being absent, and every skip states which
+  - **EditMode**: no C# changed since the owner reported the suite passing at T004. `DrivingAgent`
+    and `DriveLogger` were the only two files touched and both were verified compiling with zero
+    errors and zero warnings at that point
+- [X] T040 [P] Check every file this feature touched for em dashes and the constitution's style
       rules
+  - **43 files on the branch, zero em dashes**, checked by iterating the branch diff rather than by
+    checking the files I remembered touching
+  - Commit messages are subject-only, one `-m`, no body, no agent attribution, as the constitution
+    requires
 - [ ] T041 Merge `010-m5-evaluation` into `develop` with `--no-ff`
 - [ ] T042 Merge and tag `v0.5-m5`, at the commit where the gate becomes demonstrable, matching the
       convention feature 009's T057 established
