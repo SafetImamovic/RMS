@@ -130,6 +130,27 @@ checkpoint awarded in order and no wall contacts.
   - **SC-002 is answered by `WeightedAverage` on the same seed: `LapComplete` in 26.620 s, 24 of 24 markers, zero contacts.** That run does hold the 6.97 m corner, which is the case R1 computed caps cornering at 6.39 m/s against a 10 m/s top speed, so the anticipatory speed rule from T013 and R1a survives the hardest geometry the generator produces
 - [ ] T020 [US1] Confirm keyboard control is unchanged with the driver disabled, by driving a lap by hand (SC-007, FR-003)
   - **Blocked: needs a person at the keyboard.** Everything else in US1 is measured; this is the one step that cannot be automated, and feature 003's T051 human lap is the precedent for keeping it that way
+  - **Re-read 2026-09-02 while closing M5, and FR-003 did not hold.** `HeuristicDriver.OnDisable`
+    closed the trace and the run record and never released the wheel. `CarController.ScriptedMove`
+    is a nullable that keeps whatever was last written to it, and `ReadMove` returns that value in
+    preference to the keyboard whenever it has one. So unticking the component mid-run stopped the
+    writes but left the last scripted command latched: the car would hold that steering and ignore
+    every key. Exactly the failure this task was written to catch
+  - `RestartRun` and `Finish` both cleared it already. `OnDisable` was the third exit and the only
+    one a person takes, which is why a sweep never hit it: a sweep always ends through `Finish`
+  - **Fixed** in `HeuristicDriver.OnDisable`, which now clears `car.ScriptedMove`. Compile verified:
+    `SelfDrivingSim.dll` rebuilt, console holds zero errors and zero warnings
+  - **The one other caller that disables this component was checked rather than assumed.**
+    `DrivingAgent.ResolveScriptedExpert` disables the expert so feature 005's FR-004 holds with a
+    single writer. It runs inside `Agent.Initialize`, before any action is produced, so the value
+    cleared is one nothing has written. Clearing a command the agent had just written would have
+    been the same latching bug pointing the other way
+  - **What is left for the person, and it is now a confirmation rather than a test of unknown
+    outcome.** Scene: `Assets/Scenes/HeuristicWeighted.unity`. Uncheck `HeuristicDriver` on the car
+    in the Inspector, press Play, drive a lap with WASD or the arrow keys, and confirm the car
+    responds immediately and steers the way it does in `Assets/Scenes/Track.unity`, which carries
+    `CarController` and no scripted driver and is the pre-feature-005 baseline. Then tick the
+    component back on and confirm the scripted driver takes over again
 - [X] T021 [US1] Record which controller first completed a clean lap, and on which seed, in `specs/005-heuristic-ray-driver/tasks.md`. If `MostOpen` could not, state that and note US1 completes after T024
   - **`WeightedAverage`, on training seed 1, in 27.6 s**, recorded in commit `7b83db7` once the sight-limited speed rule from R1a was in place. Repeated at 27.5 s immediately after, and the five-run T027 set later put it at 27.308 s mean
   - **`MostOpen` has never completed a lap.** Not on seed 1004 where it was first tried, not at any critical-distance threshold between 0.20 and 0.50, and not on any of the 34 training seeds under any of three geometries: **0 of 102**. US1's dependency note was right that it would complete after T024, and the reason is stronger than expected: the naive controller does not merely lose the comparison, it never finishes
@@ -341,7 +362,7 @@ existing driver comparisons.
   - **Only `|delta steering|` crosses.** The steering command itself is two different roads, and a mean of -0.20 against -0.02 compares the tracks. `CROSS_MEASURES` is a named tuple of the statistics both sides define identically, so a statistic that means different things on the two sides cannot arrive by iterating a summary
   - The three P95 gaps clear **0.0063**, T027's run-to-run spread on that measure. **The learned side has no equivalent number**: feature 004's 0.0005 tolerance is the best-epoch validation error and T040 says explicitly it applies to nothing else, so borrowing it here would judge a distribution against an accuracy figure. Every gap is above one side's noise floor and unjudged against the other's, and the report says so rather than implying a two-sided test
   - **`MostOpen` is smoother than the learned driver at the P50, where it reads exactly 0.0000.** That is 34 runs of committing to one direction and holding it into a wall. Smoothness alone ranks a crash highly, so the report prints that sentence under every comparison rather than leaving the reader to notice the completion row above (FR-009)
-  - **Three things the comparison is not**, printed every time because any of them omitted turns a distribution comparison into a claim about driving: the learned driver **never drives** (feature 004 FR-018), so lap completion has no BC column and 34 of 34 is not a win but a measure the other side lacks; the roads differ; and the clocks agree on track1 by construction and not on track2. The per-track BC rows are printed for that last reason, and the conclusion does not turn on which is used — 0.0157 and 0.0465 are below both
+  - **Three things the comparison is not**, printed every time because any of them omitted turns a distribution comparison into a claim about driving: the learned driver **never drives** (feature 004 FR-018), so lap completion has no BC column and 34 of 34 is not a win but a measure the other side lacks; the roads differ; and the clocks agree on track1 by construction and not on track2. The per-track BC rows are printed for that last reason, and the conclusion does not turn on which is used, since 0.0157 and 0.0465 are below both
   - Nine cases in `python/tests/test_heuristic_report.py`, including the missing-artefact path: a learned column that is not on disk prints **"No learned column"** rather than skipping the section, because the comparison being absent and the artefact being absent are different statements. Full suite under `.venv`: **323 passed, 3 skipped** (counted properly in T046; a first reading of 179 was `tail -3` cutting pytest's progress lines and being mistaken for a total)
 
 **Checkpoint**: M5 has its baseline column.
